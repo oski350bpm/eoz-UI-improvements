@@ -158,10 +158,8 @@
         });
     }
 
-    EOZ.whenReady = whenReady;
-    EOZ.waitFor = waitFor;
-    EOZ.injectStyles = injectStyles;
-    EOZ.makeHeaderResponsive = makeHeaderResponsive;
-
-    try { Object.freeze(EOZ); } catch (e) {}
+    if (!EOZ.whenReady) EOZ.whenReady = whenReady;
+    if (!EOZ.waitFor) EOZ.waitFor = waitFor;
+    if (!EOZ.injectStyles) EOZ.injectStyles = injectStyles;
+    if (!EOZ.makeHeaderResponsive) EOZ.makeHeaderResponsive = makeHeaderResponsive;
 })();
