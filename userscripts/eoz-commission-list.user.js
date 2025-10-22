@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Commission List UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      1.0.0
+// @version      1.0.1
 // @description  Ulepszenia UI dla listy zleceń w EOZ (produkcyjny widok)
 // @match        https://eoz.iplyty.erozrys.pl/index.php/pl/commission/show_list*
 // @match        https://eoz.iplyty.erozrys.pl/commission/show_list*

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Global UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      0.1.0
+// @version      0.1.1
 // @description  Globalne poprawki UI dla EOZ (responsywne menu w headerze)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
