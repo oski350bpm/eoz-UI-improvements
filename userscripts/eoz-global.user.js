@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Global UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      0.2.6
+// @version      0.2.7
 // @description  Globalne poprawki UI dla EOZ (responsywne menu, formatowanie tabel)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
@@ -13,7 +13,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.6';
+    var VERSION = '0.2.7';
 
     if (!window.EOZ) {
         console.warn('[EOZ Global UI v' + VERSION + '] core not loaded');
@@ -69,7 +69,15 @@
         '#eoz-mobile-menu .eoz-menu-item .eoz-icon-wrapper i { color: white; font-size: 18px; }\n' +
         '#eoz-mobile-menu .eoz-menu-item .eoz-menu-text { flex: 1; font-size: 15px; }\n' +
         '#eoz-menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }\n' +
-        '#eoz-menu-overlay.open { display: block; }\n';
+        '#eoz-menu-overlay.open { display: block; }\n' +
+        '.eoz-dropdown-menu {\n' +
+        '    position: absolute !important; top: 100% !important;\n' +
+        '    right: 0 !important; left: auto !important; min-width: 200px !important; max-width: 280px !important;\n' +
+        '    background: white !important; border: 1px solid #ddd !important;\n' +
+        '    border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;\n' +
+        '    z-index: 1000 !important; display: none !important;\n' +
+        '    flex-direction: column !important; overflow: hidden !important; margin-top: 4px !important;\n' +
+        '}\n';
 
     window.EOZ.injectStyles(responsiveCSS, { id: 'eoz-global-responsive-css' });
 
