@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.1';
+    var VERSION = '1.1.0';
 
     if (!window.EOZ) {
         console.warn('[EOZ Boards Magazine Module] Core not available');
@@ -34,7 +34,17 @@
         '.eoz-dropdown-container{position:relative!important;width:100%!important}\n' +
         'td:last-child{width:1%!important;white-space:nowrap!important}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
-        '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n';
+        '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
+        '@media (max-width:960px){\n' +
+        '  table thead{display:none!important}\n' +
+        '  table tbody tr td{display:none!important}\n' +
+        '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
+        '  .eoz-mobile-grid{display:grid;grid-template-columns:36px 90px 1fr 90px 120px;gap:8px;align-items:start}\n' +
+        '  .eoz-m-col1{display:flex;align-items:flex-start;justify-content:center;font-weight:bold}\n' +
+        '  .eoz-m-col2{font-weight:bold}\n' +
+        '  .eoz-m-col3 div,.eoz-m-col4 div,.eoz-m-col5 div{margin-bottom:6px;font-size:13px}\n' +
+        '  .eoz-m-label{color:#666;margin-right:4px}\n' +
+        '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-boards-magazine-module-css' });
 
@@ -63,7 +73,6 @@
     function applyResponsiveColumns(){
         var opisIdx = findHeaderIndex('Opis');
         var uwagiIdx = findHeaderIndex('Uwagi');
-        // On <= 1200px hide Opis, on <= 1024px hide Uwagi additionally
         if (window.innerWidth <= 1200) hideColumnByIndex(opisIdx, 'eoz-hide-1200');
         if (window.innerWidth <= 1024) hideColumnByIndex(uwagiIdx, 'eoz-hide-1024');
     }
@@ -97,7 +106,12 @@
         applyResponsiveColumns();
         window.addEventListener('resize', applyResponsiveColumns);
         
+        // Build dropdowns first so we can reuse them in mobile grid
         transformActionButtons();
+        
+        // Build mobile grid cell per row
+        buildMobileLayout();
+
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
     }
 
@@ -160,6 +174,91 @@
             if (cell.querySelectorAll('a').length === 0) return;
             var original = cell.innerHTML; cell.innerHTML = ''; cell.innerHTML = original;
             var dropdown = createDropdownMenu(cell, index); cell.innerHTML = ''; cell.appendChild(dropdown);
+        });
+    }
+
+    function buildMobileLayout(){
+        var idxKlient = findHeaderIndex('Klient');
+        var idxZlecenie = findHeaderIndex('Zlecenie');
+        var idxNazwa = findHeaderIndex('Nazwa zamówienia');
+        var idxOkleina = findHeaderIndex('Nazwa okleiny');
+        var idxWymiar = findHeaderIndex('Wymiar');
+        var idxIlosc = findHeaderIndex('Ilość');
+        var idxPrzygot = findHeaderIndex('Przygotowane');
+        var idxOpis = findHeaderIndex('Opis');
+        var idxUwagi = findHeaderIndex('Uwagi');
+        var rows = document.querySelectorAll('table tbody tr');
+        rows.forEach(function(row, rIndex){
+            if (row.querySelector('td.eoz-mobile-cell')) return; // already built
+            var cells = row.querySelectorAll('td');
+            if (!cells || cells.length === 0) return;
+
+            var col1Lp = (rIndex + 1).toString();
+            var col2Zlec = idxZlecenie >=0 && cells[idxZlecenie] ? (cells[idxZlecenie].textContent||'').trim() : '';
+            var klient = idxKlient>=0 && cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
+            var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '';
+            var okleina = idxOkleina>=0 && cells[idxOkleina] ? (cells[idxOkleina].textContent||'').trim() : '';
+            var wymiar = idxWymiar>=0 && cells[idxWymiar] ? (cells[idxWymiar].textContent||'').trim() : '';
+            var ilosc = idxIlosc>=0 && cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '';
+            var przygotowane = (function(){
+                if (idxPrzygot>=0 && cells[idxPrzygot]){
+                    var checked = cells[idxPrzygot].querySelector('input[type="radio"][checked]');
+                    if (checked) { var labelEl = checked.nextSibling; return (labelEl && labelEl.textContent||'Tak').trim(); }
+                    // fallback text search
+                    var t = (cells[idxPrzygot].textContent||'').trim();
+                    if (t.indexOf('Tak')!==-1 && t.indexOf('Nie')!==-1){ return t.indexOf('Tak')<t.indexOf('Nie') ? 'Tak' : 'Nie'; }
+                    return t || '—';
+                }
+                return '';
+            })();
+            var opis = idxOpis>=0 && cells[idxOpis] ? (cells[idxOpis].textContent||'').trim() : '';
+            var uwagi = idxUwagi>=0 && cells[idxUwagi] ? cells[idxUwagi].innerHTML : '';
+
+            var mobileCell = document.createElement('td');
+            mobileCell.className = 'eoz-mobile-cell';
+            mobileCell.colSpan = cells.length;
+
+            var grid = document.createElement('div');
+            grid.className = 'eoz-mobile-grid';
+
+            var col1 = document.createElement('div'); col1.className = 'eoz-m-col1'; col1.textContent = col1Lp;
+            var col2 = document.createElement('div'); col2.className = 'eoz-m-col2'; col2.textContent = col2Zlec;
+
+            var col3 = document.createElement('div'); col3.className = 'eoz-m-col3';
+            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span>' + (klient||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Nazwa zamówienia:</span>' + (nazwa||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Płyta:</span>' + (okleina||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Wymiar:</span>' + (wymiar||'—') + '</div>';
+
+            var col4 = document.createElement('div'); col4.className = 'eoz-m-col4';
+            col4.innerHTML = '<div><span class="eoz-m-label">Ilość:</span>' + (ilosc||'—') + '</div>' +
+                             '<div><span class="eoz-m-label">Przygotowane:</span>' + (przygotowane||'—') + '</div>';
+
+            var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
+            col5.innerHTML = '<div><span class="eoz-m-label">Uwagi klienta:</span>' + (opis||'—') + '</div>' +
+                             '<div><span class="eoz-m-label">Uwagi:</span>' + (uwagi||'') + '</div>';
+
+            // Actions: clone dropdown container from last cell if exists
+            var lastCell = cells[cells.length-1];
+            var dropdown = lastCell ? lastCell.querySelector('.eoz-dropdown-container') : null;
+            var actionsWrap = document.createElement('div');
+            actionsWrap.className = 'eoz-m-actions';
+            if (dropdown) {
+                actionsWrap.appendChild(dropdown.cloneNode(true));
+            } else {
+                // fallback: build minimal button
+                actionsWrap.innerHTML = '<a class="eoz-dropdown-label" href="#">Akcje</a>';
+            }
+            col5.appendChild(actionsWrap);
+
+            grid.appendChild(col1);
+            grid.appendChild(col2);
+            grid.appendChild(col3);
+            grid.appendChild(col4);
+            grid.appendChild(col5);
+
+            row.appendChild(mobileCell);
+            mobileCell.appendChild(grid);
         });
     }
 
