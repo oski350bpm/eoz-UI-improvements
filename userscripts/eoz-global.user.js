@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         EOZ Global UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      0.2.3
-// @description  Globalne poprawki UI dla EOZ (responsywne menu w headerze)
+// @version      0.2.4
+// @description  Globalne poprawki UI dla EOZ (responsywne menu, formatowanie tabel)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
 // @downloadURL  https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
@@ -13,7 +13,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.3';
+    var VERSION = '0.2.4';
 
     if (!window.EOZ) {
         console.warn('[EOZ Global UI v' + VERSION + '] core not loaded');
@@ -34,10 +34,15 @@
         '  .list-group.list-group-horizontal > li.eoz-hide-tablet { display: inline-block !important; }\n' +
         '}\n' +
         '#eoz-burger-menu {\n' +
-        '  position: fixed; top: 10px; right: 10px; z-index: 10000;\n' +
+        '  position: fixed; top: 0; right: 10px; z-index: 10000;\n' +
         '  width: 50px; height: 50px; border-radius: 50%; background: #007bff;\n' +
         '  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;\n' +
-        '  box-shadow: 0 2px 8px rgba(0,0,0,0.3);\n' +
+        '  box-shadow: 0 2px 8px rgba(0,0,0,0.3); margin-top: 10px;\n' +
+        '}\n' +
+        '/* EOZ Table Improvements */\n' +
+        'th.heading-cell.column-names-cell { white-space: normal !important; line-height: 1.3 !important; padding: 8px !important; }\n' +
+        'td.body-cell input[type="checkbox"], th.heading-cell input[type="checkbox"] {\n' +
+        '  float: left !important; margin-right: 8px !important; margin-top: 2px !important;\n' +
         '}\n' +
         '#eoz-burger-menu span { display: block; width: 24px; height: 2px; background: white; position: relative; }\n' +
         '#eoz-burger-menu span::before, #eoz-burger-menu span::after {\n' +
@@ -176,6 +181,20 @@
             console.log('[EOZ Global UI v' + VERSION + '] Responsive header applied');
         } catch (e) {
             console.debug('[EOZ Global UI v' + VERSION + '] header setup failed', e);
+        }
+
+        // Fix table checkbox layout
+        try {
+            var checkboxCells = document.querySelectorAll('td.body-cell input[type="checkbox"], th.heading-cell input[type="checkbox"]');
+            checkboxCells.forEach(function(checkbox) {
+                var parent = checkbox.parentElement;
+                if (parent && parent.tagName === 'TD' || parent.tagName === 'TH') {
+                    // Checkbox już ma właściwy CSS float: left
+                }
+            });
+            console.log('[EOZ Global UI v' + VERSION + '] Table improvements applied');
+        } catch (e) {
+            console.debug('[EOZ Global UI v' + VERSION + '] table improvements failed', e);
         }
     });
 })();
