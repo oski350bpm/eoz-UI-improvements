@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.5.0';
+    var VERSION = '1.5.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -356,9 +356,16 @@
             if (editButton) {
                 var editWrapper = document.createElement('div');
                 editWrapper.style.marginTop = '8px';
-                editWrapper.innerHTML = '<span class="eoz-m-label">Wprowadź dostępną ilość:</span>';
-                editButton.style.marginLeft = '8px';
-                editWrapper.appendChild(editButton);
+                
+                var labelDiv = document.createElement('div');
+                labelDiv.innerHTML = '<span class="eoz-m-label">Wprowadź dostępną ilość:</span>';
+                
+                var buttonDiv = document.createElement('div');
+                buttonDiv.style.marginTop = '4px';
+                buttonDiv.appendChild(editButton);
+                
+                editWrapper.appendChild(labelDiv);
+                editWrapper.appendChild(buttonDiv);
                 col4.appendChild(editWrapper);
             }
 
