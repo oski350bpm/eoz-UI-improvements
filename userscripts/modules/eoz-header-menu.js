@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.1';
+    var VERSION = '2.2.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -27,9 +27,9 @@
         '@media (min-width: 1024px) { #eoz-burger-menu, #eoz-burger-menu-item { display: none !important; } .list-group.list-group-horizontal > li.eoz-hide-tablet { display: inline-block !important; } }\n' +
         '@media (max-width: 767px) { #eoz-burger-menu-item { display: none !important; } #eoz-burger-menu.eoz-floating { display: flex !important; position: fixed; top: 0; right: 10px; z-index: 10000; width: 50px; height: 50px; border-radius: 50%; background: #007bff; margin-top: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); } }\n' +
         '@media (min-width: 768px) and (max-width: 1023px) { #eoz-burger-menu-item { display: inline-block !important; } #eoz-burger-menu.eoz-floating { display: none !important; } }\n' +
-        '#eoz-burger-menu-item { padding: 0; border: none; background: transparent; }\n' +
-        '#eoz-burger-menu-item a { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 8px 12px; text-decoration: none; }\n' +
-        '#eoz-burger-menu { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 8px 12px; background: #007bff; border-radius: 4px; }\n' +
+        '#eoz-burger-menu-item { padding: 8px 15px; border: none; background: transparent; margin: 0; }\n' +
+        '#eoz-burger-menu-item .eoz-burger-wrapper { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #007bff; border-radius: 50%; }\n' +
+        '#eoz-burger-menu { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; width: 100%; height: 100%; }\n' +
         '#eoz-burger-menu span { display: block; width: 24px; height: 2px; background: white; position: relative; }\n' +
         '#eoz-burger-menu span::before, #eoz-burger-menu span::after { content: ""; display: block; width: 24px; height: 2px; background: white; position: absolute; left: 0; }\n' +
         '#eoz-burger-menu span::before { top: -8px; }\n' +
@@ -75,11 +75,15 @@
         burgerLi.id = 'eoz-burger-menu-item';
         burgerLi.className = 'list-group-item';
         
+        var burgerWrapper = document.createElement('div');
+        burgerWrapper.className = 'eoz-burger-wrapper';
+        
         var burger = document.createElement('button');
         burger.id = 'eoz-burger-menu';
         burger.innerHTML = '<span></span>';
         
-        burgerLi.appendChild(burger);
+        burgerWrapper.appendChild(burger);
+        burgerLi.appendChild(burgerWrapper);
         
         var mobileMenu = document.createElement('div');
         mobileMenu.id = 'eoz-mobile-menu';
@@ -144,20 +148,28 @@
         // Append burger based on whether menu exists
         var menuContainer = document.querySelector('.list-group.list-group-horizontal');
         if (menuContainer) {
-            // Find logout button and insert before it
+            // Find logout button and insert before it (search more broadly)
             var logoutItem = null;
-            var menuItems = menuContainer.querySelectorAll('li.list-group-item');
-            menuItems.forEach(function(item) {
+            var allItems = menuContainer.querySelectorAll('li');
+            for (var i = 0; i < allItems.length; i++) {
+                var item = allItems[i];
                 var link = item.querySelector('a');
-                if (link && (link.href.indexOf('/logout') !== -1 || link.textContent.trim().indexOf('Wyloguj') !== -1)) {
-                    logoutItem = item;
+                var text = item.textContent.trim().toLowerCase();
+                if (link) {
+                    var href = link.getAttribute('href') || '';
+                    if (href.indexOf('logout') !== -1 || text.indexOf('wyloguj') !== -1 || text.indexOf('logout') !== -1) {
+                        logoutItem = item;
+                        break;
+                    }
                 }
-            });
+            }
             
             if (logoutItem) {
                 menuContainer.insertBefore(burgerLi, logoutItem);
+                console.log('[EOZ Header Menu v' + VERSION + '] Burger inserted before logout');
             } else {
                 menuContainer.appendChild(burgerLi);
+                console.log('[EOZ Header Menu v' + VERSION + '] Burger appended at end (no logout found)');
             }
         }
         
