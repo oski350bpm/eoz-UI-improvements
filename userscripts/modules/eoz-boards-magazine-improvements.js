@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.4.2';
+    var VERSION = '1.5.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -339,9 +339,28 @@
                               '<div><span class="eoz-m-label">Płyta:</span><br>' + (plyta||'—') + '</div>' +
                               '<div><span class="eoz-m-label">Wymiar:</span><br>' + (wymiar||'—') + '</div>';
 
+            // Extract edit button from Przygotowane cell
+            var editButton = null;
+            if (idxPrzygot>=0 && cells[idxPrzygot]){
+                var editBtn = cells[idxPrzygot].querySelector('a[href*="edit_plate_ready"]');
+                if (editBtn) {
+                    editButton = editBtn.cloneNode(true);
+                }
+            }
+            
             var col4 = document.createElement('div'); col4.className = 'eoz-m-col4';
             col4.innerHTML = '<div><span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—') + '</div>' +
                              '<div style="margin-top:8px"><span class="eoz-m-label">Przygotowane:</span><br>' + przygotowaneHTML + '</div>';
+            
+            // Add edit button below switcher
+            if (editButton) {
+                var editWrapper = document.createElement('div');
+                editWrapper.style.marginTop = '8px';
+                editWrapper.innerHTML = '<span class="eoz-m-label">Wprowadź dostępną ilość:</span>';
+                editButton.style.marginLeft = '8px';
+                editWrapper.appendChild(editButton);
+                col4.appendChild(editWrapper);
+            }
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
             

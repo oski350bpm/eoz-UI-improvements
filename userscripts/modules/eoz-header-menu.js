@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.0';
+    var VERSION = '2.2.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -25,7 +25,9 @@
         '@media (max-width: 767px) { .list-group.list-group-horizontal { flex-wrap: nowrap !important; overflow-x: hidden !important; } .list-group.list-group-horizontal > li:not(.eoz-keep-mobile) { display: none !important; } }\n' +
         '@media (min-width: 768px) and (max-width: 1023px) { .list-group.list-group-horizontal > li.eoz-hide-tablet { display: none !important; } }\n' +
         '@media (min-width: 1024px) { #eoz-burger-menu { display: none !important; } .list-group.list-group-horizontal > li.eoz-hide-tablet { display: inline-block !important; } }\n' +
-        '#eoz-burger-menu { position: fixed; top: 0; right: 10px; z-index: 10000; width: 50px; height: 50px; border-radius: 50%; background: #007bff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); margin-top: 10px; }\n' +
+        '@media (max-width: 1023px) { #eoz-burger-menu { position: fixed; top: 0; right: 10px; z-index: 10000; width: 50px; height: 50px; border-radius: 50%; background: #007bff; margin-top: 10px; } }\n' +
+        '@media (min-width: 768px) and (max-width: 1023px) { #eoz-burger-menu { position: static; border-radius: 0; margin: 0; width: auto; height: auto; background: transparent; } #eoz-burger-menu-item { display: inline-block !important; } }\n' +
+        '#eoz-burger-menu { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }\n' +
         '#eoz-burger-menu span { display: block; width: 24px; height: 2px; background: white; position: relative; }\n' +
         '#eoz-burger-menu span::before, #eoz-burger-menu span::after { content: ""; display: block; width: 24px; height: 2px; background: white; position: absolute; left: 0; }\n' +
         '#eoz-burger-menu span::before { top: -8px; }\n' +
@@ -33,6 +35,7 @@
         '#eoz-burger-menu.open span { background: transparent; }\n' +
         '#eoz-burger-menu.open span::before { transform: rotate(45deg); top: 0; }\n' +
         '#eoz-burger-menu.open span::after { transform: rotate(-45deg); top: 0; }\n' +
+        '@media (min-width: 768px) and (max-width: 1023px) { #eoz-burger-menu span, #eoz-burger-menu span::before, #eoz-burger-menu span::after { background: #333; } }\n' +
         '#eoz-mobile-menu { position: fixed; top: 0; right: -100%; width: 280px; max-width: 85%; height: 100vh; background: white; box-shadow: -2px 0 8px rgba(0,0,0,0.3); z-index: 9999; transition: right 0.3s ease; overflow-y: auto; padding: 60px 0 20px; }\n' +
         '#eoz-mobile-menu.open { right: 0; }\n' +
         '#eoz-mobile-menu .eoz-menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; text-decoration: none; color: #333; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }\n' +
@@ -66,9 +69,16 @@
 
         if (document.getElementById('eoz-burger-menu')) return;
 
+        // Create burger button wrapped in list item for tablet view
+        var burgerLi = document.createElement('li');
+        burgerLi.id = 'eoz-burger-menu-item';
+        burgerLi.className = 'list-group-item';
+        
         var burger = document.createElement('button');
         burger.id = 'eoz-burger-menu';
         burger.innerHTML = '<span></span>';
+        
+        burgerLi.appendChild(burger);
         
         var mobileMenu = document.createElement('div');
         mobileMenu.id = 'eoz-mobile-menu';
@@ -136,7 +146,14 @@
             overlay.classList.remove('open');
         });
 
-        document.body.appendChild(burger);
+        // Append burger as last menu item (for tablet) and to body (for mobile)
+        var menuContainer = document.querySelector('.list-group.list-group-horizontal');
+        if (menuContainer) {
+            menuContainer.appendChild(burgerLi);
+        } else {
+            document.body.appendChild(burger);
+        }
+        
         document.body.appendChild(mobileMenu);
         document.body.appendChild(overlay);
         
