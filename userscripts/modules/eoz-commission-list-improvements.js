@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.0';
+    var VERSION = '2.0.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -52,12 +52,12 @@
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-cl-header{display:none}\n' +
-        '  .eoz-cl-details{grid-template-columns:40px 100px 1fr 120px;grid-template-rows:auto auto}\n' +
+        '  .eoz-cl-details{grid-template-columns:40px 100px 1fr 120px 150px;grid-template-rows:auto}\n' +
         '  .eoz-cl-lp-col{grid-column:1;grid-row:1;font-weight:bold;display:flex;align-items:center;justify-content:center}\n' +
         '  .eoz-cl-kod-col{grid-column:2;grid-row:1;font-weight:bold;display:flex;align-items:center}\n' +
         '  .eoz-cl-info{grid-column:3;grid-row:1}\n' +
         '  .eoz-cl-status-col{grid-column:4;grid-row:1;display:flex;align-items:center}\n' +
-        '  .eoz-cl-actions{grid-column:1 / 5;grid-row:2;margin-top:8px}\n' +
+        '  .eoz-cl-actions{grid-column:5;grid-row:1;margin-top:0;display:flex;align-items:center}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-cl-details{grid-template-columns:1fr;grid-template-rows:auto auto auto auto}\n' +
@@ -185,6 +185,7 @@
         
         var idxLp = headerNames.indexOf('Lp');
         var idxKod = headerNames.indexOf('Kod');
+        var idxKodKlienta = headerNames.indexOf('Kod klienta');
         var idxMaterialy = headerNames.indexOf('Materiały');
         var idxIlosc = headerNames.indexOf('Ilość płyt');
         var idxNazwa = headerNames.indexOf('Nazwa zlecenia');
@@ -200,6 +201,7 @@
             
             var lp = idxLp>=0 && cells[idxLp] ? (cells[idxLp].textContent||'').trim() : (rIndex+1).toString();
             var kod = idxKod>=0 && cells[idxKod] ? (cells[idxKod].textContent||'').trim() : '—';
+            var kodKlienta = idxKodKlienta>=0 && cells[idxKodKlienta] ? (cells[idxKodKlienta].textContent||'').trim() : '—';
             var materialy = idxMaterialy>=0 && cells[idxMaterialy] ? (cells[idxMaterialy].textContent||'').trim() : '—';
             var ilosc = idxIlosc>=0 && cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '—';
             var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '—';
@@ -250,7 +252,8 @@
             
             var infoCol = document.createElement('div');
             infoCol.className = 'eoz-cl-info';
-            infoCol.innerHTML = '<div><span class="eoz-cl-label">Materiały:</span>' + materialy + '</div>' +
+            infoCol.innerHTML = '<div><span class="eoz-cl-label">Klient:</span>' + kodKlienta + '</div>' +
+                                '<div><span class="eoz-cl-label">Materiały:</span>' + materialy + '</div>' +
                                 '<div><span class="eoz-cl-label">Nazwa:</span>' + nazwa + '</div>' +
                                 '<div><span class="eoz-cl-label">Ilość płyt:</span>' + ilosc + '</div>' +
                                 '<div><span class="eoz-cl-label">Planowana data:</span>' + dataZakonczenia + '</div>';
