@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.2';
+    var VERSION = '2.0.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -33,6 +33,8 @@
         '#eoz-mobile-menu.open { right: 0; }\n' +
         '#eoz-mobile-menu .eoz-menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; text-decoration: none; color: #333; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }\n' +
         '#eoz-mobile-menu .eoz-menu-item:hover { background: #f8f9fa; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item i { font-size: 18px; width: 20px; text-align: left; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item i.fa-stack { width: auto; }\n' +
         '#eoz-mobile-menu .eoz-menu-item .eoz-menu-text { flex: 1; font-size: 15px; }\n' +
         '#eoz-menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }\n' +
         '#eoz-menu-overlay.open { display: block; }\n' +
@@ -83,10 +85,22 @@
             var icon = '';
             var textContent = '';
             
-            // Look for FontAwesome icons
-            var iconEl = link.querySelector('i[class*="fa-"]');
-            if (iconEl) {
-                icon = '<i class="' + iconEl.className + '"></i>';
+            // Look for fa-stack (icon with background circle)
+            var stackEl = link.querySelector('.fa-stack');
+            if (stackEl) {
+                // Extract the foreground icon (not the circle)
+                var foregroundIcon = stackEl.querySelector('.fa-stack-1x');
+                if (foregroundIcon) {
+                    // Clone and remove fa-stack classes
+                    var iconClasses = foregroundIcon.className.replace(/fa-stack-1x/g, '').trim();
+                    icon = '<i class="' + iconClasses + '"></i>';
+                }
+            } else {
+                // Look for regular FontAwesome icons
+                var iconEl = link.querySelector('i[class*="fa-"]');
+                if (iconEl) {
+                    icon = '<i class="' + iconEl.className + '"></i>';
+                }
             }
             
             // Extract text content

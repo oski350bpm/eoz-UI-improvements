@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.3';
+    var VERSION = '1.3.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -40,15 +40,23 @@
         'td:last-child{width:1%!important;white-space:nowrap!important}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
+        '@media (min-width:961px){\n' +
+        '  table tbody tr td.eoz-mobile-cell{display:none!important}\n' +
+        '}\n' +
         '@media (max-width:960px){\n' +
         '  table thead{display:none!important}\n' +
-        '  table tbody tr td{display:none!important}\n' +
+        '  table tbody tr td:not(.eoz-mobile-cell){display:none!important}\n' +
         '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
         '  .eoz-mobile-grid{display:grid;grid-template-columns:36px 90px 1fr 90px 120px;gap:8px;align-items:start}\n' +
         '  .eoz-m-col1{display:flex;align-items:flex-start;justify-content:center;font-weight:bold}\n' +
         '  .eoz-m-col2{font-weight:bold}\n' +
         '  .eoz-m-col3 div,.eoz-m-col4 div,.eoz-m-col5 div{margin-bottom:6px;font-size:13px}\n' +
         '  .eoz-m-label{color:#666;margin-right:4px}\n' +
+        '}\n' +
+        '@media (max-width:500px){\n' +
+        '  .eoz-mobile-grid{grid-template-columns:36px 90px 1fr;grid-template-rows:auto auto}\n' +
+        '  .eoz-m-col4{grid-column:1 / 4;margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px}\n' +
+        '  .eoz-m-col5{grid-column:1 / 4;margin-top:4px}\n' +
         '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-boards-magazine-module-css' });
@@ -287,7 +295,7 @@
                 // Extract commission ID from zlecenie number
                 var commissionId = col2Zlec.replace(/[^0-9]/g, ''); // Extract numbers only
                 if (commissionId) {
-                    window.open('https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + commissionId, '_blank');
+                    window.location.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + commissionId;
                 }
             });
             
@@ -295,7 +303,7 @@
                 // Extract commission ID from zlecenie number
                 var commissionId = col2Zlec.replace(/[^0-9]/g, ''); // Extract numbers only
                 if (commissionId) {
-                    window.open('https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_notes/' + commissionId, '_blank');
+                    window.location.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_notes/' + commissionId;
                 }
             });
             
