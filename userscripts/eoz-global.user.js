@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Global UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      0.2.2
+// @version      0.2.3
 // @description  Globalne poprawki UI dla EOZ (responsywne menu w headerze)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
@@ -13,7 +13,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.2';
+    var VERSION = '0.2.3';
 
     if (!window.EOZ) {
         console.warn('[EOZ Global UI v' + VERSION + '] core not loaded');
@@ -60,13 +60,9 @@
         '  transition: background 0.2s;\n' +
         '}\n' +
         '#eoz-mobile-menu .eoz-menu-item:hover { background: #f8f9fa; }\n' +
-        '#eoz-mobile-menu .eoz-menu-item i { font-size: 20px; width: 24px; text-align: center; color: #007bff; }\n' +
-        '#eoz-mobile-menu .eoz-menu-item .fa-folder { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
-        '#eoz-mobile-menu .eoz-menu-item .fa-wrench { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
-        '#eoz-mobile-menu .eoz-menu-item .fa-clipboard { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
-        '#eoz-mobile-menu .eoz-menu-item .fa-cog { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
-        '#eoz-mobile-menu .eoz-menu-item .fa-comment { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
-        '#eoz-mobile-menu .eoz-menu-item span { flex: 1; font-size: 15px; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .eoz-icon-wrapper { width: 40px; height: 40px; background: #007bff; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .eoz-icon-wrapper i { color: white; font-size: 18px; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .eoz-menu-text { flex: 1; font-size: 15px; }\n' +
         '#eoz-menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }\n' +
         '#eoz-menu-overlay.open { display: block; }\n';
 
@@ -109,8 +105,20 @@
                 var link = item.querySelector('a');
                 if (!link) return null;
                 
-                var icon = link.querySelector('i');
-                var iconClass = icon ? icon.className : '';
+                // EOZ używa fa-stack (2 ikony nałożone): koło + ikona
+                // Bierzemy drugą ikonę (fa-stack-1x) lub pierwszą jeśli tylko jedna
+                var icons = link.querySelectorAll('i');
+                var mainIcon = null;
+                
+                if (icons.length >= 2) {
+                    // fa-stack: druga ikona to właściwa (fa-stack-1x fa-inverse)
+                    mainIcon = icons[1];
+                } else if (icons.length === 1) {
+                    mainIcon = icons[0];
+                }
+                
+                var iconClass = mainIcon ? mainIcon.className.replace(/fa-stack-\w+|fa-inverse/g, '').trim() : '';
+                
                 var text = link.querySelector('p, paragraph');
                 var textContent = text ? text.textContent.trim() : link.textContent.trim();
                 
@@ -134,8 +142,9 @@
                 menuItem.className = 'eoz-menu-item';
                 if (data.isHidden) menuItem.classList.add('eoz-tablet-only');
                 
-                var iconHtml = data.icon ? '<i class="' + data.icon + '"></i>' : '';
-                menuItem.innerHTML = iconHtml + '<span>' + data.text + '</span>';
+                var iconWrapper = '<div class="eoz-icon-wrapper"><i class="' + data.icon + '"></i></div>';
+                var textSpan = '<span class="eoz-menu-text">' + data.text + '</span>';
+                menuItem.innerHTML = iconWrapper + textSpan;
                 
                 mobileMenu.appendChild(menuItem);
             });
