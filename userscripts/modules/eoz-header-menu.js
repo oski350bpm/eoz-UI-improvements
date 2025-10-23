@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.3';
+    var VERSION = '2.2.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -42,6 +42,7 @@
         '#eoz-mobile-menu .eoz-menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; text-decoration: none; color: #333; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }\n' +
         '#eoz-mobile-menu .eoz-menu-item:hover { background: #f8f9fa; }\n' +
         '#eoz-mobile-menu .eoz-menu-item i { font-size: 18px; width: 20px; text-align: left; }\n' +
+        '#eoz-mobile-menu.open .eoz-menu-item i { background: #007bff; color: #fff; border-radius: 6px; padding: 6px; width: 28px; height: 28px; text-align: center; display: inline-flex; align-items: center; justify-content: center; }\n' +
         '#eoz-mobile-menu .eoz-menu-item i.fa-stack { width: auto; }\n' +
         '#eoz-mobile-menu .eoz-menu-item .eoz-menu-text { flex: 1; font-size: 15px; }\n' +
         '#eoz-menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }\n' +

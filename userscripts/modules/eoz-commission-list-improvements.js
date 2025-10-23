@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.2';
+    var VERSION = '2.0.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -27,6 +27,7 @@
         '.eoz-dropdown-label:hover{background:#0056b3!important}\n' +
         '.eoz-dropdown-label:active{background:#004085!important;transform:translateY(1px)!important}\n' +
         '.eoz-dropdown-menu{position:absolute!important;top:100%!important;right:0!important;left:auto!important;background:#fff!important;border:1px solid #ddd!important;border-radius:8px!important;box-shadow:0 4px 12px rgba(0,0,0,.15)!important;z-index:1000!important;display:none!important;flex-direction:column!important;overflow:hidden!important;margin-top:4px!important}\n' +
+        '.eoz-dropdown-container.eoz-dropup .eoz-dropdown-menu{top:auto!important;bottom:100%!important;margin-top:0!important;margin-bottom:4px!important}\n' +
         '.eoz-dropdown-toggle:checked + .eoz-dropdown-label + .eoz-dropdown-menu{display:flex!important}\n' +
         '.eoz-dropdown-toggle:checked + .eoz-dropdown-label{background:#0056b3!important}\n' +
         '.eoz-dropdown-item{display:flex!important;align-items:center!important;gap:12px!important;padding:16px!important;text-decoration:none!important;color:#333!important;border-bottom:1px solid #eee!important;transition:background-color .2s!important;min-height:50px!important;font-size:14px!important}\n' +
@@ -75,9 +76,10 @@
     }
 
     function hideColumns() {
+        var isDesktop = window.innerWidth >= 961;
         var clientCodeIndex = findColumnIndex('Kod klienta');
         var startDateIndex = findColumnIndex('Data rozpoczęcia');
-        if (clientCodeIndex !== -1) {
+        if (!isDesktop && clientCodeIndex !== -1) {
             var headers = document.querySelectorAll('th.heading-cell.column-names-cell');
             if (headers[clientCodeIndex]) headers[clientCodeIndex].classList.add('eoz-hidden-column');
             var searchCells = document.querySelectorAll('th.heading-cell.heading-options-cell.search-cell');
@@ -162,7 +164,25 @@
         container.appendChild(checkbox);
         container.appendChild(label);
         container.appendChild(menu);
+        
+        // Close when clicking a menu item
         menu.addEventListener('click', function(){ checkbox.checked = false; });
+        
+        // Ensure only a single dropdown is open at a time
+        label.addEventListener('click', function(){
+            var all = document.querySelectorAll('.eoz-dropdown-toggle');
+            all.forEach(function(cb){ if (cb !== checkbox) cb.checked = false; });
+            // Decide drop direction: if not enough space below, open upwards
+            setTimeout(function(){
+                var rect = container.getBoundingClientRect();
+                var spaceBelow = window.innerHeight - rect.bottom;
+                if (spaceBelow < 220) { // approx menu height
+                    container.classList.add('eoz-dropup');
+                } else {
+                    container.classList.remove('eoz-dropup');
+                }
+            }, 0);
+        });
         return container;
     }
 
@@ -214,9 +234,17 @@
             if (actionsCell) {
                 var existingDropdown = actionsCell.querySelector('.eoz-dropdown-container');
                 if (existingDropdown) {
-                    // Move the original element instead of cloning to preserve event handlers
-                    actionsDropdown = existingDropdown;
-                    existingDropdown.remove(); // Remove from original location
+                    // Clone and give unique checkbox id for mobile to avoid id collisions
+                    actionsDropdown = existingDropdown.cloneNode(true);
+                    var cb = actionsDropdown.querySelector('input.eoz-dropdown-toggle');
+                    var lbl = actionsDropdown.querySelector('label.eoz-dropdown-label');
+                    var mnu = actionsDropdown.querySelector('.eoz-dropdown-menu');
+                    var newId = 'eoz-dropdown-mobile-' + rIndex;
+                    if (cb) cb.id = newId;
+                    if (lbl) lbl.htmlFor = newId;
+                    if (mnu && cb) {
+                        mnu.addEventListener('click', function(){ cb.checked = false; });
+                    }
                 }
             }
             
@@ -249,8 +277,8 @@
             var infoCol = document.createElement('div');
             infoCol.className = 'eoz-cl-info';
             infoCol.innerHTML = '<div><span class="eoz-cl-label">Klient:</span>' + kodKlienta + '</div>' +
+                                '<div><span class="eoz-cl-label">Nazwa zlecenia:</span>' + nazwa + '</div>' +
                                 '<div><span class="eoz-cl-label">Materiały:</span>' + materialy + '</div>' +
-                                '<div><span class="eoz-cl-label">Nazwa:</span>' + nazwa + '</div>' +
                                 '<div><span class="eoz-cl-label">Ilość płyt:</span>' + ilosc + '</div>' +
                                 '<div><span class="eoz-cl-label">Planowana data:</span>' + dataZakonczenia + '</div>';
             
