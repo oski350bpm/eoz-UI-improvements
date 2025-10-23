@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Global UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      0.2.1
+// @version      0.2.2
 // @description  Globalne poprawki UI dla EOZ (responsywne menu w headerze)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
@@ -13,7 +13,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.1';
+    var VERSION = '0.2.2';
 
     if (!window.EOZ) {
         console.warn('[EOZ Global UI v' + VERSION + '] core not loaded');
@@ -27,11 +27,11 @@
         '  .list-group.list-group-horizontal > li:not(.eoz-keep-mobile) { display: none !important; }\n' +
         '}\n' +
         '@media (min-width: 768px) and (max-width: 1023px) {\n' +
-        '  .list-group.list-group-horizontal { flex-wrap: wrap !important; }\n' +
         '  .list-group.list-group-horizontal > li.eoz-hide-tablet { display: none !important; }\n' +
         '}\n' +
         '@media (min-width: 1024px) {\n' +
         '  #eoz-burger-menu { display: none !important; }\n' +
+        '  .list-group.list-group-horizontal > li.eoz-hide-tablet { display: inline-block !important; }\n' +
         '}\n' +
         '#eoz-burger-menu {\n' +
         '  position: fixed; top: 10px; right: 10px; z-index: 10000;\n' +
@@ -49,13 +49,24 @@
         '#eoz-burger-menu.open span::before { transform: rotate(45deg); top: 0; }\n' +
         '#eoz-burger-menu.open span::after { transform: rotate(-45deg); top: 0; }\n' +
         '#eoz-mobile-menu {\n' +
-        '  position: fixed; top: 0; right: -100%; width: 80%; max-width: 300px; height: 100vh;\n' +
+        '  position: fixed; top: 0; right: -100%; width: 280px; max-width: 85%; height: 100vh;\n' +
         '  background: white; box-shadow: -2px 0 8px rgba(0,0,0,0.3); z-index: 9999;\n' +
-        '  transition: right 0.3s ease; overflow-y: auto; padding: 70px 20px 20px;\n' +
+        '  transition: right 0.3s ease; overflow-y: auto; padding: 60px 0 20px;\n' +
         '}\n' +
         '#eoz-mobile-menu.open { right: 0; }\n' +
-        '#eoz-mobile-menu a { display: block; padding: 15px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; }\n' +
-        '#eoz-mobile-menu a:hover { background: #f5f5f5; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item {\n' +
+        '  display: flex; align-items: center; gap: 12px; padding: 12px 20px;\n' +
+        '  text-decoration: none; color: #333; border-bottom: 1px solid #f0f0f0;\n' +
+        '  transition: background 0.2s;\n' +
+        '}\n' +
+        '#eoz-mobile-menu .eoz-menu-item:hover { background: #f8f9fa; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item i { font-size: 20px; width: 24px; text-align: center; color: #007bff; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .fa-folder { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .fa-wrench { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .fa-clipboard { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .fa-cog { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item .fa-comment { background: #007bff; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; }\n' +
+        '#eoz-mobile-menu .eoz-menu-item span { flex: 1; font-size: 15px; }\n' +
         '#eoz-menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }\n' +
         '#eoz-menu-overlay.open { display: block; }\n';
 
@@ -69,15 +80,14 @@
             var menuItems = Array.from(mainMenu.querySelectorAll('li.list-group-item'));
             if (menuItems.length === 0) return;
 
-            // Oznacz elementy do pokazania/ukrycia
-            var keepOnTablet = ['Moje zlecenia', 'Wszystkie zlecenia', 'Maszyny', 'Wyloguj się'];
+            // Oznacz elementy do pokazania/ukrycia na tablecie
+            var keepOnTablet = ['Moje zlecenia', 'Wszystkie zlecenia', 'Maszyny', 'Zmiana stanowiska', 'Wyloguj się'];
             menuItems.forEach(function(item) {
                 var text = item.textContent.trim();
                 var isImportant = keepOnTablet.some(function(k) { return text.indexOf(k) !== -1; });
                 if (!isImportant) {
                     item.classList.add('eoz-hide-tablet');
                 }
-                // Na mobile wszystko ukryte (poza hamburgerem)
             });
 
             // Stwórz hamburger menu
@@ -94,14 +104,45 @@
             var overlay = document.createElement('div');
             overlay.id = 'eoz-menu-overlay';
 
-            // Dodaj wszystkie linki do mobile menu
-            menuItems.forEach(function(item) {
+            // Funkcja do wyciągania ikon i tekstu (bez dropdownów)
+            function extractMenuData(item) {
                 var link = item.querySelector('a');
-                if (link) {
-                    var clone = link.cloneNode(true);
-                    mobileMenu.appendChild(clone);
-                }
+                if (!link) return null;
+                
+                var icon = link.querySelector('i');
+                var iconClass = icon ? icon.className : '';
+                var text = link.querySelector('p, paragraph');
+                var textContent = text ? text.textContent.trim() : link.textContent.trim();
+                
+                return {
+                    href: link.href,
+                    icon: iconClass,
+                    text: textContent,
+                    isHidden: item.classList.contains('eoz-hide-tablet')
+                };
+            }
+
+            // Dodaj do mobile menu
+            menuItems.forEach(function(item) {
+                var data = extractMenuData(item);
+                if (!data) return;
+                
+                // Na mobile: wszystkie
+                // Na tablet: tylko ukryte (eoz-hide-tablet)
+                var menuItem = document.createElement('a');
+                menuItem.href = data.href;
+                menuItem.className = 'eoz-menu-item';
+                if (data.isHidden) menuItem.classList.add('eoz-tablet-only');
+                
+                var iconHtml = data.icon ? '<i class="' + data.icon + '"></i>' : '';
+                menuItem.innerHTML = iconHtml + '<span>' + data.text + '</span>';
+                
+                mobileMenu.appendChild(menuItem);
             });
+
+            // CSS dla tablet-only
+            var tabletOnlyCSS = '@media (min-width: 768px) and (max-width: 1023px) { #eoz-mobile-menu .eoz-menu-item:not(.eoz-tablet-only) { display: none; } }';
+            window.EOZ.injectStyles(tabletOnlyCSS, { id: 'eoz-tablet-menu-filter' });
 
             function toggleMenu() {
                 burger.classList.toggle('open');
