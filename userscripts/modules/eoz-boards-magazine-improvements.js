@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.4.0';
+    var VERSION = '1.4.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -54,9 +54,17 @@
         '  .eoz-m-details{display:grid;grid-template-columns:1fr 100px 140px;gap:8px}\n' +
         '  .eoz-m-col3 div,.eoz-m-col4 div,.eoz-m-col5 div{margin-bottom:6px;font-size:13px}\n' +
         '  .eoz-m-label{color:#666;margin-right:4px}\n' +
-        '  .eoz-m-notes{display:flex;gap:8px;margin-top:8px;justify-content:flex-start}\n' +
-        '  .eoz-m-notes a{text-decoration:none}\n' +
-        '  .eoz-m-notes i{font-size:28px}\n' +
+        '  .eoz-m-notes-wrapper{display:flex;flex-direction:column;gap:8px}\n' +
+        '  .eoz-m-note-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;background:#fff!important;border:2px solid #007bff!important;border-radius:8px;color:#007bff!important;text-decoration:none!important;font-size:14px;font-weight:600;transition:all .2s;min-height:44px}\n' +
+        '  .eoz-m-note-btn:hover{background:#f0f7ff!important;border-color:#0056b3!important}\n' +
+        '  .eoz-m-note-btn i{font-size:20px;margin:0}\n' +
+        '  .eoz-m-col5-actions{margin-top:8px}\n' +
+        '}\n' +
+        '@media (min-width:501px) and (max-width:960px){\n' +
+        '  .eoz-m-details{grid-template-columns:1fr 100px;grid-template-rows:auto auto}\n' +
+        '  .eoz-m-col3{grid-column:1;grid-row:1}\n' +
+        '  .eoz-m-col4{grid-column:2;grid-row:1}\n' +
+        '  .eoz-m-col5{grid-column:1 / 3;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-m-details{grid-template-columns:1fr;grid-template-rows:auto auto auto}\n' +
@@ -332,33 +340,58 @@
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
             
-            // Create notes section with original links
-            var notesDiv = document.createElement('div');
-            notesDiv.className = 'eoz-m-notes';
+            // Create notes section with styled buttons
+            var notesWrapper = document.createElement('div');
+            notesWrapper.className = 'eoz-m-notes-wrapper';
             
-            // Uwagi klienta link
+            // Uwagi klienta button
             if (opisLink) {
-                var opisClone = opisLink.cloneNode(true);
-                opisClone.classList.add('tippy', 'show_erorys_notes_or_send_info');
-                notesDiv.appendChild(opisClone);
+                var opisBtn = document.createElement('a');
+                opisBtn.href = opisLink.href;
+                opisBtn.className = 'eoz-m-note-btn tippy show_erorys_notes_or_send_info';
+                
+                var opisIcon = opisLink.querySelector('i');
+                var iconClass = 'fas fa-comment';
+                if (opisIcon) {
+                    if (opisIcon.classList.contains('far')) {
+                        iconClass = 'far fa-comment';
+                    }
+                }
+                
+                opisBtn.innerHTML = '<i class="' + iconClass + '"></i><span>Uwagi klienta</span>';
+                notesWrapper.appendChild(opisBtn);
             }
             
-            // Uwagi link
+            // Uwagi button
             if (uwagiLink) {
-                var uwagiClone = uwagiLink.cloneNode(true);
-                uwagiClone.classList.add('tippy');
-                notesDiv.appendChild(uwagiClone);
+                var uwagiBtn = document.createElement('a');
+                uwagiBtn.href = uwagiLink.href || '#';
+                uwagiBtn.className = 'eoz-m-note-btn tippy';
+                
+                var uwagiIcon = uwagiLink.querySelector('i');
+                var iconClass2 = 'fas fa-comments';
+                if (uwagiIcon) {
+                    if (uwagiIcon.classList.contains('far')) {
+                        iconClass2 = 'far fa-comments';
+                    }
+                }
+                
+                uwagiBtn.innerHTML = '<i class="' + iconClass2 + '"></i><span>Uwagi</span>';
+                notesWrapper.appendChild(uwagiBtn);
             }
             
-            col5.appendChild(notesDiv);
+            col5.appendChild(notesWrapper);
 
             // Actions: create new dropdown from original links
             var lastCell = cells[cells.length-1];
             if (lastCell) {
                 var originalLinks = lastCell.querySelectorAll('a');
                 if (originalLinks.length > 0) {
+                    var actionsWrapper = document.createElement('div');
+                    actionsWrapper.className = 'eoz-m-col5-actions';
                     var actionsBtn = createActionDropdown(originalLinks, 'akcje-' + rIndex);
-                    col5.appendChild(actionsBtn);
+                    actionsWrapper.appendChild(actionsBtn);
+                    col5.appendChild(actionsWrapper);
                 }
             }
 
