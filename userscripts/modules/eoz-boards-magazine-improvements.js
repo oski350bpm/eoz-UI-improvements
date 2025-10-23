@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.3.0';
+    var VERSION = '1.4.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -47,16 +47,22 @@
         '  table thead{display:none!important}\n' +
         '  table tbody tr td:not(.eoz-mobile-cell){display:none!important}\n' +
         '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
-        '  .eoz-mobile-grid{display:grid;grid-template-columns:36px 90px 1fr 90px 120px;gap:8px;align-items:start}\n' +
-        '  .eoz-m-col1{display:flex;align-items:flex-start;justify-content:center;font-weight:bold}\n' +
-        '  .eoz-m-col2{font-weight:bold}\n' +
+        '  .eoz-mobile-grid{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}\n' +
+        '  .eoz-m-header{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}\n' +
+        '  .eoz-m-lp{font-size:12px;color:#666}\n' +
+        '  .eoz-m-zlecenie{font-size:16px;font-weight:bold}\n' +
+        '  .eoz-m-details{display:grid;grid-template-columns:1fr 100px 140px;gap:8px}\n' +
         '  .eoz-m-col3 div,.eoz-m-col4 div,.eoz-m-col5 div{margin-bottom:6px;font-size:13px}\n' +
         '  .eoz-m-label{color:#666;margin-right:4px}\n' +
+        '  .eoz-m-notes{display:flex;gap:8px;margin-top:8px;justify-content:flex-start}\n' +
+        '  .eoz-m-notes a{text-decoration:none}\n' +
+        '  .eoz-m-notes i{font-size:28px}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
-        '  .eoz-mobile-grid{grid-template-columns:36px 90px 1fr;grid-template-rows:auto auto}\n' +
-        '  .eoz-m-col4{grid-column:1 / 4;margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px}\n' +
-        '  .eoz-m-col5{grid-column:1 / 4;margin-top:4px}\n' +
+        '  .eoz-m-details{grid-template-columns:1fr;grid-template-rows:auto auto auto}\n' +
+        '  .eoz-m-col3{order:1}\n' +
+        '  .eoz-m-col4{order:2;display:grid;grid-template-columns:1fr 1fr;gap:8px}\n' +
+        '  .eoz-m-col5{order:3}\n' +
         '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-boards-magazine-module-css' });
@@ -253,9 +259,31 @@
                 przygotowaneHTML = cells[idxPrzygot].innerHTML;
             }
             
-            var opis = idxOpis>=0 && cells[idxOpis] ? (cells[idxOpis].textContent||'').trim() : '';
-            var opisCell = idxOpis>=0 && cells[idxOpis] ? cells[idxOpis] : null;
-            var uwagiCell = idxUwagi>=0 && cells[idxUwagi] ? cells[idxUwagi] : null;
+            // Extract original link elements for Uwagi klienta and Uwagi
+            var opisLink = null;
+            var opisHasContent = false;
+            if (idxOpis>=0 && cells[idxOpis]) {
+                opisLink = cells[idxOpis].querySelector('a');
+                if (opisLink) {
+                    var opisIcon = opisLink.querySelector('i');
+                    if (opisIcon) {
+                        // Check if icon is solid (fa-comment) or regular (far fa-comment)
+                        opisHasContent = !opisIcon.classList.contains('far');
+                    }
+                }
+            }
+            
+            var uwagiLink = null;
+            var uwagiHasContent = false;
+            if (idxUwagi>=0 && cells[idxUwagi]) {
+                uwagiLink = cells[idxUwagi].querySelector('a');
+                if (uwagiLink) {
+                    var uwagiIcon = uwagiLink.querySelector('i');
+                    if (uwagiIcon) {
+                        uwagiHasContent = !uwagiIcon.classList.contains('far');
+                    }
+                }
+            }
 
             var mobileCell = document.createElement('td');
             mobileCell.className = 'eoz-mobile-cell';
@@ -264,19 +292,33 @@
             var grid = document.createElement('div');
             grid.className = 'eoz-mobile-grid';
 
-            var col1 = document.createElement('div'); col1.className = 'eoz-m-col1'; col1.textContent = col1Lp;
+            // Header: Lp + Zlecenie in one column
+            var header = document.createElement('div');
+            header.className = 'eoz-m-header';
             
-            var col2 = document.createElement('div'); col2.className = 'eoz-m-col2';
+            var lpDiv = document.createElement('div');
+            lpDiv.className = 'eoz-m-lp';
+            lpDiv.textContent = 'Lp. ' + col1Lp;
+            
+            var zlecenieDiv = document.createElement('div');
+            zlecenieDiv.className = 'eoz-m-zlecenie';
             if (zlecenieLink) {
                 var link = document.createElement('a');
                 link.href = zlecenieLink;
                 link.textContent = col2Zlec;
                 link.style.color = '#007bff';
                 link.style.textDecoration = 'none';
-                col2.appendChild(link);
+                zlecenieDiv.appendChild(link);
             } else {
-                col2.textContent = col2Zlec;
+                zlecenieDiv.textContent = col2Zlec;
             }
+            
+            header.appendChild(lpDiv);
+            header.appendChild(zlecenieDiv);
+            
+            // Details grid: col3, col4, col5
+            var details = document.createElement('div');
+            details.className = 'eoz-m-details';
 
             var col3 = document.createElement('div'); col3.className = 'eoz-m-col3';
             col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
@@ -290,25 +332,25 @@
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
             
-            // Create action buttons for Opis and Uwagi with proper links
-            var opisBtn = createActionButton('Uwagi klienta', 'fa-comment', 'opis-' + rIndex, function(){
-                // Extract commission ID from zlecenie number
-                var commissionId = col2Zlec.replace(/[^0-9]/g, ''); // Extract numbers only
-                if (commissionId) {
-                    window.location.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + commissionId;
-                }
-            });
+            // Create notes section with original links
+            var notesDiv = document.createElement('div');
+            notesDiv.className = 'eoz-m-notes';
             
-            var uwagiBtn = createActionButton('Uwagi', 'fa-comments', 'uwagi-' + rIndex, function(){
-                // Extract commission ID from zlecenie number
-                var commissionId = col2Zlec.replace(/[^0-9]/g, ''); // Extract numbers only
-                if (commissionId) {
-                    window.location.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_notes/' + commissionId;
-                }
-            });
+            // Uwagi klienta link
+            if (opisLink) {
+                var opisClone = opisLink.cloneNode(true);
+                opisClone.classList.add('tippy', 'show_erorys_notes_or_send_info');
+                notesDiv.appendChild(opisClone);
+            }
             
-            col5.appendChild(opisBtn);
-            col5.appendChild(uwagiBtn);
+            // Uwagi link
+            if (uwagiLink) {
+                var uwagiClone = uwagiLink.cloneNode(true);
+                uwagiClone.classList.add('tippy');
+                notesDiv.appendChild(uwagiClone);
+            }
+            
+            col5.appendChild(notesDiv);
 
             // Actions: create new dropdown from original links
             var lastCell = cells[cells.length-1];
@@ -316,32 +358,19 @@
                 var originalLinks = lastCell.querySelectorAll('a');
                 if (originalLinks.length > 0) {
                     var actionsBtn = createActionDropdown(originalLinks, 'akcje-' + rIndex);
-                    actionsBtn.style.marginTop = '8px';
                     col5.appendChild(actionsBtn);
                 }
             }
 
-            grid.appendChild(col1);
-            grid.appendChild(col2);
-            grid.appendChild(col3);
-            grid.appendChild(col4);
-            grid.appendChild(col5);
+            grid.appendChild(header);
+            details.appendChild(col3);
+            details.appendChild(col4);
+            details.appendChild(col5);
+            grid.appendChild(details);
 
             row.appendChild(mobileCell);
             mobileCell.appendChild(grid);
         });
-    }
-    
-    function createActionButton(text, iconClass, uniqueId, onClickHandler){
-        var btn = document.createElement('button');
-        btn.className = 'eoz-dropdown-label';
-        btn.style.height = '40px';
-        btn.style.fontSize = '13px';
-        btn.style.width = '100%';
-        btn.style.marginTop = '8px';
-        btn.innerHTML = '<i class="fas ' + iconClass + '"></i> ' + text;
-        btn.onclick = onClickHandler;
-        return btn;
     }
     
     function createActionDropdown(originalLinks, uniqueId){
