@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Global UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      0.2.0
+// @version      0.2.1
 // @description  Globalne poprawki UI dla EOZ (responsywne menu w headerze)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
@@ -13,8 +13,10 @@
 (function() {
     'use strict';
 
+    var VERSION = '0.2.1';
+
     if (!window.EOZ) {
-        console.warn('EOZ Global UI: core not loaded');
+        console.warn('[EOZ Global UI v' + VERSION + '] core not loaded');
         return;
     }
 
@@ -121,9 +123,9 @@
             document.body.appendChild(mobileMenu);
             document.body.appendChild(overlay);
 
-            console.log('EOZ Global UI: Responsive header applied');
+            console.log('[EOZ Global UI v' + VERSION + '] Responsive header applied');
         } catch (e) {
-            console.debug('EOZ Global UI: header setup failed', e);
+            console.debug('[EOZ Global UI v' + VERSION + '] header setup failed', e);
         }
     });
 })();

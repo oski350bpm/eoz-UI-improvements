@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Commission List UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      1.0.1
+// @version      1.0.2
 // @description  Ulepszenia UI dla listy zleceń w EOZ (produkcyjny widok)
 // @match        https://eoz.iplyty.erozrys.pl/index.php/pl/commission/show_list*
 // @match        https://eoz.iplyty.erozrys.pl/commission/show_list*
@@ -14,8 +14,10 @@
 (function() {
     'use strict';
 
+    var VERSION = '1.0.2';
+
     if (!window.EOZ) {
-        console.warn('EOZ Commission List UI: core not loaded');
+        console.warn('[EOZ Commission List UI v' + VERSION + '] core not loaded');
         return;
     }
 
@@ -287,17 +289,17 @@
     }
 
     function initialize() {
-        console.log('EOZ Commission List UI: Initializing...');
+        console.log('[EOZ Commission List UI v' + VERSION + '] Initializing...');
         window.EOZ.waitFor('table.dynamic-table tbody tr.body-row', { timeout: 10000 })
             .then(function() {
-                console.log('EOZ Commission List UI: Table found, applying improvements...');
+                console.log('[EOZ Commission List UI v' + VERSION + '] Table found, applying improvements...');
                 hideColumns();
                 formatDates();
                 transformActionButtons();
-                console.log('EOZ Commission List UI: Applied successfully!');
+                console.log('[EOZ Commission List UI v' + VERSION + '] Applied successfully!');
             })
             .catch(function() {
-                console.warn('EOZ Commission List UI: Table not found in time');
+                console.warn('[EOZ Commission List UI v' + VERSION + '] Table not found in time');
             });
     }
 
