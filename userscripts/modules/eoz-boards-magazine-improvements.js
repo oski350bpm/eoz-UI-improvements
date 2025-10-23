@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.0';
+    var VERSION = '1.2.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -183,15 +183,21 @@
     }
 
     function buildMobileLayout(){
+        var allHeaders = document.querySelectorAll('table thead th');
+        var headerNames = [];
+        allHeaders.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
+        console.log('[EOZ Boards Magazine Module] Headers found:', headerNames.join(', '));
+
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
         var idxNazwa = findHeaderIndex('Nazwa zamówienia');
-        var idxOkleina = findHeaderIndex('Nazwa okleiny');
+        var idxPlyta = findHeaderIndex('Płyta');
         var idxWymiar = findHeaderIndex('Wymiar');
         var idxIlosc = findHeaderIndex('Ilość');
         var idxPrzygot = findHeaderIndex('Przygotowane');
         var idxOpis = findHeaderIndex('Opis');
         var idxUwagi = findHeaderIndex('Uwagi');
+        
         var rows = document.querySelectorAll('table tbody tr');
         rows.forEach(function(row, rIndex){
             if (row.querySelector('td.eoz-mobile-cell')) return; // already built
@@ -202,22 +208,19 @@
             var col2Zlec = idxZlecenie >=0 && cells[idxZlecenie] ? (cells[idxZlecenie].textContent||'').trim() : '';
             var klient = idxKlient>=0 && cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
             var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '';
-            var okleina = idxOkleina>=0 && cells[idxOkleina] ? (cells[idxOkleina].textContent||'').trim() : '';
+            var plyta = idxPlyta>=0 && cells[idxPlyta] ? (cells[idxPlyta].textContent||'').trim() : '';
             var wymiar = idxWymiar>=0 && cells[idxWymiar] ? (cells[idxWymiar].textContent||'').trim() : '';
             var ilosc = idxIlosc>=0 && cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '';
-            var przygotowane = (function(){
-                if (idxPrzygot>=0 && cells[idxPrzygot]){
-                    var checked = cells[idxPrzygot].querySelector('input[type="radio"][checked]');
-                    if (checked) { var labelEl = checked.nextSibling; return (labelEl && labelEl.textContent||'Tak').trim(); }
-                    // fallback text search
-                    var t = (cells[idxPrzygot].textContent||'').trim();
-                    if (t.indexOf('Tak')!==-1 && t.indexOf('Nie')!==-1){ return t.indexOf('Tak')<t.indexOf('Nie') ? 'Tak' : 'Nie'; }
-                    return t || '—';
-                }
-                return '';
-            })();
+            
+            // Przygotowane: keep original HTML with radio buttons and edit button
+            var przygotowaneHTML = '';
+            if (idxPrzygot>=0 && cells[idxPrzygot]){
+                przygotowaneHTML = cells[idxPrzygot].innerHTML;
+            }
+            
             var opis = idxOpis>=0 && cells[idxOpis] ? (cells[idxOpis].textContent||'').trim() : '';
-            var uwagi = idxUwagi>=0 && cells[idxUwagi] ? cells[idxUwagi].innerHTML : '';
+            var opisCell = idxOpis>=0 && cells[idxOpis] ? cells[idxOpis] : null;
+            var uwagiCell = idxUwagi>=0 && cells[idxUwagi] ? cells[idxUwagi] : null;
 
             var mobileCell = document.createElement('td');
             mobileCell.className = 'eoz-mobile-cell';
@@ -230,31 +233,32 @@
             var col2 = document.createElement('div'); col2.className = 'eoz-m-col2'; col2.textContent = col2Zlec;
 
             var col3 = document.createElement('div'); col3.className = 'eoz-m-col3';
-            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span>' + (klient||'—') + '</div>' +
-                              '<div><span class="eoz-m-label">Nazwa zamówienia:</span>' + (nazwa||'—') + '</div>' +
-                              '<div><span class="eoz-m-label">Płyta:</span>' + (okleina||'—') + '</div>' +
-                              '<div><span class="eoz-m-label">Wymiar:</span>' + (wymiar||'—') + '</div>';
+            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Nazwa zamówienia:</span><br>' + (nazwa||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Płyta:</span><br>' + (plyta||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Wymiar:</span><br>' + (wymiar||'—') + '</div>';
 
             var col4 = document.createElement('div'); col4.className = 'eoz-m-col4';
-            col4.innerHTML = '<div><span class="eoz-m-label">Ilość:</span>' + (ilosc||'—') + '</div>' +
-                             '<div><span class="eoz-m-label">Przygotowane:</span>' + (przygotowane||'—') + '</div>';
+            col4.innerHTML = '<div><span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—') + '</div>' +
+                             '<div style="margin-top:8px"><span class="eoz-m-label">Przygotowane:</span><br>' + przygotowaneHTML + '</div>';
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
-            col5.innerHTML = '<div><span class="eoz-m-label">Uwagi klienta:</span>' + (opis||'—') + '</div>' +
-                             '<div><span class="eoz-m-label">Uwagi:</span>' + (uwagi||'') + '</div>';
+            
+            // Create button-style dropdowns for Opis and Uwagi
+            var opisBtn = createCompactButton('Uwagi klienta', opisCell, 'opis-' + rIndex);
+            var uwagiBtn = createCompactButton('Uwagi', uwagiCell, 'uwagi-' + rIndex);
+            
+            col5.appendChild(opisBtn);
+            col5.appendChild(uwagiBtn);
 
             // Actions: clone dropdown container from last cell if exists
             var lastCell = cells[cells.length-1];
             var dropdown = lastCell ? lastCell.querySelector('.eoz-dropdown-container') : null;
-            var actionsWrap = document.createElement('div');
-            actionsWrap.className = 'eoz-m-actions';
             if (dropdown) {
-                actionsWrap.appendChild(dropdown.cloneNode(true));
-            } else {
-                // fallback: build minimal button
-                actionsWrap.innerHTML = '<a class="eoz-dropdown-label" href="#">Akcje</a>';
+                var cloned = dropdown.cloneNode(true);
+                cloned.style.marginTop = '8px';
+                col5.appendChild(cloned);
             }
-            col5.appendChild(actionsWrap);
 
             grid.appendChild(col1);
             grid.appendChild(col2);
@@ -265,6 +269,54 @@
             row.appendChild(mobileCell);
             mobileCell.appendChild(grid);
         });
+    }
+    
+    function createCompactButton(label, cell, uniqueId){
+        var container = document.createElement('div');
+        container.className = 'eoz-dropdown-container';
+        container.style.marginTop = '8px';
+        
+        var checkboxId = 'eoz-compact-' + uniqueId;
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'eoz-dropdown-toggle';
+        checkbox.id = checkboxId;
+        
+        var btn = document.createElement('label');
+        btn.className = 'eoz-dropdown-label';
+        btn.htmlFor = checkboxId;
+        btn.style.height = '40px';
+        btn.style.fontSize = '13px';
+        btn.textContent = label;
+        
+        var menu = document.createElement('div');
+        menu.className = 'eoz-dropdown-menu';
+        menu.style.padding = '12px';
+        menu.style.maxHeight = '200px';
+        menu.style.overflowY = 'auto';
+        menu.style.whiteSpace = 'pre-wrap';
+        menu.style.wordBreak = 'break-word';
+        
+        if (cell) {
+            // Clone the content including any links/buttons
+            var content = cell.cloneNode(true);
+            menu.appendChild(content);
+        } else {
+            menu.textContent = '—';
+        }
+        
+        container.appendChild(checkbox);
+        container.appendChild(btn);
+        container.appendChild(menu);
+        
+        menu.addEventListener('click', function(e){
+            // Don't close if clicking on links/buttons inside
+            if (e.target.tagName !== 'A' && e.target.tagName !== 'BUTTON') {
+                e.stopPropagation();
+            }
+        });
+        
+        return container;
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', run, { once: true }); } else { run(); }
