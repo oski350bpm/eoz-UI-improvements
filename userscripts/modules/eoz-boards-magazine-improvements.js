@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.4.1';
+    var VERSION = '1.4.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -52,6 +52,8 @@
         '  .eoz-m-lp{font-size:12px;color:#666}\n' +
         '  .eoz-m-zlecenie{font-size:16px;font-weight:bold}\n' +
         '  .eoz-m-details{display:grid;grid-template-columns:1fr 100px 140px;gap:8px}\n' +
+        '  .eoz-m-col1{display:flex;align-items:flex-start;justify-content:center;font-weight:bold}\n' +
+        '  .eoz-m-col2{font-weight:bold}\n' +
         '  .eoz-m-col3 div,.eoz-m-col4 div,.eoz-m-col5 div{margin-bottom:6px;font-size:13px}\n' +
         '  .eoz-m-label{color:#666;margin-right:4px}\n' +
         '  .eoz-m-notes-wrapper{display:flex;flex-direction:column;gap:8px}\n' +
@@ -61,10 +63,13 @@
         '  .eoz-m-col5-actions{margin-top:8px}\n' +
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
-        '  .eoz-m-details{grid-template-columns:1fr 100px;grid-template-rows:auto auto}\n' +
-        '  .eoz-m-col3{grid-column:1;grid-row:1}\n' +
-        '  .eoz-m-col4{grid-column:2;grid-row:1}\n' +
-        '  .eoz-m-col5{grid-column:1 / 3;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
+        '  .eoz-m-header{display:none}\n' +
+        '  .eoz-m-details{grid-template-columns:36px 90px 1fr 100px;grid-template-rows:auto auto}\n' +
+        '  .eoz-m-col1{grid-column:1;grid-row:1}\n' +
+        '  .eoz-m-col2{grid-column:2;grid-row:1}\n' +
+        '  .eoz-m-col3{grid-column:3;grid-row:1}\n' +
+        '  .eoz-m-col4{grid-column:4;grid-row:1}\n' +
+        '  .eoz-m-col5{grid-column:1 / 5;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-m-details{grid-template-columns:1fr;grid-template-rows:auto auto auto}\n' +
@@ -340,12 +345,24 @@
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
             
-            // Create notes section with styled buttons
-            var notesWrapper = document.createElement('div');
-            notesWrapper.className = 'eoz-m-notes-wrapper';
+            // 1. Actions dropdown (first)
+            var lastCell = cells[cells.length-1];
+            if (lastCell) {
+                var originalLinks = lastCell.querySelectorAll('a');
+                if (originalLinks.length > 0) {
+                    var actionsWrapper = document.createElement('div');
+                    actionsWrapper.className = 'eoz-m-col5-item';
+                    var actionsBtn = createActionDropdown(originalLinks, 'akcje-' + rIndex);
+                    actionsWrapper.appendChild(actionsBtn);
+                    col5.appendChild(actionsWrapper);
+                }
+            }
             
-            // Uwagi klienta button
+            // 2. Uwagi klienta button (second)
             if (opisLink) {
+                var opisWrapper = document.createElement('div');
+                opisWrapper.className = 'eoz-m-col5-item';
+                
                 var opisBtn = document.createElement('a');
                 opisBtn.href = opisLink.href;
                 opisBtn.className = 'eoz-m-note-btn tippy show_erorys_notes_or_send_info';
@@ -359,11 +376,15 @@
                 }
                 
                 opisBtn.innerHTML = '<i class="' + iconClass + '"></i><span>Uwagi klienta</span>';
-                notesWrapper.appendChild(opisBtn);
+                opisWrapper.appendChild(opisBtn);
+                col5.appendChild(opisWrapper);
             }
             
-            // Uwagi button
+            // 3. Uwagi button (third)
             if (uwagiLink) {
+                var uwagiWrapper = document.createElement('div');
+                uwagiWrapper.className = 'eoz-m-col5-item';
+                
                 var uwagiBtn = document.createElement('a');
                 uwagiBtn.href = uwagiLink.href || '#';
                 uwagiBtn.className = 'eoz-m-note-btn tippy';
@@ -377,25 +398,31 @@
                 }
                 
                 uwagiBtn.innerHTML = '<i class="' + iconClass2 + '"></i><span>Uwagi</span>';
-                notesWrapper.appendChild(uwagiBtn);
+                uwagiWrapper.appendChild(uwagiBtn);
+                col5.appendChild(uwagiWrapper);
             }
-            
-            col5.appendChild(notesWrapper);
 
-            // Actions: create new dropdown from original links
-            var lastCell = cells[cells.length-1];
-            if (lastCell) {
-                var originalLinks = lastCell.querySelectorAll('a');
-                if (originalLinks.length > 0) {
-                    var actionsWrapper = document.createElement('div');
-                    actionsWrapper.className = 'eoz-m-col5-actions';
-                    var actionsBtn = createActionDropdown(originalLinks, 'akcje-' + rIndex);
-                    actionsWrapper.appendChild(actionsBtn);
-                    col5.appendChild(actionsWrapper);
-                }
+            // Prepare col1 and col2 for tablet view
+            var col1 = document.createElement('div'); 
+            col1.className = 'eoz-m-col1'; 
+            col1.textContent = col1Lp;
+            
+            var col2 = document.createElement('div'); 
+            col2.className = 'eoz-m-col2';
+            if (zlecenieLink) {
+                var link = document.createElement('a');
+                link.href = zlecenieLink;
+                link.textContent = col2Zlec;
+                link.style.color = '#007bff';
+                link.style.textDecoration = 'none';
+                col2.appendChild(link);
+            } else {
+                col2.textContent = col2Zlec;
             }
 
             grid.appendChild(header);
+            details.appendChild(col1);
+            details.appendChild(col2);
             details.appendChild(col3);
             details.appendChild(col4);
             details.appendChild(col5);
