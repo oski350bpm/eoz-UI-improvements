@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.0';
+    var VERSION = '2.2.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -24,10 +24,12 @@
         '/* EOZ Header Responsive */\n' +
         '@media (max-width: 767px) { .list-group.list-group-horizontal { flex-wrap: nowrap !important; overflow-x: hidden !important; } .list-group.list-group-horizontal > li:not(.eoz-keep-mobile) { display: none !important; } }\n' +
         '@media (min-width: 768px) and (max-width: 1023px) { .list-group.list-group-horizontal > li.eoz-hide-tablet { display: none !important; } }\n' +
-        '@media (min-width: 1024px) { #eoz-burger-menu { display: none !important; } .list-group.list-group-horizontal > li.eoz-hide-tablet { display: inline-block !important; } }\n' +
-        '@media (max-width: 1023px) { #eoz-burger-menu { position: fixed; top: 0; right: 10px; z-index: 10000; width: 50px; height: 50px; border-radius: 50%; background: #007bff; margin-top: 10px; } }\n' +
-        '@media (min-width: 768px) and (max-width: 1023px) { #eoz-burger-menu { position: static; border-radius: 0; margin: 0; width: auto; height: auto; background: transparent; } #eoz-burger-menu-item { display: inline-block !important; } }\n' +
-        '#eoz-burger-menu { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }\n' +
+        '@media (min-width: 1024px) { #eoz-burger-menu, #eoz-burger-menu-item { display: none !important; } .list-group.list-group-horizontal > li.eoz-hide-tablet { display: inline-block !important; } }\n' +
+        '@media (max-width: 767px) { #eoz-burger-menu-item { display: none !important; } #eoz-burger-menu.eoz-floating { display: flex !important; position: fixed; top: 0; right: 10px; z-index: 10000; width: 50px; height: 50px; border-radius: 50%; background: #007bff; margin-top: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); } }\n' +
+        '@media (min-width: 768px) and (max-width: 1023px) { #eoz-burger-menu-item { display: inline-block !important; } #eoz-burger-menu.eoz-floating { display: none !important; } }\n' +
+        '#eoz-burger-menu-item { padding: 0; border: none; background: transparent; }\n' +
+        '#eoz-burger-menu-item a { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 8px 12px; text-decoration: none; }\n' +
+        '#eoz-burger-menu { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 8px 12px; background: #007bff; border-radius: 4px; }\n' +
         '#eoz-burger-menu span { display: block; width: 24px; height: 2px; background: white; position: relative; }\n' +
         '#eoz-burger-menu span::before, #eoz-burger-menu span::after { content: ""; display: block; width: 24px; height: 2px; background: white; position: absolute; left: 0; }\n' +
         '#eoz-burger-menu span::before { top: -8px; }\n' +
@@ -35,7 +37,6 @@
         '#eoz-burger-menu.open span { background: transparent; }\n' +
         '#eoz-burger-menu.open span::before { transform: rotate(45deg); top: 0; }\n' +
         '#eoz-burger-menu.open span::after { transform: rotate(-45deg); top: 0; }\n' +
-        '@media (min-width: 768px) and (max-width: 1023px) { #eoz-burger-menu span, #eoz-burger-menu span::before, #eoz-burger-menu span::after { background: #333; } }\n' +
         '#eoz-mobile-menu { position: fixed; top: 0; right: -100%; width: 280px; max-width: 85%; height: 100vh; background: white; box-shadow: -2px 0 8px rgba(0,0,0,0.3); z-index: 9999; transition: right 0.3s ease; overflow-y: auto; padding: 60px 0 20px; }\n' +
         '#eoz-mobile-menu.open { right: 0; }\n' +
         '#eoz-mobile-menu .eoz-menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; text-decoration: none; color: #333; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }\n' +
@@ -134,26 +135,50 @@
             mobileMenu.appendChild(menuItem);
         });
 
-        burger.addEventListener('click', function() {
-            burger.classList.toggle('open');
-            mobileMenu.classList.toggle('open');
-            overlay.classList.toggle('open');
-        });
-
         overlay.addEventListener('click', function() {
             burger.classList.remove('open');
             mobileMenu.classList.remove('open');
             overlay.classList.remove('open');
         });
 
-        // Append burger as last menu item (for tablet) and to body (for mobile)
+        // Append burger based on whether menu exists
         var menuContainer = document.querySelector('.list-group.list-group-horizontal');
         if (menuContainer) {
-            menuContainer.appendChild(burgerLi);
-        } else {
-            document.body.appendChild(burger);
+            // Find logout button and insert before it
+            var logoutItem = null;
+            var menuItems = menuContainer.querySelectorAll('li.list-group-item');
+            menuItems.forEach(function(item) {
+                var link = item.querySelector('a');
+                if (link && (link.href.indexOf('/logout') !== -1 || link.textContent.trim().indexOf('Wyloguj') !== -1)) {
+                    logoutItem = item;
+                }
+            });
+            
+            if (logoutItem) {
+                menuContainer.insertBefore(burgerLi, logoutItem);
+            } else {
+                menuContainer.appendChild(burgerLi);
+            }
         }
         
+        // Always create floating button for mobile (no menu)
+        var floatingBurger = burger.cloneNode(true);
+        floatingBurger.id = 'eoz-burger-menu';
+        floatingBurger.className = 'eoz-floating';
+        
+        // Connect both burgers to same functionality
+        [burger, floatingBurger].forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                burger.classList.toggle('open');
+                floatingBurger.classList.toggle('open');
+                mobileMenu.classList.toggle('open');
+                overlay.classList.toggle('open');
+            });
+        });
+        
+        document.body.appendChild(floatingBurger);
         document.body.appendChild(mobileMenu);
         document.body.appendChild(overlay);
         
