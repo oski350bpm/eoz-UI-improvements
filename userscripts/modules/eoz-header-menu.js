@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.2';
+    var VERSION = '2.2.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -28,12 +28,12 @@
         '@media (max-width: 767px) { #eoz-burger-menu-item { display: none !important; } #eoz-burger-menu.eoz-floating { display: flex !important; position: fixed; top: 0; right: 10px; z-index: 10000; width: 50px; height: 50px; border-radius: 50%; background: #007bff; margin-top: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); } }\n' +
         '@media (min-width: 768px) and (max-width: 1023px) { #eoz-burger-menu-item { display: inline-block !important; } #eoz-burger-menu.eoz-floating { display: none !important; } }\n' +
         '#eoz-burger-menu-item { padding: 8px 15px; border: none; background: transparent; margin: 0; }\n' +
-        '#eoz-burger-menu-item .eoz-burger-wrapper { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #007bff; border-radius: 50%; }\n' +
+        '#eoz-burger-menu-item .eoz-burger-wrapper { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: #007bff; border-radius: 50%; }\n' +
         '#eoz-burger-menu { border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; width: 100%; height: 100%; }\n' +
-        '#eoz-burger-menu span { display: block; width: 24px; height: 2px; background: white; position: relative; }\n' +
-        '#eoz-burger-menu span::before, #eoz-burger-menu span::after { content: ""; display: block; width: 24px; height: 2px; background: white; position: absolute; left: 0; }\n' +
-        '#eoz-burger-menu span::before { top: -8px; }\n' +
-        '#eoz-burger-menu span::after { top: 8px; }\n' +
+        '#eoz-burger-menu span { display: block; width: 32px; height: 3px; background: white; position: relative; }\n' +
+        '#eoz-burger-menu span::before, #eoz-burger-menu span::after { content: ""; display: block; width: 32px; height: 3px; background: white; position: absolute; left: 0; }\n' +
+        '#eoz-burger-menu span::before { top: -10px; }\n' +
+        '#eoz-burger-menu span::after { top: 10px; }\n' +
         '#eoz-burger-menu.open span { background: transparent; }\n' +
         '#eoz-burger-menu.open span::before { transform: rotate(45deg); top: 0; }\n' +
         '#eoz-burger-menu.open span::after { transform: rotate(-45deg); top: 0; }\n' +

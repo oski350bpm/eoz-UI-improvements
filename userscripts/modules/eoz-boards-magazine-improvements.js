@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.5.2';
+    var VERSION = '1.6.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -272,29 +272,20 @@
                 przygotowaneHTML = cells[idxPrzygot].innerHTML;
             }
             
-            // Extract original link elements for Uwagi klienta and Uwagi
-            var opisLink = null;
-            var opisHasContent = false;
+            // Clone original link elements for Uwagi klienta and Uwagi to preserve event handlers
+            var opisOriginalLink = null;
             if (idxOpis>=0 && cells[idxOpis]) {
-                opisLink = cells[idxOpis].querySelector('a');
-                if (opisLink) {
-                    var opisIcon = opisLink.querySelector('i');
-                    if (opisIcon) {
-                        // Check if icon is solid (fa-comment) or regular (far fa-comment)
-                        opisHasContent = !opisIcon.classList.contains('far');
-                    }
+                var linkEl = cells[idxOpis].querySelector('a');
+                if (linkEl) {
+                    opisOriginalLink = linkEl.cloneNode(true);
                 }
             }
             
-            var uwagiLink = null;
-            var uwagiHasContent = false;
+            var uwagiOriginalLink = null;
             if (idxUwagi>=0 && cells[idxUwagi]) {
-                uwagiLink = cells[idxUwagi].querySelector('a');
-                if (uwagiLink) {
-                    var uwagiIcon = uwagiLink.querySelector('i');
-                    if (uwagiIcon) {
-                        uwagiHasContent = !uwagiIcon.classList.contains('far');
-                    }
+                var linkEl2 = cells[idxUwagi].querySelector('a');
+                if (linkEl2) {
+                    uwagiOriginalLink = linkEl2.cloneNode(true);
                 }
             }
 
@@ -394,47 +385,41 @@
                 }
             }
             
-            // 2. Uwagi klienta button (second)
-            if (opisLink) {
+            // 2. Uwagi klienta button (second) - use original cloned link
+            if (opisOriginalLink) {
                 var opisWrapper = document.createElement('div');
                 opisWrapper.className = 'eoz-m-col5-item';
                 
-                var opisBtn = document.createElement('a');
-                opisBtn.href = opisLink.href;
-                opisBtn.className = 'eoz-m-note-btn tippy show_erorys_notes_or_send_info';
+                // Add button styling classes while preserving original classes
+                opisOriginalLink.classList.add('eoz-m-note-btn');
                 
-                var opisIcon = opisLink.querySelector('i');
-                var iconClass = 'fas fa-comment';
-                if (opisIcon) {
-                    if (opisIcon.classList.contains('far')) {
-                        iconClass = 'far fa-comment';
-                    }
-                }
+                // Get original icon
+                var opisIcon = opisOriginalLink.querySelector('i');
+                var iconHTML = opisIcon ? opisIcon.outerHTML : '<i class="fas fa-comment"></i>';
                 
-                opisBtn.innerHTML = '<i class="' + iconClass + '"></i><span>Uwagi klienta</span>';
-                opisWrapper.appendChild(opisBtn);
+                // Add text label
+                opisOriginalLink.innerHTML = iconHTML + '<span>Uwagi klienta</span>';
+                
+                opisWrapper.appendChild(opisOriginalLink);
                 col5.appendChild(opisWrapper);
             }
             
-            // 3. Uwagi button (third)
-            if (uwagiLink) {
+            // 3. Uwagi button (third) - use original cloned link
+            if (uwagiOriginalLink) {
                 var uwagiWrapper = document.createElement('div');
                 uwagiWrapper.className = 'eoz-m-col5-item';
                 
-                var uwagiBtn = document.createElement('a');
-                uwagiBtn.href = uwagiLink.href || '#';
-                uwagiBtn.className = 'eoz-m-note-btn tippy';
+                // Add button styling classes while preserving original classes
+                uwagiOriginalLink.classList.add('eoz-m-note-btn');
                 
-                var uwagiIcon = uwagiLink.querySelector('i');
-                var iconClass2 = 'fas fa-comments';
-                if (uwagiIcon) {
-                    if (uwagiIcon.classList.contains('far')) {
-                        iconClass2 = 'far fa-comments';
-                    }
-                }
+                // Get original icon
+                var uwagiIcon = uwagiOriginalLink.querySelector('i');
+                var iconHTML2 = uwagiIcon ? uwagiIcon.outerHTML : '<i class="far fa-comments"></i>';
                 
-                uwagiBtn.innerHTML = '<i class="' + iconClass2 + '"></i><span>Uwagi</span>';
-                uwagiWrapper.appendChild(uwagiBtn);
+                // Add text label
+                uwagiOriginalLink.innerHTML = iconHTML2 + '<span>Uwagi</span>';
+                
+                uwagiWrapper.appendChild(uwagiOriginalLink);
                 col5.appendChild(uwagiWrapper);
             }
 
