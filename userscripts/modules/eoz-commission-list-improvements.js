@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.3';
+    var VERSION = '2.0.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -34,7 +34,34 @@
         '.eoz-dropdown-item:hover{background:#f8f9fa!important}\n' +
         '.eoz-dropdown-item i{font-size:18px!important;width:20px!important;text-align:center!important}\n' +
         '.eoz-dropdown-container{position:relative!important;width:100%!important}\n' +
-        '@media (max-width:1024px){.eoz-dropdown-label{height:70px!important;font-size:18px!important}.eoz-dropdown-item{min-height:60px!important;font-size:16px!important;padding:20px!important}.eoz-dropdown-item i{font-size:20px!important}}\n';
+        '@media (max-width:1024px){.eoz-dropdown-label{height:70px!important;font-size:18px!important}.eoz-dropdown-item{min-height:60px!important;font-size:16px!important;padding:20px!important}.eoz-dropdown-item i{font-size:20px!important}}\n' +
+        '@media (min-width:961px){table.dynamic-table tbody tr.body-row td.eoz-mobile-cell{display:none!important}}\n' +
+        '@media (max-width:960px){\n' +
+        '  table.dynamic-table thead{display:none!important}\n' +
+        '  table.dynamic-table tbody tr.body-row td.body-cell:not(.eoz-mobile-cell){display:none!important}\n' +
+        '  table.dynamic-table tbody tr.body-row td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
+        '  .eoz-cl-grid{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}\n' +
+        '  .eoz-cl-header{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}\n' +
+        '  .eoz-cl-lp{font-size:12px;color:#666}\n' +
+        '  .eoz-cl-kod{font-size:16px;font-weight:bold}\n' +
+        '  .eoz-cl-details{display:grid;grid-template-columns:1fr;gap:8px}\n' +
+        '  .eoz-cl-details div{margin-bottom:6px;font-size:13px}\n' +
+        '  .eoz-cl-label{color:#666;margin-right:4px;font-weight:600}\n' +
+        '  .eoz-cl-status{padding:8px;background:#f8f9fa;border-radius:4px;text-align:center;font-weight:600}\n' +
+        '  .eoz-cl-actions{margin-top:8px}\n' +
+        '}\n' +
+        '@media (min-width:501px) and (max-width:960px){\n' +
+        '  .eoz-cl-header{display:none}\n' +
+        '  .eoz-cl-details{grid-template-columns:40px 100px 1fr 120px;grid-template-rows:auto auto}\n' +
+        '  .eoz-cl-lp-col{grid-column:1;grid-row:1;font-weight:bold;display:flex;align-items:center;justify-content:center}\n' +
+        '  .eoz-cl-kod-col{grid-column:2;grid-row:1;font-weight:bold;display:flex;align-items:center}\n' +
+        '  .eoz-cl-info{grid-column:3;grid-row:1}\n' +
+        '  .eoz-cl-status-col{grid-column:4;grid-row:1;display:flex;align-items:center}\n' +
+        '  .eoz-cl-actions{grid-column:1 / 5;grid-row:2;margin-top:8px}\n' +
+        '}\n' +
+        '@media (max-width:500px){\n' +
+        '  .eoz-cl-details{grid-template-columns:1fr;grid-template-rows:auto auto auto auto}\n' +
+        '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-commission-list-module-css' });
 
@@ -151,12 +178,113 @@
         });
     }
 
+    function buildMobileLayout() {
+        var headers = document.querySelectorAll('th.heading-cell.column-names-cell');
+        var headerNames = [];
+        headers.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
+        
+        var idxLp = headerNames.indexOf('Lp');
+        var idxKod = headerNames.indexOf('Kod');
+        var idxMaterialy = headerNames.indexOf('Materiały');
+        var idxIlosc = headerNames.indexOf('Ilość płyt');
+        var idxNazwa = headerNames.indexOf('Nazwa zlecenia');
+        var idxDataZakonczenia = headerNames.indexOf('Planowana data zakończenia zlecenia');
+        var idxStatus = headerNames.indexOf('Status');
+        
+        var rows = document.querySelectorAll('tbody tr.body-row');
+        rows.forEach(function(row, rIndex){
+            if (row.querySelector('td.eoz-mobile-cell')) return; // already built
+            
+            var cells = row.querySelectorAll('td.body-cell');
+            if (!cells || cells.length === 0) return;
+            
+            var lp = idxLp>=0 && cells[idxLp] ? (cells[idxLp].textContent||'').trim() : (rIndex+1).toString();
+            var kod = idxKod>=0 && cells[idxKod] ? (cells[idxKod].textContent||'').trim() : '—';
+            var materialy = idxMaterialy>=0 && cells[idxMaterialy] ? (cells[idxMaterialy].textContent||'').trim() : '—';
+            var ilosc = idxIlosc>=0 && cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '—';
+            var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '—';
+            var dataZakonczenia = idxDataZakonczenia>=0 && cells[idxDataZakonczenia] ? (cells[idxDataZakonczenia].textContent||'').trim().substring(0,10) : '—';
+            var status = idxStatus>=0 && cells[idxStatus] ? (cells[idxStatus].textContent||'').trim() : '—';
+            
+            // Find actions cell
+            var actionsCell = row.querySelector('td.body-cell.body-options-cell');
+            var actionsDropdown = null;
+            if (actionsCell) {
+                var existingDropdown = actionsCell.querySelector('.eoz-dropdown-container');
+                if (existingDropdown) {
+                    actionsDropdown = existingDropdown.cloneNode(true);
+                    // Re-attach event listener
+                    var checkbox = actionsDropdown.querySelector('input.eoz-dropdown-toggle');
+                    var menu = actionsDropdown.querySelector('.eoz-dropdown-menu');
+                    if (checkbox && menu) {
+                        menu.addEventListener('click', function(){ checkbox.checked = false; });
+                    }
+                }
+            }
+            
+            var mobileCell = document.createElement('td');
+            mobileCell.className = 'eoz-mobile-cell body-cell';
+            mobileCell.colSpan = cells.length;
+            
+            var grid = document.createElement('div');
+            grid.className = 'eoz-cl-grid';
+            
+            // Header: Lp + Kod (mobile only)
+            var header = document.createElement('div');
+            header.className = 'eoz-cl-header';
+            header.innerHTML = '<div class="eoz-cl-lp">Lp. ' + lp + '</div>' +
+                               '<div class="eoz-cl-kod">' + kod + '</div>';
+            
+            // Details grid
+            var details = document.createElement('div');
+            details.className = 'eoz-cl-details';
+            
+            // For tablet: create separate columns
+            var lpCol = document.createElement('div');
+            lpCol.className = 'eoz-cl-lp-col';
+            lpCol.textContent = lp;
+            
+            var kodCol = document.createElement('div');
+            kodCol.className = 'eoz-cl-kod-col';
+            kodCol.textContent = kod;
+            
+            var infoCol = document.createElement('div');
+            infoCol.className = 'eoz-cl-info';
+            infoCol.innerHTML = '<div><span class="eoz-cl-label">Materiały:</span>' + materialy + '</div>' +
+                                '<div><span class="eoz-cl-label">Nazwa:</span>' + nazwa + '</div>' +
+                                '<div><span class="eoz-cl-label">Ilość płyt:</span>' + ilosc + '</div>' +
+                                '<div><span class="eoz-cl-label">Planowana data:</span>' + dataZakonczenia + '</div>';
+            
+            var statusCol = document.createElement('div');
+            statusCol.className = 'eoz-cl-status-col';
+            statusCol.innerHTML = '<div class="eoz-cl-status">' + status + '</div>';
+            
+            var actionsCol = document.createElement('div');
+            actionsCol.className = 'eoz-cl-actions';
+            if (actionsDropdown) {
+                actionsCol.appendChild(actionsDropdown);
+            }
+            
+            grid.appendChild(header);
+            details.appendChild(lpCol);
+            details.appendChild(kodCol);
+            details.appendChild(infoCol);
+            details.appendChild(statusCol);
+            details.appendChild(actionsCol);
+            grid.appendChild(details);
+            
+            mobileCell.appendChild(grid);
+            row.appendChild(mobileCell);
+        });
+    }
+
     function run() {
         window.EOZ.waitFor('table.dynamic-table tbody tr.body-row', { timeout: 10000 })
             .then(function(){
                 hideColumns();
                 formatDates();
                 transformActionButtons();
+                buildMobileLayout();
                 console.log('[EOZ Commission List Module v' + VERSION + '] Applied');
             })
             .catch(function(){ console.warn('[EOZ Commission List Module v' + VERSION + '] Table not found'); });
