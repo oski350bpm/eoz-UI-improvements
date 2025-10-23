@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.1';
+    var VERSION = '1.2.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -205,9 +205,32 @@
             if (!cells || cells.length === 0) return;
 
             var col1Lp = (rIndex + 1).toString();
-            var col2Zlec = idxZlecenie >=0 && cells[idxZlecenie] ? (cells[idxZlecenie].textContent||'').trim() : '';
+            
+            // Zlecenie: preserve original link
+            var col2Zlec = '';
+            var zlecenieLink = '';
+            if (idxZlecenie >=0 && cells[idxZlecenie]) {
+                var zlecenieCell = cells[idxZlecenie];
+                var link = zlecenieCell.querySelector('a');
+                if (link) {
+                    zlecenieLink = link.href;
+                    col2Zlec = (link.textContent||'').trim();
+                } else {
+                    col2Zlec = (zlecenieCell.textContent||'').trim();
+                }
+            }
+            
             var klient = idxKlient>=0 && cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
             var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '';
+            
+            // Debug: log all cell contents to find correct mapping
+            console.log('[EOZ Boards Magazine Module] Row ' + rIndex + ' cell contents:');
+            cells.forEach(function(cell, idx){
+                var headerName = headerNames[idx] || 'Unknown';
+                var content = (cell.textContent||'').trim();
+                console.log('  ' + idx + ' (' + headerName + '): "' + content + '"');
+            });
+            
             var plyta = idxPlyta>=0 && cells[idxPlyta] ? (cells[idxPlyta].textContent||'').trim() : '';
             var wymiar = idxWymiar>=0 && cells[idxWymiar] ? (cells[idxWymiar].textContent||'').trim() : '';
             var ilosc = idxIlosc>=0 && cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '';
@@ -230,7 +253,18 @@
             grid.className = 'eoz-mobile-grid';
 
             var col1 = document.createElement('div'); col1.className = 'eoz-m-col1'; col1.textContent = col1Lp;
-            var col2 = document.createElement('div'); col2.className = 'eoz-m-col2'; col2.textContent = col2Zlec;
+            
+            var col2 = document.createElement('div'); col2.className = 'eoz-m-col2';
+            if (zlecenieLink) {
+                var link = document.createElement('a');
+                link.href = zlecenieLink;
+                link.textContent = col2Zlec;
+                link.style.color = '#007bff';
+                link.style.textDecoration = 'none';
+                col2.appendChild(link);
+            } else {
+                col2.textContent = col2Zlec;
+            }
 
             var col3 = document.createElement('div'); col3.className = 'eoz-m-col3';
             col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
@@ -244,9 +278,20 @@
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
             
-            // Create button-style dropdowns for Opis and Uwagi
-            var opisBtn = createCompactButton('Uwagi klienta', opisCell, 'opis-' + rIndex);
-            var uwagiBtn = createCompactButton('Uwagi', uwagiCell, 'uwagi-' + rIndex);
+            // Create button-style dropdowns for Opis and Uwagi with original icons
+            var opisIcon = '';
+            var uwagiIcon = '';
+            if (opisCell) {
+                var opisIconEl = opisCell.querySelector('i');
+                if (opisIconEl) opisIcon = '<i class="' + opisIconEl.className + '"></i> ';
+            }
+            if (uwagiCell) {
+                var uwagiIconEl = uwagiCell.querySelector('i');
+                if (uwagiIconEl) uwagiIcon = '<i class="' + uwagiIconEl.className + '"></i> ';
+            }
+            
+            var opisBtn = createCompactButton(opisIcon + 'Uwagi klienta', opisCell, 'opis-' + rIndex);
+            var uwagiBtn = createCompactButton(uwagiIcon + 'Uwagi', uwagiCell, 'uwagi-' + rIndex);
             
             col5.appendChild(opisBtn);
             col5.appendChild(uwagiBtn);
@@ -287,7 +332,7 @@
         btn.htmlFor = checkboxId;
         btn.style.height = '40px';
         btn.style.fontSize = '13px';
-        btn.textContent = label;
+        btn.innerHTML = label; // Use innerHTML to support icons
         
         var menu = document.createElement('div');
         menu.className = 'eoz-dropdown-menu';
