@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.6.0';
+    var VERSION = '1.6.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -335,39 +335,45 @@
             var cleanPrzygotowaneHTML = przygotowaneHTML;
             
             if (idxPrzygot>=0 && cells[idxPrzygot]){
-                // Clone the cell to manipulate
-                var tempCell = cells[idxPrzygot].cloneNode(true);
-                
-                // Extract and remove edit button from HTML
-                var editBtn = tempCell.querySelector('a.change-amount-manual');
-                if (editBtn) {
-                    editButton = editBtn.cloneNode(true);
-                    editBtn.remove(); // Remove from temp cell
+                // Find the original edit button in the original cell (to preserve event handlers)
+                var originalEditBtn = cells[idxPrzygot].querySelector('a.change-amount-manual');
+                if (originalEditBtn) {
+                    // Extract (move) the original button to preserve jQuery events
+                    editButton = originalEditBtn;
+                    originalEditBtn.remove(); // Remove from original location
                 }
                 
                 // Get cleaned HTML without edit button
-                cleanPrzygotowaneHTML = tempCell.innerHTML;
+                cleanPrzygotowaneHTML = cells[idxPrzygot].innerHTML;
             }
             
-            var col4 = document.createElement('div'); col4.className = 'eoz-m-col4';
-            col4.innerHTML = '<div><span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—') + '</div>' +
-                             '<div style="margin-top:8px"><span class="eoz-m-label">Przygotowane:</span><br>' + cleanPrzygotowaneHTML + '</div>';
+            var col4 = document.createElement('div'); 
+            col4.className = 'eoz-m-col4';
             
-            // Add edit button below switcher with label
+            // Row 1: Ilość
+            var iloscRow = document.createElement('div');
+            iloscRow.innerHTML = '<span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—');
+            col4.appendChild(iloscRow);
+            
+            // Row 2: Przygotowane (radio buttons)
+            var przygotowaneRow = document.createElement('div');
+            przygotowaneRow.style.marginTop = '8px';
+            przygotowaneRow.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + cleanPrzygotowaneHTML;
+            col4.appendChild(przygotowaneRow);
+            
+            // Row 3: Edit button with label
             if (editButton) {
-                var editWrapper = document.createElement('div');
-                editWrapper.style.marginTop = '8px';
+                var editRow = document.createElement('div');
+                editRow.style.marginTop = '8px';
+                editRow.innerHTML = '<span class="eoz-m-label">Wprowadź dostępną ilość:</span>';
                 
-                var labelDiv = document.createElement('div');
-                labelDiv.innerHTML = '<span class="eoz-m-label">Wprowadź dostępną ilość:</span>';
+                var buttonWrapper = document.createElement('div');
+                buttonWrapper.style.marginTop = '4px';
+                buttonWrapper.appendChild(editButton);
                 
-                var buttonDiv = document.createElement('div');
-                buttonDiv.style.marginTop = '4px';
-                buttonDiv.appendChild(editButton);
-                
-                editWrapper.appendChild(labelDiv);
-                editWrapper.appendChild(buttonDiv);
-                col4.appendChild(editWrapper);
+                editRow.appendChild(document.createElement('br'));
+                editRow.appendChild(buttonWrapper);
+                col4.appendChild(editRow);
             }
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
