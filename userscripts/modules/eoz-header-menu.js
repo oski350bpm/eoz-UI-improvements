@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.1';
+    var VERSION = '2.0.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -79,9 +79,29 @@
             menuItem.className = 'eoz-menu-item';
             if (item.classList.contains('eoz-hide-tablet')) menuItem.classList.add('eoz-tablet-only');
             
+            // Extract icon and text properly
+            var icon = '';
+            var textContent = '';
+            
+            // Look for FontAwesome icons
+            var iconEl = link.querySelector('i[class*="fa-"]');
+            if (iconEl) {
+                icon = '<i class="' + iconEl.className + '"></i>';
+            }
+            
+            // Extract text content
             var text = link.querySelector('p, paragraph');
-            var textContent = text ? text.textContent.trim() : link.textContent.trim();
-            menuItem.innerHTML = '<span class="eoz-menu-text">' + textContent + '</span>';
+            if (text) {
+                textContent = text.textContent.trim();
+            } else {
+                // Remove icon text and get clean text
+                var clone = link.cloneNode(true);
+                var icons = clone.querySelectorAll('i');
+                icons.forEach(function(i) { i.remove(); });
+                textContent = clone.textContent.trim();
+            }
+            
+            menuItem.innerHTML = icon + '<span class="eoz-menu-text">' + textContent + '</span>';
             
             mobileMenu.appendChild(menuItem);
         });

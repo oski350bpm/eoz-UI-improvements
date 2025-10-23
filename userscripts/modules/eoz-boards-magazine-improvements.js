@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.2';
+    var VERSION = '1.2.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -191,11 +191,10 @@
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
         var idxNazwa = findHeaderIndex('Nazwa zamówienia');
-        var idxPlyta = findHeaderIndex('Płyta');
-        var idxWymiar = findHeaderIndex('Wymiar');
+        var idxPlytaWymiar = findHeaderIndex('Płyta i wymiar'); // Combined column
         var idxIlosc = findHeaderIndex('Ilość');
         var idxPrzygot = findHeaderIndex('Przygotowane');
-        var idxOpis = findHeaderIndex('Opis');
+        var idxOpis = findHeaderIndex('Uwagi klienta');
         var idxUwagi = findHeaderIndex('Uwagi');
         
         var rows = document.querySelectorAll('table tbody tr');
@@ -223,16 +222,21 @@
             var klient = idxKlient>=0 && cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
             var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '';
             
-            // Debug: log all cell contents to find correct mapping
-            console.log('[EOZ Boards Magazine Module] Row ' + rIndex + ' cell contents:');
-            cells.forEach(function(cell, idx){
-                var headerName = headerNames[idx] || 'Unknown';
-                var content = (cell.textContent||'').trim();
-                console.log('  ' + idx + ' (' + headerName + '): "' + content + '"');
-            });
+            // Płyta i wymiar: combined column, split by newline
+            var plytaWymiarText = '';
+            var plyta = '—';
+            var wymiar = '—';
+            if (idxPlytaWymiar>=0 && cells[idxPlytaWymiar]) {
+                plytaWymiarText = (cells[idxPlytaWymiar].textContent||'').trim();
+                var lines = plytaWymiarText.split('\n');
+                if (lines.length >= 2) {
+                    plyta = lines[0].trim();
+                    wymiar = lines[1].trim();
+                } else if (lines.length === 1) {
+                    plyta = lines[0].trim();
+                }
+            }
             
-            var plyta = idxPlyta>=0 && cells[idxPlyta] ? (cells[idxPlyta].textContent||'').trim() : '';
-            var wymiar = idxWymiar>=0 && cells[idxWymiar] ? (cells[idxWymiar].textContent||'').trim() : '';
             var ilosc = idxIlosc>=0 && cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '';
             
             // Przygotowane: keep original HTML with radio buttons and edit button
@@ -278,31 +282,35 @@
 
             var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
             
-            // Create button-style dropdowns for Opis and Uwagi with original icons
-            var opisIcon = '';
-            var uwagiIcon = '';
-            if (opisCell) {
-                var opisIconEl = opisCell.querySelector('i');
-                if (opisIconEl) opisIcon = '<i class="' + opisIconEl.className + '"></i> ';
-            }
-            if (uwagiCell) {
-                var uwagiIconEl = uwagiCell.querySelector('i');
-                if (uwagiIconEl) uwagiIcon = '<i class="' + uwagiIconEl.className + '"></i> ';
-            }
+            // Create action buttons for Opis and Uwagi with proper links
+            var opisBtn = createActionButton('Uwagi klienta', 'fa-comment', 'opis-' + rIndex, function(){
+                // Extract commission ID from zlecenie number
+                var commissionId = col2Zlec.replace(/[^0-9]/g, ''); // Extract numbers only
+                if (commissionId) {
+                    window.open('https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + commissionId, '_blank');
+                }
+            });
             
-            var opisBtn = createCompactButton(opisIcon + 'Uwagi klienta', opisCell, 'opis-' + rIndex);
-            var uwagiBtn = createCompactButton(uwagiIcon + 'Uwagi', uwagiCell, 'uwagi-' + rIndex);
+            var uwagiBtn = createActionButton('Uwagi', 'fa-comments', 'uwagi-' + rIndex, function(){
+                // Extract commission ID from zlecenie number
+                var commissionId = col2Zlec.replace(/[^0-9]/g, ''); // Extract numbers only
+                if (commissionId) {
+                    window.open('https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_notes/' + commissionId, '_blank');
+                }
+            });
             
             col5.appendChild(opisBtn);
             col5.appendChild(uwagiBtn);
 
-            // Actions: clone dropdown container from last cell if exists
+            // Actions: create new dropdown from original links
             var lastCell = cells[cells.length-1];
-            var dropdown = lastCell ? lastCell.querySelector('.eoz-dropdown-container') : null;
-            if (dropdown) {
-                var cloned = dropdown.cloneNode(true);
-                cloned.style.marginTop = '8px';
-                col5.appendChild(cloned);
+            if (lastCell) {
+                var originalLinks = lastCell.querySelectorAll('a');
+                if (originalLinks.length > 0) {
+                    var actionsBtn = createActionDropdown(originalLinks, 'akcje-' + rIndex);
+                    actionsBtn.style.marginTop = '8px';
+                    col5.appendChild(actionsBtn);
+                }
             }
 
             grid.appendChild(col1);
@@ -316,12 +324,23 @@
         });
     }
     
-    function createCompactButton(label, cell, uniqueId){
+    function createActionButton(text, iconClass, uniqueId, onClickHandler){
+        var btn = document.createElement('button');
+        btn.className = 'eoz-dropdown-label';
+        btn.style.height = '40px';
+        btn.style.fontSize = '13px';
+        btn.style.width = '100%';
+        btn.style.marginTop = '8px';
+        btn.innerHTML = '<i class="fas ' + iconClass + '"></i> ' + text;
+        btn.onclick = onClickHandler;
+        return btn;
+    }
+    
+    function createActionDropdown(originalLinks, uniqueId){
         var container = document.createElement('div');
         container.className = 'eoz-dropdown-container';
-        container.style.marginTop = '8px';
         
-        var checkboxId = 'eoz-compact-' + uniqueId;
+        var checkboxId = 'eoz-dropdown-' + uniqueId;
         var checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'eoz-dropdown-toggle';
@@ -332,35 +351,30 @@
         btn.htmlFor = checkboxId;
         btn.style.height = '40px';
         btn.style.fontSize = '13px';
-        btn.innerHTML = label; // Use innerHTML to support icons
+        btn.innerHTML = '<i class="fas fa-cog"></i> Akcje';
         
         var menu = document.createElement('div');
         menu.className = 'eoz-dropdown-menu';
-        menu.style.padding = '12px';
-        menu.style.maxHeight = '200px';
-        menu.style.overflowY = 'auto';
-        menu.style.whiteSpace = 'pre-wrap';
-        menu.style.wordBreak = 'break-word';
         
-        if (cell) {
-            // Clone the content including any links/buttons
-            var content = cell.cloneNode(true);
-            menu.appendChild(content);
-        } else {
-            menu.textContent = '—';
-        }
+        originalLinks.forEach(function(link){
+            var menuItem = document.createElement('a');
+            menuItem.className = 'eoz-dropdown-item';
+            menuItem.href = link.href;
+            if (link.target) menuItem.target = link.target;
+            
+            var icon = link.querySelector('i');
+            var titleText = labelFromLink(link);
+            menuItem.innerHTML = '<i class="' + (icon ? icon.className : '') + '"></i> ' + titleText;
+            menuItem.title = titleText;
+            if (link.onclick) menuItem.onclick = link.onclick;
+            menu.appendChild(menuItem);
+        });
         
         container.appendChild(checkbox);
         container.appendChild(btn);
         container.appendChild(menu);
         
-        menu.addEventListener('click', function(e){
-            // Don't close if clicking on links/buttons inside
-            if (e.target.tagName !== 'A' && e.target.tagName !== 'BUTTON') {
-                e.stopPropagation();
-            }
-        });
-        
+        menu.addEventListener('click', function(){ checkbox.checked = false; });
         return container;
     }
 
