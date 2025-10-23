@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.5.1';
+    var VERSION = '1.5.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -339,20 +339,30 @@
                               '<div><span class="eoz-m-label">Płyta:</span><br>' + (plyta||'—') + '</div>' +
                               '<div><span class="eoz-m-label">Wymiar:</span><br>' + (wymiar||'—') + '</div>';
 
-            // Extract edit button from Przygotowane cell
+            // Extract edit button and clean HTML from Przygotowane cell
             var editButton = null;
+            var cleanPrzygotowaneHTML = przygotowaneHTML;
+            
             if (idxPrzygot>=0 && cells[idxPrzygot]){
-                var editBtn = cells[idxPrzygot].querySelector('a[href*="edit_plate_ready"]');
+                // Clone the cell to manipulate
+                var tempCell = cells[idxPrzygot].cloneNode(true);
+                
+                // Extract and remove edit button from HTML
+                var editBtn = tempCell.querySelector('a.change-amount-manual');
                 if (editBtn) {
                     editButton = editBtn.cloneNode(true);
+                    editBtn.remove(); // Remove from temp cell
                 }
+                
+                // Get cleaned HTML without edit button
+                cleanPrzygotowaneHTML = tempCell.innerHTML;
             }
             
             var col4 = document.createElement('div'); col4.className = 'eoz-m-col4';
             col4.innerHTML = '<div><span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—') + '</div>' +
-                             '<div style="margin-top:8px"><span class="eoz-m-label">Przygotowane:</span><br>' + przygotowaneHTML + '</div>';
+                             '<div style="margin-top:8px"><span class="eoz-m-label">Przygotowane:</span><br>' + cleanPrzygotowaneHTML + '</div>';
             
-            // Add edit button below switcher
+            // Add edit button below switcher with label
             if (editButton) {
                 var editWrapper = document.createElement('div');
                 editWrapper.style.marginTop = '8px';
