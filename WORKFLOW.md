@@ -30,11 +30,11 @@ Przed commitem **zawsze zwiększ** `@version` w plikach, które zmieniłeś:
 **Dla zmian w userscriptach:**
 - Zwiększ `@version` tylko w zmienionym pliku
 
-**Schemat wersji (semver):**
+**Schemat wersji (zmodyfikowany semver):**
 - `X.Y.Z` — MAJOR.MINOR.PATCH
-- Patch (`0.1.0` → `0.1.1`) — bugfixy, drobne poprawki
-- Minor (`0.1.9` → `0.2.0`) — nowe funkcje (backward compatible)
-- Major (`0.9.0` → `1.0.0`) — breaking changes
+- **Patch (Z):** Zwiększaj przy każdej zmianie o 1, nawet powyżej 9 (`0.2.1` → `0.2.2` → `0.2.11` → `0.2.25`)
+- **Minor (Y):** Tylko na wyraźne żądanie użytkownika
+- **Major (X):** Tylko na wyraźne żądanie użytkownika (breaking changes)
 
 ### 3. Commit i push na GitHub
 
@@ -58,10 +58,12 @@ git push origin main
 
 **Przykłady commitów:**
 ```bash
-git commit -m "feat: Add responsive header menu - bump v0.2.0"
-git commit -m "fix: Remove Object.freeze error - bump v0.1.1"
-git commit -m "refactor: Optimize waitFor timeout - bump v1.0.2"
+git commit -m "feat: Add responsive header menu - bump v0.2.11"
+git commit -m "fix: Remove Object.freeze error - bump v0.1.8"
+git commit -m "refactor: Optimize waitFor timeout - bump v1.0.25"
 ```
+
+**UWAGA:** Patch zawsze +1, nie resetuj przy przejściu przez 9!
 
 ### 4. Aktualizacja na urządzeniach końcowych
 
