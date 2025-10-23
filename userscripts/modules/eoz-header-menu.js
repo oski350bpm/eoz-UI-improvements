@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.3';
+    var VERSION = '2.1.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -17,6 +17,10 @@
     }
 
     var globalStyles = '' +
+        '/* EOZ Global Layout Fixes */\n' +
+        'form#filter.formo-bootstrap { width: 100% !important; }\n' +
+        '@media (min-width: 576px) { .container, .container-sm { max-width: none !important; } }\n' +
+        '\n' +
         '/* EOZ Header Responsive */\n' +
         '@media (max-width: 767px) { .list-group.list-group-horizontal { flex-wrap: nowrap !important; overflow-x: hidden !important; } .list-group.list-group-horizontal > li:not(.eoz-keep-mobile) { display: none !important; } }\n' +
         '@media (min-width: 768px) and (max-width: 1023px) { .list-group.list-group-horizontal > li.eoz-hide-tablet { display: none !important; } }\n' +
