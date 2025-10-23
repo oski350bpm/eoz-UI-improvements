@@ -5,6 +5,11 @@
     'use strict';
 
     var VERSION = '2.0.1';
+    
+    // Expose version to global EOZ object
+    if (!window.EOZ) window.EOZ = {};
+    if (!window.EOZ.HeaderMenu) window.EOZ.HeaderMenu = {};
+    window.EOZ.HeaderMenu.VERSION = VERSION;
 
     if (!window.EOZ) {
         console.error('[EOZ Header Menu] Core not available');

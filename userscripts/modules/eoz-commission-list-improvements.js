@@ -5,6 +5,11 @@
     'use strict';
 
     var VERSION = '1.0.3';
+    
+    // Expose version to global EOZ object
+    if (!window.EOZ) window.EOZ = {};
+    if (!window.EOZ.CommissionList) window.EOZ.CommissionList = {};
+    window.EOZ.CommissionList.VERSION = VERSION;
 
     if (!window.EOZ) {
         console.warn('[EOZ Commission List Module] Core not available');

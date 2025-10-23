@@ -5,6 +5,11 @@
     'use strict';
 
     var VERSION = '1.1.0';
+    
+    // Expose version to global EOZ object
+    if (!window.EOZ) window.EOZ = {};
+    if (!window.EOZ.BoardsMagazine) window.EOZ.BoardsMagazine = {};
+    window.EOZ.BoardsMagazine.VERSION = VERSION;
 
     if (!window.EOZ) {
         console.warn('[EOZ Boards Magazine Module] Core not available');
