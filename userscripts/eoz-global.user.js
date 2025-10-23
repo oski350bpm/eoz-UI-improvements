@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Global UI
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      0.2.5
+// @version      0.2.6
 // @description  Globalne poprawki UI dla EOZ (responsywne menu, formatowanie tabel)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
@@ -13,7 +13,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.5';
+    var VERSION = '0.2.6';
 
     if (!window.EOZ) {
         console.warn('[EOZ Global UI v' + VERSION + '] core not loaded');
@@ -39,19 +39,10 @@
         '  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;\n' +
         '  box-shadow: 0 2px 8px rgba(0,0,0,0.3); margin-top: 10px;\n' +
         '}\n' +
-        '/* EOZ Table Improvements - Universal for all tables */\n' +
-        'table thead th, table.table thead th, th.heading-cell, th.column-names-cell {\n' +
-        '  white-space: normal !important; line-height: 1.4 !important; padding: 10px 8px !important;\n' +
-        '  vertical-align: middle !important; font-size: 13px !important;\n' +
-        '}\n' +
-        '/* Checkbox alignment - works for all tables */\n' +
-        'td input[type="checkbox"], th input[type="checkbox"] {\n' +
-        '  display: inline-block !important; vertical-align: middle !important;\n' +
-        '  margin: 0 8px 0 0 !important; position: relative !important; top: 0 !important;\n' +
-        '}\n' +
-        '/* LP column - checkbox + text in one line */\n' +
-        'td:first-child, th:first-child {\n' +
-        '  display: flex !important; align-items: center !important; gap: 8px !important;\n' +
+        '/* EOZ Table Improvements */\n' +
+        'th.heading-cell.column-names-cell { white-space: normal !important; line-height: 1.3 !important; padding: 8px !important; }\n' +
+        'td.body-cell input[type="checkbox"], th.heading-cell input[type="checkbox"] {\n' +
+        '  float: left !important; margin-right: 8px !important; margin-top: 2px !important;\n' +
         '}\n' +
         '#eoz-burger-menu span { display: block; width: 24px; height: 2px; background: white; position: relative; }\n' +
         '#eoz-burger-menu span::before, #eoz-burger-menu span::after {\n' +
