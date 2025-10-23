@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.1';
+    var VERSION = '2.0.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -208,19 +208,15 @@
             var dataZakonczenia = idxDataZakonczenia>=0 && cells[idxDataZakonczenia] ? (cells[idxDataZakonczenia].textContent||'').trim().substring(0,10) : '—';
             var status = idxStatus>=0 && cells[idxStatus] ? (cells[idxStatus].textContent||'').trim() : '—';
             
-            // Find actions cell
+            // Find actions cell and extract (move) the dropdown to preserve event handlers
             var actionsCell = row.querySelector('td.body-cell.body-options-cell');
             var actionsDropdown = null;
             if (actionsCell) {
                 var existingDropdown = actionsCell.querySelector('.eoz-dropdown-container');
                 if (existingDropdown) {
-                    actionsDropdown = existingDropdown.cloneNode(true);
-                    // Re-attach event listener
-                    var checkbox = actionsDropdown.querySelector('input.eoz-dropdown-toggle');
-                    var menu = actionsDropdown.querySelector('.eoz-dropdown-menu');
-                    if (checkbox && menu) {
-                        menu.addEventListener('click', function(){ checkbox.checked = false; });
-                    }
+                    // Move the original element instead of cloning to preserve event handlers
+                    actionsDropdown = existingDropdown;
+                    existingDropdown.remove(); // Remove from original location
                 }
             }
             
