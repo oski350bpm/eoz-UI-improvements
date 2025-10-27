@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.0';
+    var VERSION = '2.0.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
