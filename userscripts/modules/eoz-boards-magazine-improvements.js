@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.2';
+    var VERSION = '2.0.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -71,6 +71,7 @@
         '  .eoz-m-note-btn:hover{background:#f0f7ff!important;border-color:#0056b3!important}\n' +
         '  .eoz-m-note-btn i{font-size:20px;margin:0}\n' +
         '  .eoz-m-col5-actions{margin-top:8px}\n' +
+        '  .switch-field input:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important}\n' +
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
@@ -419,7 +420,7 @@
             // This is a main row - collect all veneers for this order
             orderCount++;
             
-            var data = cells[idxData] ? (cells[idxData].textContent||'').trim() : '';
+            var data = orderCount.toString();
             var klient = cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
             
             var zlecenieLink = '';
