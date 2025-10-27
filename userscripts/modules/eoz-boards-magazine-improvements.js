@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.6.7';
+    var VERSION = '1.6.8';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -159,9 +159,22 @@
         console.log('[EOZ Boards Magazine Module] Comments table formatting applied');
     }
 
+    function fixButtonText() {
+        // Fix "nie wydanych" to "niewydanych" in button text
+        var button = document.querySelector('#btn-zestawienie-zlecen-niewykonanych');
+        if (button) {
+            var originalText = button.textContent;
+            button.textContent = originalText.replace('nie wydanych', 'niewydanych');
+            console.log('[EOZ Boards Magazine Module] Fixed button text:', originalText, '->', button.textContent);
+        }
+    }
+
     function apply() {
         // Apply special formatting for comments table
         applyCommentsTableFormatting();
+        
+        // Fix button text grammar
+        fixButtonText();
         
         // Change first header to Lp.
         var headerRow = document.querySelector('table thead tr');
@@ -320,6 +333,15 @@
             if (row.querySelector('td.eoz-mobile-cell')) return; // already built
             var cells = row.querySelectorAll('td');
             if (!cells || cells.length === 0) return;
+            
+            // Skip rows that only have a single cell with colspan (empty/separator rows)
+            if (cells.length === 1 && cells[0].hasAttribute('colspan')) {
+                var colspanValue = parseInt(cells[0].getAttribute('colspan'));
+                if (colspanValue > 1) {
+                    console.log('[EOZ Boards Magazine Module] Skipping separator row', rIndex);
+                    return;
+                }
+            }
 
             var col1Lp = (rIndex + 1).toString();
             
