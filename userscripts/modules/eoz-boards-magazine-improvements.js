@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.0';
+    var VERSION = '2.3.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -42,14 +42,14 @@
         '.eoz-dropdown-container{position:relative!important;width:100%!important}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
+        'body[data-veneer] table thead th:nth-child(1){display:none!important}\n' +
+        'body[data-veneer] table thead th:nth-child(4){display:none!important}\n' +
+        'body[data-veneer] table tbody td:nth-child(1){display:none!important}\n' +
+        'body[data-veneer] table tbody td:nth-child(4){display:none!important}\n' +
         '@media (min-width:961px){\n' +
         '  table tbody tr td.eoz-mobile-cell{display:none!important}\n' +
         '}\n' +
         '@media (max-width:960px){\n' +
-        '  body[data-veneer] table thead th:nth-child(1){display:none!important}\n' +
-        '  body[data-veneer] table thead th:nth-child(4){display:none!important}\n' +
-        '  body[data-veneer] table tbody td:nth-child(1){display:none!important}\n' +
-        '  body[data-veneer] table tbody td:nth-child(4){display:none!important}\n' +
         '  table thead{display:none!important}\n' +
         '  table tbody tr td:not(.eoz-mobile-cell):not([colspan]){display:none!important}\n' +
         '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
@@ -75,8 +75,9 @@
         '  .eoz-m-note-btn:hover{background:#f0f7ff!important;border-color:#0056b3!important}\n' +
         '  .eoz-m-note-btn i{font-size:20px;margin:0}\n' +
         '  .eoz-m-col5-actions{margin-top:8px}\n' +
-        '  table tbody td .switch-field input[type="radio"]:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
-        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .switch-field input[type="radio"]:checked+label.tippy{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
@@ -85,16 +86,18 @@
         '  .eoz-m-col3{grid-column:2;grid-row:1}\n' +
         '  .eoz-m-col4{grid-column:3;grid-row:1;display:flex;flex-direction:column;gap:8px}\n' +
         '  .eoz-m-col5{grid-column:1 / 4;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
-        '  table tbody td .switch-field input[type="radio"]:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
-        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .switch-field input[type="radio"]:checked+label.tippy{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-m-details{grid-template-columns:1fr;grid-template-rows:auto auto auto}\n' +
         '  .eoz-m-col3{order:1}\n' +
         '  .eoz-m-col4{order:2;display:flex;flex-direction:column;gap:8px}\n' +
         '  .eoz-m-col5{order:3}\n' +
-        '  table tbody td .switch-field input[type="radio"]:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
-        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .switch-field input[type="radio"]:checked+label.tippy{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-boards-magazine-module-css' });
