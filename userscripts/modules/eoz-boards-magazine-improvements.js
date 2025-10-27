@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.6.2';
+    var VERSION = '1.6.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -45,8 +45,9 @@
         '}\n' +
         '@media (max-width:960px){\n' +
         '  table thead{display:none!important}\n' +
-        '  table tbody tr td:not(.eoz-mobile-cell){display:none!important}\n' +
+        '  table tbody tr td:not(.eoz-mobile-cell):not([colspan]){display:none!important}\n' +
         '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
+        '  table tbody tr td[colspan]{display:table-cell!important;padding:8px!important;background:#f8f9fa!important;border-top:1px solid #dee2e6!important}\n' +
         '  .eoz-mobile-grid{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}\n' +
         '  .eoz-m-header{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}\n' +
         '  .eoz-m-lp{font-size:12px;color:#666}\n' +
