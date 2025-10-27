@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.3';
+    var VERSION = '2.0.4';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -378,11 +378,10 @@
         allHeaders.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
         console.log('[EOZ Boards Magazine Module] Headers found:', headerNames.join(', '));
         
-        // Header indices for veneers /3: Data | Klient | Zlecenie | Lp | Okleina | Wymiar | Ilość | Przygotowane | Opis | Uwagi | Opcje
+        // Header indices for veneers /3: Data | Klient | Zlecenie | Okleina | Wymiar | Ilość | Przygotowane | Opis | Uwagi | Opcje
         var idxData = findHeaderIndex('Data');
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
-        var idxLp = findHeaderIndex('Lp');
         var idxOkleina = findHeaderIndex('Okleina');
         var idxWymiar = findHeaderIndex('Wymiar');
         var idxIlosc = findHeaderIndex('Ilość');
@@ -436,7 +435,6 @@
                 }
             }
             
-            var lp = cells[idxLp] ? (cells[idxLp].textContent||'').trim() : '';
             
             // Collect veneers from this row and following sub-rows
             var veneers = [];
@@ -548,8 +546,7 @@
 
             var col3 = document.createElement('div'); 
             col3.className = 'eoz-m-col3';
-            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
-                              '<div><span class="eoz-m-label">Lp:</span><br>' + (lp||'—') + '</div>';
+            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>';
 
             var col4 = document.createElement('div'); 
             col4.className = 'eoz-m-col4';
