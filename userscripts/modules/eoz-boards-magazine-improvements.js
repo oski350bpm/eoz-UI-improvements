@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.2';
+    var VERSION = '2.1.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -80,12 +80,14 @@
         '  .eoz-m-col3{grid-column:2;grid-row:1}\n' +
         '  .eoz-m-col4{grid-column:3;grid-row:1;display:flex;flex-direction:column;gap:8px}\n' +
         '  .eoz-m-col5{grid-column:1 / 4;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
+        '  .switch-field input:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-m-details{grid-template-columns:1fr;grid-template-rows:auto auto auto}\n' +
         '  .eoz-m-col3{order:1}\n' +
         '  .eoz-m-col4{order:2;display:flex;flex-direction:column;gap:8px}\n' +
         '  .eoz-m-col5{order:3}\n' +
+        '  .switch-field input:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-boards-magazine-module-css' });
