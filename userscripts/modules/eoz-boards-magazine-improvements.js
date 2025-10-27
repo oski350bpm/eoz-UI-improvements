@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.6.8';
+    var VERSION = '1.7.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -50,14 +50,12 @@
         '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
         '  table tbody tr td[colspan]{display:table-cell!important;padding:8px!important;background:#f8f9fa!important;border-top:1px solid #dee2e6!important}\n' +
         '  table.table.table-borderd.table-condensed.table-md thead{display:none!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md tbody tr td{display:table-cell!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md tbody tr:first-child td:first-child{width:50%!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md tbody tr:first-child td:last-child{width:50%!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md tbody tr:not(:first-child) td{display:none!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md tbody tr:not(:first-child) td[colspan]{display:table-cell!important;width:100%!important;padding:8px!important;background:#f8f9fa!important;border-top:1px solid #dee2e6!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md .eoz-comment-data{font-weight:bold!important;color:#333!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md .eoz-comment-author{font-weight:bold!important;color:#666!important;text-align:right!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md .eoz-comment-title{font-style:italic!important;color:#555!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr.eoz-comment-row-1 td{display:table-cell!important;padding:8px!important;border:1px solid #dee2e6!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr.eoz-comment-row-1 td.eoz-comment-data{width:50%!important;font-weight:bold!important;color:#333!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr.eoz-comment-row-1 td.eoz-comment-author{width:50%!important;font-weight:bold!important;color:#666!important;text-align:right!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr.eoz-comment-row-2 td{display:table-cell!important;width:100%!important;padding:8px!important;border:1px solid #dee2e6!important;background:#f8f9fa!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr.eoz-comment-row-2 td.eoz-comment-title{font-style:italic!important;color:#555!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr td[colspan="3"]{display:table-cell!important;width:100%!important;padding:8px!important;border:1px solid #dee2e6!important;background:#fff!important}\n' +
         '  .eoz-mobile-grid{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}\n' +
         '  .eoz-m-header{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}\n' +
         '  .eoz-m-lp{font-size:12px;color:#666}\n' +
@@ -129,8 +127,14 @@
             return;
         }
         
-        var rows = commentsTable.querySelectorAll('tbody tr');
+        var tbody = commentsTable.querySelector('tbody');
+        if (!tbody) return;
+        
+        var rows = Array.from(tbody.querySelectorAll('tr'));
         console.log('[EOZ Boards Magazine Module] Found', rows.length, 'rows in comments table');
+        
+        // Create new rows array to replace existing tbody content
+        var newRows = [];
         
         rows.forEach(function(row, index) {
             var cells = row.querySelectorAll('td');
@@ -138,25 +142,54 @@
             
             if (cells.length === 3) {
                 // This is a data row (Data dodania, Tytuł, Dodał)
-                var dataCell = cells[0]; // Data dodania
-                var titleCell = cells[1]; // Tytuł
-                var authorCell = cells[2]; // Dodał
+                var dataText = cells[0].innerHTML; // Data dodania (preserve HTML like <b>)
+                var titleText = cells[1].textContent.trim(); // Tytuł
+                var authorText = cells[2].textContent.trim(); // Dodał
                 
                 console.log('[EOZ Boards Magazine Module] Processing row', index, ':', 
-                    dataCell.textContent.trim(), '|', titleCell.textContent.trim(), '|', authorCell.textContent.trim());
+                    cells[0].textContent.trim(), '|', titleText, '|', authorText);
                 
-                // Modify the title cell to include "Tytuł: " prefix
-                var titleText = titleCell.textContent.trim();
+                // Create first row: Data | Autor
+                var row1 = document.createElement('tr');
+                row1.className = 'eoz-comment-row-1';
+                
+                var dataCell = document.createElement('td');
+                dataCell.className = 'eoz-comment-data';
+                dataCell.innerHTML = dataText;
+                
+                var authorCell = document.createElement('td');
+                authorCell.className = 'eoz-comment-author';
+                authorCell.textContent = authorText;
+                
+                row1.appendChild(dataCell);
+                row1.appendChild(authorCell);
+                
+                // Create second row: Tytuł with colspan
+                var row2 = document.createElement('tr');
+                row2.className = 'eoz-comment-row-2';
+                
+                var titleCell = document.createElement('td');
+                titleCell.className = 'eoz-comment-title';
+                titleCell.setAttribute('colspan', '2');
                 titleCell.innerHTML = '<strong>Tytuł:</strong> ' + titleText;
                 
-                // Add mobile-specific classes for styling
-                dataCell.classList.add('eoz-comment-data');
-                titleCell.classList.add('eoz-comment-title');
-                authorCell.classList.add('eoz-comment-author');
+                row2.appendChild(titleCell);
+                
+                newRows.push(row1);
+                newRows.push(row2);
+            } else if (cells.length === 1 && cells[0].hasAttribute('colspan')) {
+                // This is a content row with colspan (keep as is)
+                newRows.push(row.cloneNode(true));
             }
         });
         
-        console.log('[EOZ Boards Magazine Module] Comments table formatting applied');
+        // Replace tbody content with new rows
+        tbody.innerHTML = '';
+        newRows.forEach(function(row) {
+            tbody.appendChild(row);
+        });
+        
+        console.log('[EOZ Boards Magazine Module] Comments table formatting applied -', newRows.length, 'new rows created');
     }
 
     function fixButtonText() {
