@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.1';
+    var VERSION = '2.0.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -74,12 +74,11 @@
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
-        '  .eoz-m-details{grid-template-columns:36px 90px 1fr 140px;grid-template-rows:auto auto}\n' +
-        '  .eoz-m-col1{grid-column:1;grid-row:1}\n' +
-        '  .eoz-m-col2{grid-column:2;grid-row:1}\n' +
-        '  .eoz-m-col3{grid-column:3;grid-row:1}\n' +
-        '  .eoz-m-col4{grid-column:4;grid-row:1;display:flex;flex-direction:column;gap:8px}\n' +
-        '  .eoz-m-col5{grid-column:1 / 5;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
+        '  .eoz-m-details{grid-template-columns:90px 1fr 140px;grid-template-rows:auto auto}\n' +
+        '  .eoz-m-col2{grid-column:1;grid-row:1;font-weight:bold;color:#007bff}\n' +
+        '  .eoz-m-col3{grid-column:2;grid-row:1}\n' +
+        '  .eoz-m-col4{grid-column:3;grid-row:1;display:flex;flex-direction:column;gap:8px}\n' +
+        '  .eoz-m-col5{grid-column:1 / 4;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-m-details{grid-template-columns:1fr;grid-template-rows:auto auto auto}\n' +
@@ -533,6 +532,19 @@
             var details = document.createElement('div');
             details.className = 'eoz-m-details';
 
+            var col2 = document.createElement('div'); 
+            col2.className = 'eoz-m-col2';
+            if (zlecenieLink) {
+                var linkEl = document.createElement('a');
+                linkEl.href = zlecenieLink;
+                linkEl.textContent = zlecenie;
+                linkEl.style.color = '#007bff';
+                linkEl.style.textDecoration = 'none';
+                col2.appendChild(linkEl);
+            } else {
+                col2.textContent = zlecenie;
+            }
+
             var col3 = document.createElement('div'); 
             col3.className = 'eoz-m-col3';
             col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
@@ -601,6 +613,7 @@
             }
 
             grid.appendChild(header);
+            details.appendChild(col2);
             details.appendChild(col3);
             details.appendChild(col4);
             details.appendChild(col5);
