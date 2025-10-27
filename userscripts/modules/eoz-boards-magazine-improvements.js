@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.1';
+    var VERSION = '2.1.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -71,7 +71,7 @@
         '  .eoz-m-note-btn:hover{background:#f0f7ff!important;border-color:#0056b3!important}\n' +
         '  .eoz-m-note-btn i{font-size:20px;margin:0}\n' +
         '  .eoz-m-col5-actions{margin-top:8px}\n' +
-        '  .switch-field input:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important}\n' +
+        '  .switch-field input:checked+label{background-color:#f06521!important;box-shadow:none!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
@@ -416,6 +416,11 @@
         
         console.log('[EOZ Boards Magazine Module] DEBUG: Found', rows.length, 'rows');
         
+        if (rows.length === 0) {
+            console.log('[EOZ Boards Magazine Module] DEBUG: No rows found! Table may not be loaded yet.');
+            return;
+        }
+        
         rows.forEach(function(row, rIndex){
             if (row.querySelector('td.eoz-mobile-cell')) return; // already built
             var cells = row.querySelectorAll('td');
@@ -653,6 +658,10 @@
         });
         
         console.log('[EOZ Boards Magazine Module] Veneers grouped mobile layout built:', orderCount, 'orders');
+        
+        if (orderCount === 0) {
+            console.log('[EOZ Boards Magazine Module] DEBUG: No orders processed! Check if rows have rowspan attributes.');
+        }
     }
 
     function buildMobileLayout(){
