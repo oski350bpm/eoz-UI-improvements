@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.8.0';
+    var VERSION = '1.8.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -25,7 +25,7 @@
         'table{width:100%!important;table-layout:auto!important}\n' +
         'table thead th, table tbody td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important}\n' +
         'table thead th, table tbody td{padding:6px 8px!important;font-size:13px!important}\n' +
-        '#btn-zestawienie-materialow, #btn-zestawienie-zlecen-historia{display:none!important}\n' +
+        'body:not([data-veneer]) #btn-zestawienie-materialow, body:not([data-veneer]) #btn-zestawienie-zlecen-historia{display:none!important}\n' +
         '.select2-container{width:100%!important}\n' +
         '.eoz-dropdown-toggle{display:none}\n' +
         '.eoz-dropdown-label{width:100%!important;height:48px!important;background:#007bff!important;color:#fff!important;border:none!important;border-radius:8px!important;font-size:14px!important;font-weight:bold!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;transition:background-color .2s!important;padding:10px!important;box-shadow:0 2px 4px rgba(0,0,0,.1)!important;user-select:none!important}\n' +
@@ -203,6 +203,12 @@
     }
 
     function apply() {
+        // Set data attribute to distinguish veneers from boards
+        var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
+        if (isVeneers) {
+            document.body.setAttribute('data-veneer', 'true');
+        }
+        
         // Apply special formatting for comments table
         applyCommentsTableFormatting();
         
