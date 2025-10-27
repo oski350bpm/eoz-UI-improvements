@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.6.6';
+    var VERSION = '1.6.7';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -122,16 +122,28 @@
 
     function applyCommentsTableFormatting() {
         var commentsTable = document.querySelector('table.table.table-borderd.table-condensed.table-md');
-        if (!commentsTable) return;
+        console.log('[EOZ Boards Magazine Module] Looking for comments table:', commentsTable);
+        
+        if (!commentsTable) {
+            console.log('[EOZ Boards Magazine Module] Comments table not found');
+            return;
+        }
         
         var rows = commentsTable.querySelectorAll('tbody tr');
+        console.log('[EOZ Boards Magazine Module] Found', rows.length, 'rows in comments table');
+        
         rows.forEach(function(row, index) {
             var cells = row.querySelectorAll('td');
+            console.log('[EOZ Boards Magazine Module] Row', index, 'has', cells.length, 'cells');
+            
             if (cells.length === 3) {
                 // This is a data row (Data dodania, Tytuł, Dodał)
                 var dataCell = cells[0]; // Data dodania
                 var titleCell = cells[1]; // Tytuł
                 var authorCell = cells[2]; // Dodał
+                
+                console.log('[EOZ Boards Magazine Module] Processing row', index, ':', 
+                    dataCell.textContent.trim(), '|', titleCell.textContent.trim(), '|', authorCell.textContent.trim());
                 
                 // Modify the title cell to include "Tytuł: " prefix
                 var titleText = titleCell.textContent.trim();
@@ -143,6 +155,8 @@
                 authorCell.classList.add('eoz-comment-author');
             }
         });
+        
+        console.log('[EOZ Boards Magazine Module] Comments table formatting applied');
     }
 
     function apply() {
@@ -184,6 +198,44 @@
         buildMobileLayout();
 
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
+        
+        // Watch for dynamically loaded comments tables
+        watchForCommentsTable();
+    }
+    
+    function watchForCommentsTable() {
+        // Use MutationObserver to watch for dynamically added tables
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) { // Element node
+                            // Check if the added node or its children contain our target table
+                            var commentsTable = node.querySelector ? 
+                                node.querySelector('table.table.table-borderd.table-condensed.table-md') : null;
+                            
+                            if (commentsTable || (node.tagName === 'TABLE' && 
+                                node.classList.contains('table') && 
+                                node.classList.contains('table-borderd') && 
+                                node.classList.contains('table-condensed') && 
+                                node.classList.contains('table-md'))) {
+                                
+                                console.log('[EOZ Boards Magazine Module] Comments table detected dynamically, applying formatting');
+                                setTimeout(applyCommentsTableFormatting, 100); // Small delay to ensure DOM is ready
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        console.log('[EOZ Boards Magazine Module] Started watching for dynamic comments tables');
     }
 
     var ICON_LABELS = {
