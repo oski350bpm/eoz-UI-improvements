@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.7.0';
+    var VERSION = '1.7.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -38,7 +38,6 @@
         '.eoz-dropdown-item:hover{background:#f8f9fa!important}\n' +
         '.eoz-dropdown-item i{font-size:18px!important;width:20px!important;text-align:center!important}\n' +
         '.eoz-dropdown-container{position:relative!important;width:100%!important}\n' +
-        'td:last-child{width:1%!important;white-space:nowrap!important}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
         '@media (min-width:961px){\n' +
