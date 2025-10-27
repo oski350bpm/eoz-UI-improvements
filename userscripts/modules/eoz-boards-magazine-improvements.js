@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.6.4';
+    var VERSION = '1.6.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -48,8 +48,15 @@
         '  table tbody tr td:not(.eoz-mobile-cell):not([colspan]){display:none!important}\n' +
         '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
         '  table tbody tr td[colspan]{display:table-cell!important;padding:8px!important;background:#f8f9fa!important;border-top:1px solid #dee2e6!important}\n' +
-        '  table.table.table-borderd.table-condensed.table-md thead{display:table-header-group!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md thead{display:none!important}\n' +
         '  table.table.table-borderd.table-condensed.table-md tbody tr td{display:table-cell!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr:first-child td:first-child{width:50%!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr:first-child td:last-child{width:50%!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr:not(:first-child) td{display:none!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md tbody tr:not(:first-child) td[colspan]{display:table-cell!important;width:100%!important;padding:8px!important;background:#f8f9fa!important;border-top:1px solid #dee2e6!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md .eoz-comment-data{font-weight:bold!important;color:#333!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md .eoz-comment-author{font-weight:bold!important;color:#666!important;text-align:right!important}\n' +
+        '  table.table.table-borderd.table-condensed.table-md .eoz-comment-title{font-style:italic!important;color:#555!important}\n' +
         '  .eoz-mobile-grid{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}\n' +
         '  .eoz-m-header{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}\n' +
         '  .eoz-m-lp{font-size:12px;color:#666}\n' +
@@ -112,7 +119,35 @@
         if (window.innerWidth <= 1024) hideColumnByIndex(uwagiIdx, 'eoz-hide-1024');
     }
 
+    function applyCommentsTableFormatting() {
+        var commentsTable = document.querySelector('table.table.table-borderd.table-condensed.table-md');
+        if (!commentsTable) return;
+        
+        var rows = commentsTable.querySelectorAll('tbody tr');
+        rows.forEach(function(row, index) {
+            var cells = row.querySelectorAll('td');
+            if (cells.length === 3) {
+                // This is a data row (Data dodania, Tytuł, Dodał)
+                var dataCell = cells[0]; // Data dodania
+                var titleCell = cells[1]; // Tytuł
+                var authorCell = cells[2]; // Dodał
+                
+                // Modify the title cell to include "Tytuł: " prefix
+                var titleText = titleCell.textContent.trim();
+                titleCell.innerHTML = '<strong>Tytuł:</strong> ' + titleText;
+                
+                // Add mobile-specific classes for styling
+                dataCell.classList.add('eoz-comment-data');
+                titleCell.classList.add('eoz-comment-title');
+                authorCell.classList.add('eoz-comment-author');
+            }
+        });
+    }
+
     function apply() {
+        // Apply special formatting for comments table
+        applyCommentsTableFormatting();
+        
         // Change first header to Lp.
         var headerRow = document.querySelector('table thead tr');
         if (headerRow) {
