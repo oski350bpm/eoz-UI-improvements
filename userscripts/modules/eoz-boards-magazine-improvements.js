@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.0';
+    var VERSION = '2.1.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -89,6 +89,23 @@
         '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-boards-magazine-module-css' });
+    
+    // Debug: Check if radio button CSS is applied
+    setTimeout(function(){
+        var radioButtons = document.querySelectorAll('.switch-field input[type="radio"]');
+        console.log('[EOZ Boards Magazine Module] DEBUG: Found', radioButtons.length, 'radio buttons');
+        radioButtons.forEach(function(radio, idx){
+            console.log('[EOZ Boards Magazine Module] DEBUG: Radio', idx, 'checked:', radio.checked, 'id:', radio.id);
+        });
+        
+        // Check if CSS is applied
+        var testLabel = document.querySelector('.switch-field input:checked + label');
+        if (testLabel) {
+            var computedStyle = window.getComputedStyle(testLabel);
+            console.log('[EOZ Boards Magazine Module] DEBUG: Checked label background:', computedStyle.backgroundColor);
+            console.log('[EOZ Boards Magazine Module] DEBUG: Checked label color:', computedStyle.color);
+        }
+    }, 1000);
 
     function run() {
         window.EOZ.waitFor('table tbody tr', { timeout: 10000 })
@@ -372,6 +389,7 @@
 
     function buildMobileLayoutVeneersGrouped(){
         console.log('[EOZ Boards Magazine Module] Building mobile layout for veneers grouped view (/3)');
+        console.log('[EOZ Boards Magazine Module] DEBUG: Starting buildMobileLayoutVeneersGrouped');
         
         var allHeaders = document.querySelectorAll('table thead th');
         var headerNames = [];
@@ -389,13 +407,21 @@
         var idxOpis = findHeaderIndex('Opis');
         var idxUwagi = findHeaderIndex('Uwagi');
         
+        console.log('[EOZ Boards Magazine Module] DEBUG: Column indices:', {
+            idxData, idxKlient, idxZlecenie, idxOkleina, idxWymiar, idxIlosc, idxPrzygot, idxOpis, idxUwagi
+        });
+        
         var rows = document.querySelectorAll('table tbody tr');
         var orderCount = 0;
+        
+        console.log('[EOZ Boards Magazine Module] DEBUG: Found', rows.length, 'rows');
         
         rows.forEach(function(row, rIndex){
             if (row.querySelector('td.eoz-mobile-cell')) return; // already built
             var cells = row.querySelectorAll('td');
             if (!cells || cells.length === 0) return;
+            
+            console.log('[EOZ Boards Magazine Module] DEBUG: Processing row', rIndex, 'with', cells.length, 'cells');
             
             // Skip grouping rows (date headers with colspan)
             var firstCell = row.querySelector('th[colspan], td[colspan]');
@@ -419,8 +445,13 @@
             // This is a main row - collect all veneers for this order
             orderCount++;
             
+            console.log('[EOZ Boards Magazine Module] DEBUG: Processing main row', rIndex, 'orderCount:', orderCount);
+            
             var data = orderCount.toString();
+            console.log('[EOZ Boards Magazine Module] DEBUG: data (LP) =', data);
+            
             var klient = cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
+            console.log('[EOZ Boards Magazine Module] DEBUG: klient =', klient);
             
             var zlecenieLink = '';
             var zlecenie = '';
