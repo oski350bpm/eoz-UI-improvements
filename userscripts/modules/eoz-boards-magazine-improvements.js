@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.8.1';
+    var VERSION = '1.9.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -26,6 +26,7 @@
         'table thead th, table tbody td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important}\n' +
         'table thead th, table tbody td{padding:6px 8px!important;font-size:13px!important}\n' +
         'body:not([data-veneer]) #btn-zestawienie-materialow, body:not([data-veneer]) #btn-zestawienie-zlecen-historia{display:none!important}\n' +
+        'body[data-veneer] #btn-zestawienie-zlecen-podsumowanie{display:none!important}\n' +
         '.select2-container{width:100%!important}\n' +
         '.eoz-dropdown-toggle{display:none}\n' +
         '.eoz-dropdown-label{width:100%!important;height:48px!important;background:#007bff!important;color:#fff!important;border:none!important;border-radius:8px!important;font-size:14px!important;font-weight:bold!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;transition:background-color .2s!important;padding:10px!important;box-shadow:0 2px 4px rgba(0,0,0,.1)!important;user-select:none!important}\n' +
@@ -193,12 +194,20 @@
     }
 
     function fixButtonText() {
-        // Fix "nie wydanych" to "niewydanych" in button text
+        // Fix "nie wydanych" to "niewydanych" in button text (boards)
         var button = document.querySelector('#btn-zestawienie-zlecen-niewykonanych');
         if (button) {
             var originalText = button.textContent;
             button.textContent = originalText.replace('nie wydanych', 'niewydanych');
             console.log('[EOZ Boards Magazine Module] Fixed button text:', originalText, '->', button.textContent);
+        }
+        
+        // Fix "nie wydanych" to "niewydanych" in veneers
+        var veneersButton = document.querySelector('#btn-zestawienie-zlecen-historia');
+        if (veneersButton) {
+            var originalText = veneersButton.textContent;
+            veneersButton.textContent = originalText.replace('nie wydanych', 'niewydanych');
+            console.log('[EOZ Boards Magazine Module] Fixed veneers button text:', originalText, '->', veneersButton.textContent);
         }
     }
 
@@ -358,12 +367,18 @@
         allHeaders.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
         console.log('[EOZ Boards Magazine Module] Headers found:', headerNames.join(', '));
 
+        // Check if this is boards or veneers view
+        var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
+        
+        // Check if this is the /3 view (grouped by date in veneers)
+        var isGroupedView = isVeneers && window.location.href.indexOf('/3') !== -1;
+        
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
         var idxNazwa = findHeaderIndex('Nazwa zamówienia');
         
-        // Check if this is boards or veneers view
-        var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
+        // In /3 view, data rows start from Zlecenie column (missing Data and Klient)
+        var columnOffset = isGroupedView ? 2 : 0;
         
         var idxPlytaWymiar = -1;
         var idxNazwaOkleiny = -1;
@@ -390,21 +405,34 @@
             if (!cells || cells.length === 0) return;
             
             // Skip rows that only have a single cell with colspan (empty/separator rows)
-            if (cells.length === 1 && cells[0].hasAttribute('colspan')) {
-                var colspanValue = parseInt(cells[0].getAttribute('colspan'));
-                if (colspanValue > 1) {
-                    console.log('[EOZ Boards Magazine Module] Skipping separator row', rIndex);
-                    return;
+            if (cells.length === 1) {
+                if (cells[0].hasAttribute('colspan')) {
+                    var colspanValue = parseInt(cells[0].getAttribute('colspan'));
+                    if (colspanValue > 1) {
+                        console.log('[EOZ Boards Magazine Module] Skipping separator row', rIndex);
+                        return;
+                    }
                 }
+                // Skip grouping rows (e.g., date headers in veneers /3 view)
+                // These have only 1 cell without colspan
+                console.log('[EOZ Boards Magazine Module] Skipping grouping row', rIndex, ':', (cells[0].textContent || '').trim());
+                return;
             }
 
             var col1Lp = (rIndex + 1).toString();
             
+            // Helper function to get cell with offset correction
+            function getCell(headerIndex) {
+                if (headerIndex < 0) return null;
+                var actualIndex = headerIndex - columnOffset;
+                return actualIndex >= 0 && actualIndex < cells.length ? cells[actualIndex] : null;
+            }
+            
             // Zlecenie: preserve original link
             var col2Zlec = '';
             var zlecenieLink = '';
-            if (idxZlecenie >=0 && cells[idxZlecenie]) {
-                var zlecenieCell = cells[idxZlecenie];
+            var zlecenieCell = getCell(idxZlecenie);
+            if (zlecenieCell) {
                 var link = zlecenieCell.querySelector('a');
                 if (link) {
                     zlecenieLink = link.href;
@@ -414,8 +442,10 @@
                 }
             }
             
-            var klient = idxKlient>=0 && cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
-            var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '';
+            var klientCell = getCell(idxKlient);
+            var klient = klientCell ? (klientCell.textContent||'').trim() : '';
+            var nazwaCell = getCell(idxNazwa);
+            var nazwa = nazwaCell ? (nazwaCell.textContent||'').trim() : '';
             
             // Material and dimensions handling (different for boards vs veneers)
             var materialLabel = isVeneers ? 'Okleina' : 'Płyta';
@@ -424,16 +454,19 @@
             
             if (isVeneers) {
                 // Veneers: separate columns
-                if (idxNazwaOkleiny>=0 && cells[idxNazwaOkleiny]) {
-                    plyta = (cells[idxNazwaOkleiny].textContent||'').trim();
+                var nazwaOkleinyCell = getCell(idxNazwaOkleiny);
+                if (nazwaOkleinyCell) {
+                    plyta = (nazwaOkleinyCell.textContent||'').trim();
                 }
-                if (idxWymiar>=0 && cells[idxWymiar]) {
-                    wymiar = (cells[idxWymiar].textContent||'').trim();
+                var wymiarCell = getCell(idxWymiar);
+                if (wymiarCell) {
+                    wymiar = (wymiarCell.textContent||'').trim();
                 }
             } else {
                 // Boards: combined column, split by newline
-                if (idxPlytaWymiar>=0 && cells[idxPlytaWymiar]) {
-                    var plytaWymiarText = (cells[idxPlytaWymiar].textContent||'').trim();
+                var plytaWymiarCell = getCell(idxPlytaWymiar);
+                if (plytaWymiarCell) {
+                    var plytaWymiarText = (plytaWymiarCell.textContent||'').trim();
                     var lines = plytaWymiarText.split('\n');
                     if (lines.length >= 2) {
                         plyta = lines[0].trim();
@@ -444,26 +477,30 @@
                 }
             }
             
-            var ilosc = idxIlosc>=0 && cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '';
+            var iloscCell = getCell(idxIlosc);
+            var ilosc = iloscCell ? (iloscCell.textContent||'').trim() : '';
             
             // Przygotowane: keep original HTML with radio buttons and edit button
             var przygotowaneHTML = '';
-            if (idxPrzygot>=0 && cells[idxPrzygot]){
-                przygotowaneHTML = cells[idxPrzygot].innerHTML;
+            var przygotowaneCell = getCell(idxPrzygot);
+            if (przygotowaneCell){
+                przygotowaneHTML = przygotowaneCell.innerHTML;
             }
             
             // Clone original link elements for Uwagi klienta and Uwagi to preserve event handlers
             var opisOriginalLink = null;
-            if (idxOpis>=0 && cells[idxOpis]) {
-                var linkEl = cells[idxOpis].querySelector('a');
+            var opisCell = getCell(idxOpis);
+            if (opisCell) {
+                var linkEl = opisCell.querySelector('a');
                 if (linkEl) {
                     opisOriginalLink = linkEl.cloneNode(true);
                 }
             }
             
             var uwagiOriginalLink = null;
-            if (idxUwagi>=0 && cells[idxUwagi]) {
-                var linkEl2 = cells[idxUwagi].querySelector('a');
+            var uwagiCell = getCell(idxUwagi);
+            if (uwagiCell) {
+                var linkEl2 = uwagiCell.querySelector('a');
                 if (linkEl2) {
                     uwagiOriginalLink = linkEl2.cloneNode(true);
                 }
@@ -514,9 +551,9 @@
             var editButton = null;
             var cleanPrzygotowaneHTML = przygotowaneHTML;
             
-            if (idxPrzygot>=0 && cells[idxPrzygot]){
+            if (przygotowaneCell){
                 // Find the original edit button in the original cell (to preserve event handlers)
-                var originalEditBtn = cells[idxPrzygot].querySelector('a.change-amount-manual');
+                var originalEditBtn = przygotowaneCell.querySelector('a.change-amount-manual');
                 if (originalEditBtn) {
                     // Extract (move) the original button to preserve jQuery events
                     editButton = originalEditBtn;
@@ -524,7 +561,7 @@
                 }
                 
                 // Get cleaned HTML without edit button
-                cleanPrzygotowaneHTML = cells[idxPrzygot].innerHTML;
+                cleanPrzygotowaneHTML = przygotowaneCell.innerHTML;
             }
             
             var col4 = document.createElement('div'); 
