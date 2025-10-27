@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         EOZ All UI Improvements
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      2.4.4
+// @version      2.4.5
 // @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów
 // @match        https://eoz.iplyty.erozrys.pl/*
-// @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=2.4.4
+// @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=2.4.5
 // @downloadURL  https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/core/eoz-core.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-header-menu.js
@@ -16,7 +16,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.4';
+    var VERSION = '2.4.5';
     
     if (!window.EOZ) {
         console.error('[EOZ All UI v' + VERSION + '] Core not loaded!');
