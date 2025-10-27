@@ -1,10 +1,10 @@
 // EOZ Boards/Veneers Magazine Improvements Module
-// Applies on /machines/control_panel_*_magazine_2020
+// Applies on /machines/control_panel_boards_magazine_2020 and control_panel_veneers_magazine_2020
 
 (function() {
     'use strict';
 
-    var VERSION = '1.7.2';
+    var VERSION = '1.8.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -355,10 +355,26 @@
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
         var idxNazwa = findHeaderIndex('Nazwa zamówienia');
-        var idxPlytaWymiar = findHeaderIndex('Płyta i wymiar'); // Combined column
+        
+        // Check if this is boards or veneers view
+        var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
+        
+        var idxPlytaWymiar = -1;
+        var idxNazwaOkleiny = -1;
+        var idxWymiar = -1;
+        
+        if (isVeneers) {
+            // Veneers has separate columns
+            idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
+            idxWymiar = findHeaderIndex('Wymiar');
+        } else {
+            // Boards has combined column
+            idxPlytaWymiar = findHeaderIndex('Płyta i wymiar');
+        }
+        
         var idxIlosc = findHeaderIndex('Ilość');
         var idxPrzygot = findHeaderIndex('Przygotowane');
-        var idxOpis = findHeaderIndex('Uwagi klienta');
+        var idxOpis = isVeneers ? findHeaderIndex('Opis') : findHeaderIndex('Uwagi klienta');
         var idxUwagi = findHeaderIndex('Uwagi');
         
         var rows = document.querySelectorAll('table tbody tr');
@@ -395,18 +411,30 @@
             var klient = idxKlient>=0 && cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
             var nazwa = idxNazwa>=0 && cells[idxNazwa] ? (cells[idxNazwa].textContent||'').trim() : '';
             
-            // Płyta i wymiar: combined column, split by newline
-            var plytaWymiarText = '';
+            // Material and dimensions handling (different for boards vs veneers)
+            var materialLabel = isVeneers ? 'Okleina' : 'Płyta';
             var plyta = '—';
             var wymiar = '—';
-            if (idxPlytaWymiar>=0 && cells[idxPlytaWymiar]) {
-                plytaWymiarText = (cells[idxPlytaWymiar].textContent||'').trim();
-                var lines = plytaWymiarText.split('\n');
-                if (lines.length >= 2) {
-                    plyta = lines[0].trim();
-                    wymiar = lines[1].trim();
-                } else if (lines.length === 1) {
-                    plyta = lines[0].trim();
+            
+            if (isVeneers) {
+                // Veneers: separate columns
+                if (idxNazwaOkleiny>=0 && cells[idxNazwaOkleiny]) {
+                    plyta = (cells[idxNazwaOkleiny].textContent||'').trim();
+                }
+                if (idxWymiar>=0 && cells[idxWymiar]) {
+                    wymiar = (cells[idxWymiar].textContent||'').trim();
+                }
+            } else {
+                // Boards: combined column, split by newline
+                if (idxPlytaWymiar>=0 && cells[idxPlytaWymiar]) {
+                    var plytaWymiarText = (cells[idxPlytaWymiar].textContent||'').trim();
+                    var lines = plytaWymiarText.split('\n');
+                    if (lines.length >= 2) {
+                        plyta = lines[0].trim();
+                        wymiar = lines[1].trim();
+                    } else if (lines.length === 1) {
+                        plyta = lines[0].trim();
+                    }
                 }
             }
             
@@ -473,7 +501,7 @@
             var col3 = document.createElement('div'); col3.className = 'eoz-m-col3';
             col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
                               '<div><span class="eoz-m-label">Nazwa zamówienia:</span><br>' + (nazwa||'—') + '</div>' +
-                              '<div><span class="eoz-m-label">Płyta:</span><br>' + (plyta||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">' + materialLabel + ':</span><br>' + (plyta||'—') + '</div>' +
                               '<div><span class="eoz-m-label">Wymiar:</span><br>' + (wymiar||'—') + '</div>';
 
             // Extract edit button and clean HTML from Przygotowane cell

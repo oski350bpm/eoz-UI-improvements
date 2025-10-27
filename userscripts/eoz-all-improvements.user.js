@@ -1,22 +1,22 @@
 // ==UserScript==
 // @name         EOZ All UI Improvements
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      2.5.3
-// @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów
+// @version      2.6.0
+// @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów (Boards + Veneers)
 // @match        https://eoz.iplyty.erozrys.pl/*
-// @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=2.5.3
+// @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=2.6.0
 // @downloadURL  https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/core/eoz-core.js?v=2.4.5
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-header-menu.js?v=2.4.5
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-commission-list-improvements.js?v=2.4.5
-// @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-boards-magazine-improvements.js?v=1.7.2
+// @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-boards-magazine-improvements.js?v=1.8.0
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    var VERSION = '2.5.3';
+    var VERSION = '2.6.0';
     
     if (!window.EOZ) {
         console.error('[EOZ All UI v' + VERSION + '] Core not loaded!');
@@ -34,6 +34,6 @@
         console.log('[EOZ All UI v' + VERSION + '] Commission List Module v' + window.EOZ.CommissionList.VERSION);
     }
     if (window.EOZ.BoardsMagazine && window.EOZ.BoardsMagazine.VERSION) {
-        console.log('[EOZ All UI v' + VERSION + '] Boards Magazine Module v' + window.EOZ.BoardsMagazine.VERSION);
+        console.log('[EOZ All UI v' + VERSION + '] Boards/Veneers Magazine Module v' + window.EOZ.BoardsMagazine.VERSION);
     }
 })();
