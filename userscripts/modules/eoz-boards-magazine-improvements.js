@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.9.0';
+    var VERSION = '2.0.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -214,6 +214,8 @@
     function apply() {
         // Set data attribute to distinguish veneers from boards
         var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
+        var isVeneersGrouped = isVeneers && window.location.href.indexOf('/3') !== -1;
+        
         if (isVeneers) {
             document.body.setAttribute('data-veneer', 'true');
         }
@@ -224,30 +226,33 @@
         // Fix button text grammar
         fixButtonText();
         
-        // Change first header to Lp.
-        var headerRow = document.querySelector('table thead tr');
-        if (headerRow) {
-            var firstHeaderCell = headerRow.querySelector('th:first-child');
-            if (firstHeaderCell) {
-                firstHeaderCell.textContent = 'Lp.';
-                var link = firstHeaderCell.querySelector('a');
-                if (link) link.remove();
+        // Skip header and row modifications for veneers /3 (grouped view)
+        if (!isVeneersGrouped) {
+            // Change first header to Lp.
+            var headerRow = document.querySelector('table thead tr');
+            if (headerRow) {
+                var firstHeaderCell = headerRow.querySelector('th:first-child');
+                if (firstHeaderCell) {
+                    firstHeaderCell.textContent = 'Lp.';
+                    var link = firstHeaderCell.querySelector('a');
+                    if (link) link.remove();
+                }
             }
-        }
 
-        // Try hide 5th column (Lp 1/1)
-        var allHeaders = document.querySelectorAll('table thead tr th');
-        var lpColumnIndex = -1;
-        allHeaders.forEach(function(th, index){ if (th.textContent.trim() === 'Lp' && index > 0) lpColumnIndex = index; });
-        if (lpColumnIndex !== -1) {
-            if (allHeaders[lpColumnIndex]) allHeaders[lpColumnIndex].style.display = 'none';
-            var rows = document.querySelectorAll('table tbody tr');
-            rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
-        }
+            // Try hide 5th column (Lp 1/1)
+            var allHeaders = document.querySelectorAll('table thead tr th');
+            var lpColumnIndex = -1;
+            allHeaders.forEach(function(th, index){ if (th.textContent.trim() === 'Lp' && index > 0) lpColumnIndex = index; });
+            if (lpColumnIndex !== -1) {
+                if (allHeaders[lpColumnIndex]) allHeaders[lpColumnIndex].style.display = 'none';
+                var rows = document.querySelectorAll('table tbody tr');
+                rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
+            }
 
-        // Row numbers
-        var bodyRows = document.querySelectorAll('table tbody tr');
-        bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
+            // Row numbers
+            var bodyRows = document.querySelectorAll('table tbody tr');
+            bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
+        }
 
         applyResponsiveColumns();
         window.addEventListener('resize', applyResponsiveColumns);
@@ -256,7 +261,11 @@
         transformActionButtons();
         
         // Build mobile grid cell per row
-        buildMobileLayout();
+        if (isVeneersGrouped) {
+            buildMobileLayoutVeneersGrouped();
+        } else {
+            buildMobileLayout();
+        }
 
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
         
@@ -359,6 +368,249 @@
             var original = cell.innerHTML; cell.innerHTML = ''; cell.innerHTML = original;
             var dropdown = createDropdownMenu(cell, index); cell.innerHTML = ''; cell.appendChild(dropdown);
         });
+    }
+
+    function buildMobileLayoutVeneersGrouped(){
+        console.log('[EOZ Boards Magazine Module] Building mobile layout for veneers grouped view (/3)');
+        
+        var allHeaders = document.querySelectorAll('table thead th');
+        var headerNames = [];
+        allHeaders.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
+        console.log('[EOZ Boards Magazine Module] Headers found:', headerNames.join(', '));
+        
+        // Header indices for veneers /3: Data | Klient | Zlecenie | Lp | Okleina | Wymiar | Ilość | Przygotowane | Opis | Uwagi | Opcje
+        var idxData = findHeaderIndex('Data');
+        var idxKlient = findHeaderIndex('Klient');
+        var idxZlecenie = findHeaderIndex('Zlecenie');
+        var idxLp = findHeaderIndex('Lp');
+        var idxOkleina = findHeaderIndex('Okleina');
+        var idxWymiar = findHeaderIndex('Wymiar');
+        var idxIlosc = findHeaderIndex('Ilość');
+        var idxPrzygot = findHeaderIndex('Przygotowane');
+        var idxOpis = findHeaderIndex('Opis');
+        var idxUwagi = findHeaderIndex('Uwagi');
+        
+        var rows = document.querySelectorAll('table tbody tr');
+        var orderCount = 0;
+        
+        rows.forEach(function(row, rIndex){
+            if (row.querySelector('td.eoz-mobile-cell')) return; // already built
+            var cells = row.querySelectorAll('td');
+            if (!cells || cells.length === 0) return;
+            
+            // Skip grouping rows (date headers with colspan)
+            var firstCell = row.querySelector('th[colspan], td[colspan]');
+            if (firstCell && parseInt(firstCell.getAttribute('colspan')) > 1) {
+                console.log('[EOZ Boards Magazine Module] Skipping grouping header row', rIndex);
+                return;
+            }
+            
+            // Detect main row (with rowspan) vs sub-row (additional veneers)
+            var hasRowspan = false;
+            cells.forEach(function(cell){
+                if (cell.hasAttribute('rowspan')) hasRowspan = true;
+            });
+            
+            if (!hasRowspan) {
+                // This is a sub-row (additional veneer) - skip it, we'll handle it with the main row
+                console.log('[EOZ Boards Magazine Module] Skipping sub-row', rIndex);
+                return;
+            }
+            
+            // This is a main row - collect all veneers for this order
+            orderCount++;
+            
+            var data = cells[idxData] ? (cells[idxData].textContent||'').trim() : '';
+            var klient = cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
+            
+            var zlecenieLink = '';
+            var zlecenie = '';
+            var zlecenieCell = cells[idxZlecenie];
+            if (zlecenieCell) {
+                var link = zlecenieCell.querySelector('a');
+                if (link) {
+                    zlecenieLink = link.href;
+                    zlecenie = (link.textContent||'').trim();
+                } else {
+                    zlecenie = (zlecenieCell.textContent||'').trim();
+                }
+            }
+            
+            var lp = cells[idxLp] ? (cells[idxLp].textContent||'').trim() : '';
+            
+            // Collect veneers from this row and following sub-rows
+            var veneers = [];
+            
+            // First veneer from main row
+            var veneer1 = {
+                okleina: cells[idxOkleina] ? (cells[idxOkleina].textContent||'').trim() : '',
+                wymiar: cells[idxWymiar] ? (cells[idxWymiar].textContent||'').trim() : '',
+                ilosc: cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '',
+                przygotowane: cells[idxPrzygot] ? cells[idxPrzygot].innerHTML : ''
+            };
+            veneers.push(veneer1);
+            
+            // Check next rows for additional veneers (sub-rows)
+            var nextRowIndex = rIndex + 1;
+            while (nextRowIndex < rows.length) {
+                var nextRow = rows[nextRowIndex];
+                var nextCells = nextRow.querySelectorAll('td');
+                
+                // Check if this is a sub-row (no rowspan, only 4 cells)
+                var hasRowspanNext = false;
+                nextCells.forEach(function(cell){
+                    if (cell.hasAttribute('rowspan')) hasRowspanNext = true;
+                });
+                
+                if (hasRowspanNext || nextCells.length < 4) {
+                    // This is a new main row or grouping header, stop collecting
+                    break;
+                }
+                
+                // This is a sub-row - cells are: Okleina | Wymiar | Ilość | Przygotowane
+                var veneerSub = {
+                    okleina: nextCells[0] ? (nextCells[0].textContent||'').trim() : '',
+                    wymiar: nextCells[1] ? (nextCells[1].textContent||'').trim() : '',
+                    ilosc: nextCells[2] ? (nextCells[2].textContent||'').trim() : '',
+                    przygotowane: nextCells[3] ? nextCells[3].innerHTML : ''
+                };
+                veneers.push(veneerSub);
+                nextRowIndex++;
+            }
+            
+            // Get Opis, Uwagi, Opcje from main row
+            var opisOriginalLink = null;
+            var opisCell = cells[idxOpis];
+            if (opisCell) {
+                var linkEl = opisCell.querySelector('a');
+                if (linkEl) {
+                    opisOriginalLink = linkEl.cloneNode(true);
+                }
+            }
+            
+            var uwagiOriginalLink = null;
+            var uwagiCell = cells[idxUwagi];
+            if (uwagiCell) {
+                var linkEl2 = uwagiCell.querySelector('a');
+                if (linkEl2) {
+                    uwagiOriginalLink = linkEl2.cloneNode(true);
+                }
+            }
+            
+            // Build mobile cell
+            var mobileCell = document.createElement('td');
+            mobileCell.className = 'eoz-mobile-cell';
+            mobileCell.colSpan = cells.length;
+
+            var grid = document.createElement('div');
+            grid.className = 'eoz-mobile-grid';
+
+            // Header: Data + Zlecenie
+            var header = document.createElement('div');
+            header.className = 'eoz-m-header';
+            
+            var dataDiv = document.createElement('div');
+            dataDiv.className = 'eoz-m-lp';
+            dataDiv.textContent = data;
+            
+            var zlecenieDiv = document.createElement('div');
+            zlecenieDiv.className = 'eoz-m-zlecenie';
+            if (zlecenieLink) {
+                var linkEl = document.createElement('a');
+                linkEl.href = zlecenieLink;
+                linkEl.textContent = zlecenie;
+                linkEl.style.color = '#007bff';
+                linkEl.style.textDecoration = 'none';
+                zlecenieDiv.appendChild(linkEl);
+            } else {
+                zlecenieDiv.textContent = zlecenie;
+            }
+            
+            header.appendChild(dataDiv);
+            header.appendChild(zlecenieDiv);
+            
+            // Details
+            var details = document.createElement('div');
+            details.className = 'eoz-m-details';
+
+            var col3 = document.createElement('div'); 
+            col3.className = 'eoz-m-col3';
+            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Lp:</span><br>' + (lp||'—') + '</div>';
+
+            var col4 = document.createElement('div'); 
+            col4.className = 'eoz-m-col4';
+            
+            // Veneers list
+            var veneersDiv = document.createElement('div');
+            veneersDiv.innerHTML = '<span class="eoz-m-label">Okleiny:</span>';
+            
+            veneers.forEach(function(veneer, idx){
+                var veneerItem = document.createElement('div');
+                veneerItem.style.marginTop = idx > 0 ? '12px' : '8px';
+                veneerItem.style.padding = '8px';
+                veneerItem.style.background = '#f8f9fa';
+                veneerItem.style.borderRadius = '4px';
+                veneerItem.innerHTML = '<div style="font-weight: bold;">' + (veneer.okleina||'—') + '</div>' +
+                                        '<div><span class="eoz-m-label">Wymiar:</span> ' + (veneer.wymiar||'—') + '</div>' +
+                                        '<div><span class="eoz-m-label">Ilość:</span> ' + (veneer.ilosc||'—') + '</div>' +
+                                        '<div style="margin-top: 4px;"><span class="eoz-m-label">Przygotowane:</span><br>' + veneer.przygotowane + '</div>';
+                veneersDiv.appendChild(veneerItem);
+            });
+            
+            col4.appendChild(veneersDiv);
+
+            var col5 = document.createElement('div'); 
+            col5.className = 'eoz-m-col5';
+            
+            // Actions dropdown
+            var lastCell = cells[cells.length-1];
+            if (lastCell) {
+                var originalLinks = lastCell.querySelectorAll('a');
+                if (originalLinks.length > 0) {
+                    var actionsWrapper = document.createElement('div');
+                    actionsWrapper.className = 'eoz-m-col5-item';
+                    var actionsBtn = createActionDropdown(originalLinks, 'akcje-veneers-' + orderCount);
+                    actionsWrapper.appendChild(actionsBtn);
+                    col5.appendChild(actionsWrapper);
+                }
+            }
+            
+            // Opis button
+            if (opisOriginalLink) {
+                var opisWrapper = document.createElement('div');
+                opisWrapper.className = 'eoz-m-col5-item';
+                opisOriginalLink.classList.add('eoz-m-note-btn');
+                var opisIcon = opisOriginalLink.querySelector('i');
+                var iconHTML = opisIcon ? opisIcon.outerHTML : '<i class="fas fa-comment"></i>';
+                opisOriginalLink.innerHTML = iconHTML + '<span>Opis</span>';
+                opisWrapper.appendChild(opisOriginalLink);
+                col5.appendChild(opisWrapper);
+            }
+            
+            // Uwagi button
+            if (uwagiOriginalLink) {
+                var uwagiWrapper = document.createElement('div');
+                uwagiWrapper.className = 'eoz-m-col5-item';
+                uwagiOriginalLink.classList.add('eoz-m-note-btn');
+                var uwagiIcon = uwagiOriginalLink.querySelector('i');
+                var iconHTML2 = uwagiIcon ? uwagiIcon.outerHTML : '<i class="far fa-comments"></i>';
+                uwagiOriginalLink.innerHTML = iconHTML2 + '<span>Uwagi</span>';
+                uwagiWrapper.appendChild(uwagiOriginalLink);
+                col5.appendChild(uwagiWrapper);
+            }
+
+            grid.appendChild(header);
+            details.appendChild(col3);
+            details.appendChild(col4);
+            details.appendChild(col5);
+            grid.appendChild(details);
+
+            mobileCell.appendChild(grid);
+            row.appendChild(mobileCell);
+        });
+        
+        console.log('[EOZ Boards Magazine Module] Veneers grouped mobile layout built:', orderCount, 'orders');
     }
 
     function buildMobileLayout(){
