@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.6';
+    var VERSION = '2.2.7';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -54,6 +54,7 @@
     window.EOZ.whenReady(function() {
         setupHeaderMenu();
         setupTouchDropdowns();
+        addWorkToDoItem();
     });
 
     function setupHeaderMenu() {
@@ -256,6 +257,43 @@
             window.EOZ.injectStyles(css, { id: 'eoz-header-menu-touch-dropdown' });
         } catch (e) {
             console.debug('[EOZ Header Menu v' + VERSION + '] touch dropdown setup failed', e);
+        }
+    }
+
+    // Add 'Do wykonania' as the first entry in the 'Moje zlecenia' dropdown
+    function addWorkToDoItem() {
+        try {
+            var menu = document.querySelector('ul.list-group.list-group-horizontal');
+            if (!menu) return;
+
+            // Find the LI containing 'Moje zlecenia'
+            var moje = null;
+            var items = menu.querySelectorAll('li.list-group-item.dropdown');
+            items.forEach(function(li){
+                var a = li.querySelector('a');
+                if (!a) return;
+                var txt = (a.textContent||'').trim();
+                if (txt.indexOf('Moje zlecenia') !== -1) {
+                    moje = li;
+                }
+            });
+            if (!moje) return;
+
+            var dropdown = moje.querySelector('ul.dropdown-menu');
+            if (!dropdown) return;
+
+            // If already exists, do nothing
+            var exists = Array.from(dropdown.querySelectorAll('a')).some(function(a){ return (a.textContent||'').trim().toLowerCase() === 'do wykonania'; });
+            if (exists) return;
+
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel';
+            a.innerHTML = '<i class="fa fa-list-ul"></i> Do wykonania';
+            li.appendChild(a);
+            dropdown.insertBefore(li, dropdown.firstChild);
+        } catch (e) {
+            console.debug('[EOZ Header Menu] addWorkToDoItem failed', e);
         }
     }
 })();

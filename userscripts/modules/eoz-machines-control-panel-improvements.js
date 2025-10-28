@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.0';
+    var VERSION = '1.0.2';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -190,10 +190,8 @@
             if (playLink) {
                 var btn = playLink.cloneNode(true);
                 btn.className = 'eoz-realizacja-btn';
-                // Replace inner HTML with icon + text if possible
                 var icon = btn.querySelector('i');
-                var iconHTML = icon ? icon.outerHTML : '<i class="fas fa-play"></i>';
-                btn.innerHTML = iconHTML + '<span>Realizacja</span>';
+                btn.innerHTML = icon ? icon.outerHTML : '<i class="fas fa-play"></i>';
                 td.appendChild(btn);
             } else {
                 td.textContent = '';
@@ -238,25 +236,44 @@
             var cells = row.querySelectorAll('td');
             if (!cells || cells.length === 0) return;
             var actionsCell = row.querySelector('td:last-child');
-            var notesLink = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_notes"]') : null;
+            // Determine order id from Zlecenie cell
+            var idxZlec = findHeaderIndex('Zlecenie');
+            var orderId = '';
+            if (idxZlec >= 0 && cells[idxZlec]) {
+                var zlecA = cells[idxZlec].querySelector('a');
+                orderId = zlecA ? (zlecA.textContent||'').trim() : (cells[idxZlec].textContent||'').trim();
+            }
+
+            // Links for client/internal notes
+            var notesClientLink = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_send_info"]') : null;
+            var notesInternalLink = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_notes"]') : null;
 
             var tdKl = document.createElement('td');
             var tdWew = document.createElement('td');
-            if (notesLink) {
-                var link1 = notesLink.cloneNode(true);
+            // Uwagi klienta (send_info)
+            if (notesClientLink) {
+                var link1 = notesClientLink.cloneNode(true);
                 var i1 = link1.querySelector('i');
-                var i1html = i1 ? i1.outerHTML : '<i class="fas fa-comment"></i>';
-                link1.innerHTML = i1html + '<span style="margin-left:6px">Otwórz</span>';
+                link1.innerHTML = i1 ? i1.outerHTML : '<i class="fas fa-comment"></i>';
                 tdKl.appendChild(link1);
+            } else if (orderId) {
+                var a1 = document.createElement('a');
+                a1.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
+                a1.innerHTML = '<i class="fas fa-comment"></i>';
+                tdKl.appendChild(a1);
+            }
 
-                var link2 = notesLink.cloneNode(true);
+            // Uwagi wewnętrzne (notes)
+            if (notesInternalLink) {
+                var link2 = notesInternalLink.cloneNode(true);
                 var i2 = link2.querySelector('i');
-                var i2html = i2 ? i2.outerHTML : '<i class="fas fa-comments"></i>';
-                link2.innerHTML = i2html + '<span style="margin-left:6px">Otwórz</span>';
+                link2.innerHTML = i2 ? i2.outerHTML : '<i class="fas fa-comments"></i>';
                 tdWew.appendChild(link2);
-            } else {
-                tdKl.textContent = '';
-                tdWew.textContent = '';
+            } else if (orderId) {
+                var a2 = document.createElement('a');
+                a2.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_notes/' + orderId;
+                a2.innerHTML = '<i class="fas fa-comments"></i>';
+                tdWew.appendChild(a2);
             }
 
             if (insertBeforeIndex >= 0) {
@@ -354,7 +371,7 @@
                 var btn = playLink.cloneNode(true);
                 btn.className = 'eoz-realizacja-btn';
                 var icon = btn.querySelector('i'); var iconHTML = icon ? icon.outerHTML : '<i class="fas fa-play"></i>';
-                btn.innerHTML = iconHTML + '<span>Realizacja</span>';
+                btn.innerHTML = iconHTML;
                 actions.appendChild(btn);
             }
             if (notesLink) {
