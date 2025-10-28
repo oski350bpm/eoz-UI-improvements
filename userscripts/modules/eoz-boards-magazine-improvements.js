@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.0';
+    var VERSION = '2.4.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -238,7 +238,11 @@
                 radio.addEventListener('change', updateRadioVisualState);
             });
         });
-        requestAnimationFrame(updateAllRadioGroups);
+        
+        // Małe opóźnienie + requestAnimationFrame dla pewności że DOM jest gotowy
+        setTimeout(function(){
+            requestAnimationFrame(updateAllRadioGroups);
+        }, 50);
     }
 
     function updateAllRadioGroups(){
@@ -251,12 +255,13 @@
             var label = group.querySelector('label[for="' + radio.id + '"]');
             if (!label) return;
             var isChecked = radio.checked;
-            label.classList.add('eoz-radio-unchecked');
+            
+            // Najpierw usuń obie klasy, potem dodaj odpowiednią
+            label.classList.remove('eoz-radio-checked', 'eoz-radio-unchecked');
+            
             if (isChecked){
                 label.classList.add('eoz-radio-checked');
-                label.classList.remove('eoz-radio-unchecked');
             } else {
-                label.classList.remove('eoz-radio-checked');
                 label.classList.add('eoz-radio-unchecked');
             }
         });
