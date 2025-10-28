@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.2';
+    var VERSION = '2.6.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -288,11 +288,15 @@
                     var bgColor = computedStyle.backgroundColor;
                     var boxShadow = computedStyle.boxShadow;
                     var color = computedStyle.color;
+                    var display = computedStyle.display;
+                    var visibility = computedStyle.visibility;
+                    var parentDisplay = window.getComputedStyle(group.parentElement).display;
                     
                     console.log('[EOZ Radio Debug] Group ' + groupIndex + ' - Radio ' + radio.id + ' (CHECKED):');
                     console.log('  HTML checked attr:', radio.hasAttribute('checked') ? 'YES' : 'NO');
                     console.log('  JS checked prop:', radio.checked ? 'YES' : 'NO');
                     console.log('  Label classes:', label.className);
+                    console.log('  Display:', display, '| Visibility:', visibility, '| Parent display:', parentDisplay);
                     console.log('  Computed CSS:');
                     console.log('    background:', bgColor);
                     console.log('    color:', color);
@@ -590,12 +594,12 @@
             // Collect veneers from this row and following sub-rows
             var veneers = [];
             
-            // First veneer from main row
+            // First veneer from main row - clone content to preserve radio states
             var veneer1 = {
                 okleina: cells[idxOkleina] ? (cells[idxOkleina].textContent||'').trim() : '',
                 wymiar: cells[idxWymiar] ? (cells[idxWymiar].textContent||'').trim() : '',
                 ilosc: cells[idxIlosc] ? (cells[idxIlosc].textContent||'').trim() : '',
-                przygotowane: cells[idxPrzygot] ? cells[idxPrzygot].innerHTML : ''
+                przygotowaneClone: cells[idxPrzygot] ? cells[idxPrzygot].cloneNode(true) : null
             };
             veneers.push(veneer1);
             
@@ -621,7 +625,7 @@
                     okleina: nextCells[0] ? (nextCells[0].textContent||'').trim() : '',
                     wymiar: nextCells[1] ? (nextCells[1].textContent||'').trim() : '',
                     ilosc: nextCells[2] ? (nextCells[2].textContent||'').trim() : '',
-                    przygotowane: nextCells[3] ? nextCells[3].innerHTML : ''
+                    przygotowaneClone: nextCells[3] ? nextCells[3].cloneNode(true) : null
                 };
                 veneers.push(veneerSub);
                 nextRowIndex++;
@@ -712,10 +716,36 @@
                 veneerItem.style.padding = '8px';
                 veneerItem.style.background = '#f8f9fa';
                 veneerItem.style.borderRadius = '4px';
-                veneerItem.innerHTML = '<div style="font-weight: bold;">' + (veneer.okleina||'—') + '</div>' +
-                                        '<div><span class="eoz-m-label">Wymiar:</span> ' + (veneer.wymiar||'—') + '</div>' +
-                                        '<div><span class="eoz-m-label">Ilość:</span> ' + (veneer.ilosc||'—') + '</div>' +
-                                        '<div style="margin-top: 4px;"><span class="eoz-m-label">Przygotowane:</span><br>' + veneer.przygotowane + '</div>';
+                
+                // Add okleina, wymiar, ilosc
+                var okleinaDiv = document.createElement('div');
+                okleinaDiv.style.fontWeight = 'bold';
+                okleinaDiv.textContent = veneer.okleina || '—';
+                veneerItem.appendChild(okleinaDiv);
+                
+                var wymiarDiv = document.createElement('div');
+                wymiarDiv.innerHTML = '<span class="eoz-m-label">Wymiar:</span> ' + (veneer.wymiar || '—');
+                veneerItem.appendChild(wymiarDiv);
+                
+                var iloscDiv = document.createElement('div');
+                iloscDiv.innerHTML = '<span class="eoz-m-label">Ilość:</span> ' + (veneer.ilosc || '—');
+                veneerItem.appendChild(iloscDiv);
+                
+                // Add przygotowane with cloned content
+                var przygDiv = document.createElement('div');
+                przygDiv.style.marginTop = '4px';
+                var przygLabel = document.createElement('span');
+                przygLabel.className = 'eoz-m-label';
+                przygLabel.textContent = 'Przygotowane:';
+                przygDiv.appendChild(przygLabel);
+                przygDiv.appendChild(document.createElement('br'));
+                if (veneer.przygotowaneClone) {
+                    while (veneer.przygotowaneClone.firstChild) {
+                        przygDiv.appendChild(veneer.przygotowaneClone.firstChild);
+                    }
+                }
+                veneerItem.appendChild(przygDiv);
+                
                 veneersDiv.appendChild(veneerItem);
             });
             
@@ -885,11 +915,11 @@
             var iloscCell = getCell(idxIlosc);
             var ilosc = iloscCell ? (iloscCell.textContent||'').trim() : '';
             
-            // Przygotowane: keep original HTML with radio buttons and edit button
-            var przygotowaneHTML = '';
+            // Przygotowane: clone entire cell content to preserve radio button states
+            var przygotowaneClone = null;
             var przygotowaneCell = getCell(idxPrzygot);
             if (przygotowaneCell){
-                przygotowaneHTML = przygotowaneCell.innerHTML;
+                przygotowaneClone = przygotowaneCell.cloneNode(true);
             }
             
             // Clone original link elements for Uwagi klienta and Uwagi to preserve event handlers
@@ -952,21 +982,16 @@
                               '<div><span class="eoz-m-label">' + materialLabel + ':</span><br>' + (plyta||'—') + '</div>' +
                               '<div><span class="eoz-m-label">Wymiar:</span><br>' + (wymiar||'—') + '</div>';
 
-            // Extract edit button and clean HTML from Przygotowane cell
+            // Extract edit button from cloned content
             var editButton = null;
-            var cleanPrzygotowaneHTML = przygotowaneHTML;
             
-            if (przygotowaneCell){
-                // Find the original edit button in the original cell (to preserve event handlers)
-                var originalEditBtn = przygotowaneCell.querySelector('a.change-amount-manual');
-                if (originalEditBtn) {
-                    // Extract (move) the original button to preserve jQuery events
-                    editButton = originalEditBtn;
-                    originalEditBtn.remove(); // Remove from original location
+            if (przygotowaneClone){
+                // Find and extract the edit button from the clone
+                var clonedEditBtn = przygotowaneClone.querySelector('a.change-amount-manual');
+                if (clonedEditBtn) {
+                    editButton = clonedEditBtn;
+                    clonedEditBtn.remove(); // Remove from clone
                 }
-                
-                // Get cleaned HTML without edit button
-                cleanPrzygotowaneHTML = przygotowaneCell.innerHTML;
             }
             
             var col4 = document.createElement('div'); 
@@ -977,10 +1002,20 @@
             iloscRow.innerHTML = '<span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—');
             col4.appendChild(iloscRow);
             
-            // Row 2: Przygotowane (radio buttons)
+            // Row 2: Przygotowane (radio buttons) - append cloned content
             var przygotowaneRow = document.createElement('div');
             przygotowaneRow.style.marginTop = '8px';
-            przygotowaneRow.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + cleanPrzygotowaneHTML;
+            var label = document.createElement('span');
+            label.className = 'eoz-m-label';
+            label.textContent = 'Przygotowane:';
+            przygotowaneRow.appendChild(label);
+            przygotowaneRow.appendChild(document.createElement('br'));
+            if (przygotowaneClone) {
+                // Append all child nodes from the clone
+                while (przygotowaneClone.firstChild) {
+                    przygotowaneRow.appendChild(przygotowaneClone.firstChild);
+                }
+            }
             col4.appendChild(przygotowaneRow);
             
             // Row 3: Edit button with label
