@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.1';
+    var VERSION = '2.4.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -231,6 +231,13 @@
 
     function normalizeRadioButtons(root){
         root = root || document;
+        
+        console.log('[EOZ Boards Magazine Module] normalizeRadioButtons: Starting initialization');
+        
+        // NAJPIERW ustaw klasy na wszystkich radio buttonach
+        updateAllRadioGroups();
+        
+        // POTEM dodaj event listenery
         root.querySelectorAll('.switch-field').forEach(function(group){
             var radios = group.querySelectorAll('input[type="radio"]');
             radios.forEach(function(radio){
@@ -239,14 +246,17 @@
             });
         });
         
-        // Małe opóźnienie + requestAnimationFrame dla pewności że DOM jest gotowy
+        // Dodatkowe wywołanie z timeoutem jako backup
         setTimeout(function(){
-            requestAnimationFrame(updateAllRadioGroups);
-        }, 50);
+            console.log('[EOZ Boards Magazine Module] normalizeRadioButtons: Backup update after timeout');
+            updateAllRadioGroups();
+        }, 100);
     }
 
     function updateAllRadioGroups(){
-        document.querySelectorAll('.switch-field').forEach(updateRadioGroupVisualState);
+        var groups = document.querySelectorAll('.switch-field');
+        console.log('[EOZ Boards Magazine Module] updateAllRadioGroups: Found', groups.length, 'radio groups');
+        groups.forEach(updateRadioGroupVisualState);
     }
 
     function updateRadioGroupVisualState(group){
@@ -256,11 +266,14 @@
             if (!label) return;
             var isChecked = radio.checked;
             
+            console.log('[EOZ Boards Magazine Module] Radio', radio.id, 'checked:', isChecked);
+            
             // Najpierw usuń obie klasy, potem dodaj odpowiednią
             label.classList.remove('eoz-radio-checked', 'eoz-radio-unchecked');
             
             if (isChecked){
                 label.classList.add('eoz-radio-checked');
+                console.log('[EOZ Boards Magazine Module] Added eoz-radio-checked to', radio.id);
             } else {
                 label.classList.add('eoz-radio-unchecked');
             }
@@ -307,32 +320,32 @@
         
         // Skip header and row modifications for veneers /3 (grouped view)
         if (!isVeneersGrouped) {
-            // Change first header to Lp.
-            var headerRow = document.querySelector('table thead tr');
-            if (headerRow) {
-                var firstHeaderCell = headerRow.querySelector('th:first-child');
-                if (firstHeaderCell) {
-                    firstHeaderCell.textContent = 'Lp.';
-                    var link = firstHeaderCell.querySelector('a');
-                    if (link) link.remove();
-                }
+        // Change first header to Lp.
+        var headerRow = document.querySelector('table thead tr');
+        if (headerRow) {
+            var firstHeaderCell = headerRow.querySelector('th:first-child');
+            if (firstHeaderCell) {
+                firstHeaderCell.textContent = 'Lp.';
+                var link = firstHeaderCell.querySelector('a');
+                if (link) link.remove();
             }
-
-            // Try hide 5th column (Lp 1/1)
-            var allHeaders = document.querySelectorAll('table thead tr th');
-            var lpColumnIndex = -1;
-            allHeaders.forEach(function(th, index){ if (th.textContent.trim() === 'Lp' && index > 0) lpColumnIndex = index; });
-            if (lpColumnIndex !== -1) {
-                if (allHeaders[lpColumnIndex]) allHeaders[lpColumnIndex].style.display = 'none';
-                var rows = document.querySelectorAll('table tbody tr');
-                rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
-            }
-
-            // Row numbers
-            var bodyRows = document.querySelectorAll('table tbody tr');
-            bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
         }
 
+        // Try hide 5th column (Lp 1/1)
+        var allHeaders = document.querySelectorAll('table thead tr th');
+        var lpColumnIndex = -1;
+        allHeaders.forEach(function(th, index){ if (th.textContent.trim() === 'Lp' && index > 0) lpColumnIndex = index; });
+        if (lpColumnIndex !== -1) {
+            if (allHeaders[lpColumnIndex]) allHeaders[lpColumnIndex].style.display = 'none';
+            var rows = document.querySelectorAll('table tbody tr');
+            rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
+        }
+
+        // Row numbers
+        var bodyRows = document.querySelectorAll('table tbody tr');
+        bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
+        }
+        
         // Build dropdowns first so we can reuse them in mobile grid
         transformActionButtons();
         
@@ -340,7 +353,7 @@
         if (isVeneersGrouped) {
             buildMobileLayoutVeneersGrouped();
         } else {
-            buildMobileLayout();
+        buildMobileLayout();
         }
 
         if (isVeneers) {
@@ -742,7 +755,7 @@
         
         // Check if this is the /3 view (grouped by date in veneers)
         var isGroupedView = isVeneers && window.location.href.indexOf('/3') !== -1;
-        
+
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
         var idxNazwa = findHeaderIndex('Nazwa zamówienia');
@@ -837,12 +850,12 @@
                 var plytaWymiarCell = getCell(idxPlytaWymiar);
                 if (plytaWymiarCell) {
                     var plytaWymiarText = (plytaWymiarCell.textContent||'').trim();
-                    var lines = plytaWymiarText.split('\n');
-                    if (lines.length >= 2) {
-                        plyta = lines[0].trim();
-                        wymiar = lines[1].trim();
-                    } else if (lines.length === 1) {
-                        plyta = lines[0].trim();
+                var lines = plytaWymiarText.split('\n');
+                if (lines.length >= 2) {
+                    plyta = lines[0].trim();
+                    wymiar = lines[1].trim();
+                } else if (lines.length === 1) {
+                    plyta = lines[0].trim();
                     }
                 }
             }
