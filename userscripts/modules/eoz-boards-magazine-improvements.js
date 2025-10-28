@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.1';
+    var VERSION = '2.4.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -41,10 +41,10 @@
         '.eoz-dropdown-item i{font-size:18px!important;width:20px!important;text-align:center!important}\n' +
         '.eoz-dropdown-container{position:relative!important;width:100%!important}\n' +
         '.switch-field .btn-group-toggle,label.switch-field-label{display:inline-flex!important}\n' +
-        '.switch-field label.eoz-radio-unchecked{background:#e4e4e4!important;color:rgba(0,0,0,.6)!important;font-size:14px!important;line-height:1!important;text-align:center!important;padding:8px 16px!important;margin-right:-1px!important;border:1px solid rgba(0,0,0,.2)!important;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)!important,0 1px rgba(255,255,255,.1)!important;transition:all .2s ease-in-out!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:60px!important}\n' +
-        '.switch-field label.eoz-radio-unchecked:first-of-type{border-radius:4px 0 0 4px!important}\n' +
-        '.switch-field label.eoz-radio-unchecked:last-of-type{border-radius:0 4px 4px 0!important}\n' +
-        '.switch-field label.eoz-radio-checked{background:#f06521!important;color:#fff!important;border:1px solid #f06521!important;box-shadow:none!important;font-weight:600!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}\n' +
+        '.switch-field label{background:#e4e4e4!important;color:rgba(0,0,0,.6)!important;font-size:14px!important;line-height:1!important;text-align:center!important;padding:8px 16px!important;margin-right:-1px!important;border:1px solid rgba(0,0,0,.2)!important;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)!important,0 1px rgba(255,255,255,.1)!important;transition:all .2s ease-in-out!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:60px!important}\n' +
+        '.switch-field label:first-of-type{border-radius:4px 0 0 4px!important}\n' +
+        '.switch-field label:last-of-type{border-radius:0 4px 4px 0!important}\n' +
+        '.switch-field input[type="radio"]:checked+label{background:#f06521!important;color:#fff!important;border:1px solid #f06521!important;box-shadow:none!important;font-weight:600!important}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
         'body[data-veneer] table thead th[data-column="lp"],body[data-veneer] table tbody td[data-column="lp"]{display:none!important}\n' +
@@ -230,76 +230,28 @@
     }
 
     function normalizeRadioButtons(root){
-        root = root || document;
-        root.querySelectorAll('.switch-field').forEach(function(group){
-            var radios = group.querySelectorAll('input[type="radio"]');
-            radios.forEach(function(radio){
-                radio.removeEventListener('change', updateRadioVisualState);
-                radio.addEventListener('change', updateRadioVisualState);
-                // Also listen to input events to capture programmatic toggles that dispatch input
-                radio.removeEventListener('input', updateRadioVisualState);
-                radio.addEventListener('input', updateRadioVisualState);
-            });
-        });
-        // Initial syncs: immediate, next frame and after tiny delays to catch late DOM updates
-        updateAllRadioGroups();
-        requestAnimationFrame(updateAllRadioGroups);
-        setTimeout(updateAllRadioGroups, 50);
-        setTimeout(updateAllRadioGroups, 200);
+        // No longer needed - CSS handles everything automatically
+        // Keeping function for compatibility but making it a no-op
     }
 
     function updateAllRadioGroups(){
-        document.querySelectorAll('.switch-field').forEach(updateRadioGroupVisualState);
+        // No longer needed - CSS handles everything automatically
+        // Keeping function for compatibility but making it a no-op
     }
 
     function updateRadioGroupVisualState(group){
-        var radios = group.querySelectorAll('input[type="radio"]');
-        radios.forEach(function(radio){
-            var label = group.querySelector('label[for="' + radio.id + '"]');
-            if (!label) return;
-            var isChecked = radio.checked;
-            label.classList.add('eoz-radio-unchecked');
-            if (isChecked){
-                label.classList.add('eoz-radio-checked');
-                label.classList.remove('eoz-radio-unchecked');
-            } else {
-                label.classList.remove('eoz-radio-checked');
-                label.classList.add('eoz-radio-unchecked');
-            }
-        });
+        // No longer needed - CSS handles everything automatically
+        // Keeping function for compatibility but making it a no-op
     }
 
     function updateRadioVisualState(event){
-        var group = event.target.closest('.switch-field');
-        if (!group) return;
-        updateRadioGroupVisualState(group);
+        // No longer needed - CSS handles everything automatically
+        // Keeping function for compatibility but making it a no-op
     }
 
     function observeRadioMutations(){
-        var observer = new MutationObserver(function(mutations){
-            var needsRefresh = false;
-            mutations.forEach(function(mutation){
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach(function(node){
-                        if (node.nodeType === 1 && node.querySelector && node.querySelector('.switch-field')){
-                            needsRefresh = true;
-                        }
-                    });
-                } else if (mutation.type === 'attributes' && mutation.attributeName === 'checked') {
-                    var target = mutation.target;
-                    if (target && target.closest) {
-                        var group = target.closest('.switch-field');
-                        if (group) {
-                            updateRadioGroupVisualState(group);
-                        }
-                    }
-                }
-            });
-            if (needsRefresh){
-                normalizeRadioButtons();
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['checked'] });
+        // No longer needed - CSS handles everything automatically
+        // Keeping function for compatibility but making it a no-op
     }
 
     // Debounce utility
@@ -313,22 +265,8 @@
     }
 
     function installGlobalRadioSync(){
-        if (!window.EOZ) window.EOZ = {};
-        if (!window.EOZ.BoardsMagazine) window.EOZ.BoardsMagazine = {};
-        if (window.EOZ.BoardsMagazine._radioSyncInstalled) return;
-        window.EOZ.BoardsMagazine._radioSyncInstalled = true;
-
-        // Re-evaluate on load (after all external scripts finished) and on viewport changes
-        if (document.readyState !== 'complete') {
-            window.addEventListener('load', function(){ updateAllRadioGroups(); }, { once: true });
-        } else {
-            // If already complete, still do one more async pass
-            setTimeout(updateAllRadioGroups, 0);
-        }
-
-        var debounced = eozDebounce(updateAllRadioGroups, 150);
-        window.addEventListener('resize', debounced);
-        window.addEventListener('orientationchange', debounced);
+        // No longer needed - CSS handles everything automatically
+        // Keeping function for compatibility but making it a no-op
     }
 
     function apply() {
