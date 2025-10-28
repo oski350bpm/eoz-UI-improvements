@@ -742,7 +742,7 @@
                 przygDiv.style.marginTop = '4px';
                 przygDiv.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + veneer.przygotowaneHTML;
                 
-                // Fix duplicate radio button IDs by adding -mobile-v suffix
+                // Fix duplicate radio button IDs and names by adding -mobile-v suffix
                 var mobileRadios = przygDiv.querySelectorAll('input[type="radio"]');
                 mobileRadios.forEach(function(radio){
                     if (radio.id) {
@@ -753,6 +753,9 @@
                         if (label) {
                             label.setAttribute('for', radio.id);
                         }
+                    }
+                    if (radio.name) {
+                        radio.name = radio.name + '-mobile-v' + idx;
                     }
                 });
                 
@@ -1022,7 +1025,7 @@
             przygotowaneRow.style.marginTop = '8px';
             przygotowaneRow.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + przygotowaneHTML;
             
-            // Fix duplicate radio button IDs by adding -mobile suffix
+            // Fix duplicate radio button IDs and names by adding -mobile suffix
             var mobileRadios = przygotowaneRow.querySelectorAll('input[type="radio"]');
             mobileRadios.forEach(function(radio){
                 if (radio.id) {
@@ -1033,6 +1036,9 @@
                     if (label) {
                         label.setAttribute('for', radio.id);
                     }
+                }
+                if (radio.name) {
+                    radio.name = radio.name + '-mobile';
                 }
             });
             
