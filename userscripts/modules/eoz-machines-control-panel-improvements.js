@@ -19,6 +19,13 @@
     if (window.location.href.indexOf('/machines/control_panel') === -1) {
         return; // not this page
     }
+    
+    // Skip loading for magazine machines (boards and veneers magazines)
+    // These have their own specialized modules and don't need the general machines module
+    if (window.location.href.indexOf('control_panel_boards_magazine_2020') !== -1 ||
+        window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1) {
+        return; // skip for magazine views
+    }
 
     var styles = '' +
         'table{width:100%!important;table-layout:auto!important}\n' +
