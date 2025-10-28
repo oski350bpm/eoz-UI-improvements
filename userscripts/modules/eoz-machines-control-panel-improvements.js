@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.6';
+    var VERSION = '1.0.7';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -475,6 +475,150 @@
         });
     }
 
+    function addStartOperationConfirmation() {
+        // Add confirmation popup for start operation buttons
+        var startButtons = document.querySelectorAll('a.btn.btn-success.start[href*="start_operation_block"]');
+        startButtons.forEach(function(button) {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Extract block ID from href
+                var href = button.getAttribute('href');
+                var blockIdMatch = href.match(/start_operation_block\/(\d+)/);
+                var blockId = blockIdMatch ? blockIdMatch[1] : '';
+                
+                // Show confirmation modal
+                if (window.jQuery && window.jQuery.fn.modal) {
+                    showStartConfirmationModal(blockId, href);
+                } else {
+                    // Fallback to browser confirm
+                    if (confirm('Czy na pewno chcesz rozpocząć operację na tym zleceniu?')) {
+                        window.location.href = href;
+                    }
+                }
+            });
+        });
+    }
+
+    function showStartConfirmationModal(blockId, originalHref) {
+        // Create confirmation modal
+        var modalId = 'eoz-start-confirmation-modal';
+        var existingModal = document.getElementById(modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        var modalHTML = '' +
+            '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog" aria-labelledby="' + modalId + '-label" aria-hidden="true">' +
+            '  <div class="modal-dialog" role="document">' +
+            '    <div class="modal-content">' +
+            '      <div class="modal-header">' +
+            '        <h4 class="modal-title" id="' + modalId + '-label">Potwierdzenie rozpoczęcia operacji</h4>' +
+            '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">' +
+            '          <span aria-hidden="true">&times;</span>' +
+            '        </button>' +
+            '      </div>' +
+            '      <div class="modal-body">' +
+            '        <p>Czy na pewno chcesz rozpocząć operację na tym zleceniu?</p>' +
+            '        <p class="text-muted">ID bloku: ' + blockId + '</p>' +
+            '      </div>' +
+            '      <div class="modal-footer">' +
+            '        <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>' +
+            '        <button type="button" class="btn btn-success" id="eoz-confirm-start">Rozpocznij operację</button>' +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        var modal = document.getElementById(modalId);
+        var confirmBtn = document.getElementById('eoz-confirm-start');
+        
+        confirmBtn.addEventListener('click', function() {
+            window.location.href = originalHref;
+        });
+        
+        // Show modal
+        window.jQuery(modal).modal('show');
+    }
+
+    function modifyScannerBehavior() {
+        // Modify scanner div behavior to redirect to control_panel_order
+        var scannerDiv = document.getElementById('scanner_div');
+        if (!scannerDiv) return;
+        
+        var scannerInput = scannerDiv.querySelector('input.scanner');
+        if (!scannerInput) return;
+        
+        // Remove existing event listeners by cloning the input
+        var newInput = scannerInput.cloneNode(true);
+        scannerInput.parentNode.replaceChild(newInput, scannerInput);
+        
+        // Add new submit handler
+        newInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                
+                var orderCode = this.value.trim();
+                if (!orderCode) return;
+                
+                // Get current date
+                var today = new Date();
+                var year = today.getFullYear();
+                var month = String(today.getMonth() + 1).padStart(2, '0');
+                var day = String(today.getDate()).padStart(2, '0');
+                var operationDate = year + '-' + month + '-' + day;
+                
+                // Extract block_id from URL or use default
+                var urlParams = new URLSearchParams(window.location.search);
+                var blockId = urlParams.get('block_id') || '3250'; // fallback to example value
+                
+                // Build new URL
+                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_order?' +
+                    'number2=' + encodeURIComponent(orderCode) +
+                    '&operation_date=' + operationDate +
+                    '&block_id=' + blockId +
+                    '&start=0';
+                
+                // Redirect to new URL
+                window.location.href = newUrl;
+            }
+        });
+        
+        // Also handle form submission if there's a form
+        var form = scannerDiv.closest('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                var orderCode = newInput.value.trim();
+                if (!orderCode) return;
+                
+                // Get current date
+                var today = new Date();
+                var year = today.getFullYear();
+                var month = String(today.getMonth() + 1).padStart(2, '0');
+                var day = String(today.getDate()).padStart(2, '0');
+                var operationDate = year + '-' + month + '-' + day;
+                
+                // Extract block_id from URL or use default
+                var urlParams = new URLSearchParams(window.location.search);
+                var blockId = urlParams.get('block_id') || '3250';
+                
+                // Build new URL
+                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_order?' +
+                    'number2=' + encodeURIComponent(orderCode) +
+                    '&operation_date=' + operationDate +
+                    '&block_id=' + blockId +
+                    '&start=0';
+                
+                // Redirect to new URL
+                window.location.href = newUrl;
+            });
+        }
+    }
+
     function apply() {
         // Add class to body to scope CSS to this page only
         document.body.classList.add('machines-panel');
@@ -485,6 +629,8 @@
         insertRealizationColumn();
         transformActionButtons();
         buildMobileLayout();
+        addStartOperationConfirmation();
+        modifyScannerBehavior();
         console.log('[EOZ Machines Panel Module v' + VERSION + '] Applied');
     }
 
