@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.2';
+    var VERSION = '2.4.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -52,6 +52,8 @@
         'body[data-veneer] .switch-field label{cursor:pointer!important}\n' +
         '@media (min-width:961px){\n' +
         '  table tbody tr td.eoz-mobile-cell{display:none!important}\n' +
+        '  .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n' +
         '@media (max-width:960px){\n' +
         '  table thead{display:none!important}\n' +
