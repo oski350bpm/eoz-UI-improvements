@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.0';
+    var VERSION = '2.5.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -52,8 +52,9 @@
         'body[data-veneer] .switch-field label{cursor:pointer!important}\n' +
         '@media (min-width:961px){\n' +
         '  table tbody tr td.eoz-mobile-cell{display:none!important}\n' +
-        '  .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
-        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important;border:1px solid #f06521!important}\n' +
+        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important;border:1px solid #f06521!important}\n' +
+        '  table.table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important;border:1px solid #f06521!important}\n' +
         '}\n' +
         '@media (max-width:960px){\n' +
         '  table thead{display:none!important}\n' +
@@ -450,10 +451,11 @@
         allHeaders.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
         console.log('[EOZ Boards Magazine Module] Headers found:', headerNames.join(', '));
         
-        // Header indices for veneers /3: Data | Klient | Zlecenie | Okleina | Wymiar | Ilość | Przygotowane | Opis | Uwagi | Opcje
+        // Header indices for veneers /3: Data | Klient | Zlecenie | Lp | Okleina | Wymiar | Ilość | Przygotowane | Opis | Uwagi | Opcje
         var idxData = findHeaderIndex('Data');
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
+        var idxLp = findHeaderIndex('Lp');
         var idxOkleina = findHeaderIndex('Okleina');
         var idxWymiar = findHeaderIndex('Wymiar');
         var idxIlosc = findHeaderIndex('Ilość');
@@ -462,7 +464,7 @@
         var idxUwagi = findHeaderIndex('Uwagi');
         
         console.log('[EOZ Boards Magazine Module] DEBUG: Column indices:', {
-            idxData, idxKlient, idxZlecenie, idxOkleina, idxWymiar, idxIlosc, idxPrzygot, idxOpis, idxUwagi
+            idxData, idxKlient, idxZlecenie, idxLp, idxOkleina, idxWymiar, idxIlosc, idxPrzygot, idxOpis, idxUwagi
         });
         
         var rows = document.querySelectorAll('table tbody tr');
