@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.3';
+    var VERSION = '1.0.4';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -253,13 +253,14 @@
             // Uwagi klienta (send_info)
             if (notesClientLink) {
                 var link1 = notesClientLink.cloneNode(true);
-                var i1 = link1.querySelector('i');
-                link1.innerHTML = i1 ? i1.outerHTML : '<i class="fas fa-comment"></i>';
+                link1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
+                link1.target = '_blank'; // Open in popup/new window
                 tdKl.appendChild(link1);
             } else if (orderId) {
                 var a1 = document.createElement('a');
                 a1.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
-                a1.innerHTML = '<i class="fas fa-comment"></i>';
+                a1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
+                a1.target = '_blank'; // Open in popup/new window
                 tdKl.appendChild(a1);
             }
 
