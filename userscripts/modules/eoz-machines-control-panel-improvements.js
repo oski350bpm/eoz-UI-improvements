@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.2';
+    var VERSION = '1.0.3';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -41,9 +41,9 @@
         '.eoz-realizacja-btn:hover{background:#218838}\n' +
         '@media (min-width:961px){td.eoz-mobile-cell{display:none!important}}\n' +
         '@media (max-width:960px){\n' +
-        '  table thead{display:none!important}\n' +
-        '  table tbody tr td:not(.eoz-mobile-cell):not([colspan]){display:none!important}\n' +
-        '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
+        '  .machines-panel table thead{display:none!important}\n' +
+        '  .machines-panel table tbody tr td:not(.eoz-mobile-cell):not([colspan]){display:none!important}\n' +
+        '  .machines-panel table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
         '  .eoz-mp-grid{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}\n' +
         '  .eoz-mp-header{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}\n' +
         '  .eoz-mp-lp{font-size:12px;color:#666}\n' +
@@ -396,6 +396,9 @@
     }
 
     function apply() {
+        // Add class to body to scope CSS to this page only
+        document.body.classList.add('machines-panel');
+        
         hideColumnsDesktop();
         renumberLp();
         insertNotesColumns();
