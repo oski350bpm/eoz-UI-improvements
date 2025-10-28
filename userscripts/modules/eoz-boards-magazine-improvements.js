@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.7.1';
+    var VERSION = '2.7.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -77,6 +77,7 @@
         '  .eoz-m-col2{font-weight:bold}\n' +
         '  .eoz-m-col3 div,.eoz-m-col4 div,.eoz-m-col5 div{margin-bottom:6px;font-size:13px}\n' +
         '  .eoz-m-label{color:#666;margin-right:4px}\n' +
+        '  .eoz-m-lp-badge{display:none;color:#666;font-size:11px;line-height:1;margin-bottom:2px}\n' +
         '  .eoz-m-notes-wrapper{display:flex;flex-direction:column;gap:8px}\n' +
         '  .eoz-m-note-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;background:#fff!important;border:2px solid #007bff!important;border-radius:8px;color:#007bff!important;text-decoration:none!important;font-size:14px;font-weight:600;transition:all .2s;min-height:44px}\n' +
         '  .eoz-m-note-btn:hover{background:#f0f7ff!important;border-color:#0056b3!important}\n' +
@@ -89,6 +90,7 @@
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
         '  .eoz-m-details{grid-template-columns:90px 1fr 140px;grid-template-rows:auto auto}\n' +
+        '  .eoz-m-lp-badge{display:block}\n' +
         '  .eoz-m-col2{grid-column:1;grid-row:1;font-weight:bold;color:#007bff}\n' +
         '  .eoz-m-col3{grid-column:2;grid-row:1}\n' +
         '  .eoz-m-col4{grid-column:3;grid-row:1;display:flex;flex-direction:column;gap:8px}\n' +
@@ -1041,6 +1043,12 @@
                     radio.name = radio.name + '-mobile';
                 }
             });
+
+            // Remove inline edit button copied inside przygotowaneHTML to avoid duplicates
+            var inlineEditBtn = przygotowaneRow.querySelector('a.change-amount-manual');
+            if (inlineEditBtn) {
+                inlineEditBtn.parentElement && inlineEditBtn.parentElement.removeChild(inlineEditBtn);
+            }
             
             col4.appendChild(przygotowaneRow);
             
@@ -1115,7 +1123,11 @@
             // Prepare col1 and col2 for tablet view
             var col1 = document.createElement('div'); 
             col1.className = 'eoz-m-col1'; 
-            col1.textContent = col1Lp;
+            if (!isVeneers) {
+                col1.innerHTML = '<div class="eoz-m-lp-badge">LP.</div><div>' + col1Lp + '</div>';
+            } else {
+                col1.textContent = col1Lp;
+            }
             
             var col2 = document.createElement('div'); 
             col2.className = 'eoz-m-col2';
