@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.2';
+    var VERSION = '2.4.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -45,6 +45,10 @@
         '.switch-field label.eoz-radio-unchecked:first-of-type{border-radius:4px 0 0 4px!important}\n' +
         '.switch-field label.eoz-radio-unchecked:last-of-type{border-radius:0 4px 4px 0!important}\n' +
         '.switch-field label.eoz-radio-checked{background:#f06521!important;color:#fff!important;border:1px solid #f06521!important;box-shadow:none!important;font-weight:600!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}\n' +
+        // Fallback CSS dla wszystkich rozdzielczości (jak mobile)
+        '.switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        'table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '.eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
         'body[data-veneer] table thead th[data-column="lp"],body[data-veneer] table tbody td[data-column="lp"]{display:none!important}\n' +
@@ -79,9 +83,6 @@
         '  .eoz-m-note-btn:hover{background:#f0f7ff!important;border-color:#0056b3!important}\n' +
         '  .eoz-m-note-btn i{font-size:20px;margin:0}\n' +
         '  .eoz-m-col5-actions{margin-top:8px}\n' +
-        '  .switch-field input[type="radio"]:checked+label.tippy{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
-        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
-        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
@@ -232,8 +233,6 @@
     function normalizeRadioButtons(root){
         root = root || document;
         
-        console.log('[EOZ Boards Magazine Module] normalizeRadioButtons: Starting initialization');
-        
         // NAJPIERW ustaw klasy na wszystkich radio buttonach
         updateAllRadioGroups();
         
@@ -245,18 +244,10 @@
                 radio.addEventListener('change', updateRadioVisualState);
             });
         });
-        
-        // Dodatkowe wywołanie z timeoutem jako backup
-        setTimeout(function(){
-            console.log('[EOZ Boards Magazine Module] normalizeRadioButtons: Backup update after timeout');
-            updateAllRadioGroups();
-        }, 100);
     }
 
     function updateAllRadioGroups(){
-        var groups = document.querySelectorAll('.switch-field');
-        console.log('[EOZ Boards Magazine Module] updateAllRadioGroups: Found', groups.length, 'radio groups');
-        groups.forEach(updateRadioGroupVisualState);
+        document.querySelectorAll('.switch-field').forEach(updateRadioGroupVisualState);
     }
 
     function updateRadioGroupVisualState(group){
@@ -266,14 +257,11 @@
             if (!label) return;
             var isChecked = radio.checked;
             
-            console.log('[EOZ Boards Magazine Module] Radio', radio.id, 'checked:', isChecked);
-            
             // Najpierw usuń obie klasy, potem dodaj odpowiednią
             label.classList.remove('eoz-radio-checked', 'eoz-radio-unchecked');
             
             if (isChecked){
                 label.classList.add('eoz-radio-checked');
-                console.log('[EOZ Boards Magazine Module] Added eoz-radio-checked to', radio.id);
             } else {
                 label.classList.add('eoz-radio-unchecked');
             }
