@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.3';
+    var VERSION = '2.7.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -737,10 +737,25 @@
                 iloscDiv.innerHTML = '<span class="eoz-m-label">Ilość:</span> ' + (veneer.ilosc || '—');
                 veneerItem.appendChild(iloscDiv);
                 
-                // Add przygotowane with innerHTML
+                // Add przygotowane with innerHTML and fix duplicate IDs
                 var przygDiv = document.createElement('div');
                 przygDiv.style.marginTop = '4px';
                 przygDiv.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + veneer.przygotowaneHTML;
+                
+                // Fix duplicate radio button IDs by adding -mobile-v suffix
+                var mobileRadios = przygDiv.querySelectorAll('input[type="radio"]');
+                mobileRadios.forEach(function(radio){
+                    if (radio.id) {
+                        var oldId = radio.id;
+                        radio.id = oldId + '-mobile-v' + idx;
+                        // Update corresponding label
+                        var label = przygDiv.querySelector('label[for="' + oldId + '"]');
+                        if (label) {
+                            label.setAttribute('for', radio.id);
+                        }
+                    }
+                });
+                
                 veneerItem.appendChild(przygDiv);
                 
                 veneersDiv.appendChild(veneerItem);
@@ -1002,10 +1017,25 @@
             iloscRow.innerHTML = '<span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—');
             col4.appendChild(iloscRow);
             
-            // Row 2: Przygotowane (radio buttons) - use innerHTML
+            // Row 2: Przygotowane (radio buttons) - use innerHTML and fix duplicate IDs
             var przygotowaneRow = document.createElement('div');
             przygotowaneRow.style.marginTop = '8px';
             przygotowaneRow.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + przygotowaneHTML;
+            
+            // Fix duplicate radio button IDs by adding -mobile suffix
+            var mobileRadios = przygotowaneRow.querySelectorAll('input[type="radio"]');
+            mobileRadios.forEach(function(radio){
+                if (radio.id) {
+                    var oldId = radio.id;
+                    radio.id = oldId + '-mobile';
+                    // Update corresponding label
+                    var label = przygotowaneRow.querySelector('label[for="' + oldId + '"]');
+                    if (label) {
+                        label.setAttribute('for', radio.id);
+                    }
+                }
+            });
+            
             col4.appendChild(przygotowaneRow);
             
             // Row 3: Edit button with label
