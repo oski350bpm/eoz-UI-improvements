@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.3';
+    var VERSION = '2.5.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -130,10 +130,14 @@
         headers.forEach(function(th, index){
             if ((th.textContent || '').trim().toLowerCase() === headerText.toLowerCase()){
                 th.classList.add(className);
+                th.setAttribute('data-column', className);
                 var rows = document.querySelectorAll('table tbody tr');
                 rows.forEach(function(row){
                     var cells = row.querySelectorAll('td');
-                    if (cells[index]) cells[index].classList.add(className);
+                    if (cells[index]) {
+                        cells[index].classList.add(className);
+                        cells[index].setAttribute('data-column', className);
+                    }
                 });
             }
         });
@@ -286,9 +290,9 @@
         // Fix button text grammar
         fixButtonText();
         
-        // Skip header and row modifications for veneers /3 (grouped view)
+        // Header and row modifications
         if (!isVeneersGrouped) {
-            // Change first header to Lp.
+            // For non-grouped views: Change first header to Lp. and add row numbers
             var headerRow = document.querySelector('table thead tr');
             if (headerRow) {
                 var firstHeaderCell = headerRow.querySelector('th:first-child');
@@ -313,6 +317,12 @@
             var bodyRows = document.querySelectorAll('table tbody tr');
             bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
         }
+        
+        // For veneers: tag and potentially hide columns using CSS (works for all veneers views including /3)
+        if (isVeneers) {
+            tagColumnByHeader('Data', 'data');
+            tagColumnByHeader('Lp', 'lp');
+        }
 
         // Build dropdowns first so we can reuse them in mobile grid
         transformActionButtons();
@@ -322,11 +332,6 @@
             buildMobileLayoutVeneersGrouped();
         } else {
             buildMobileLayout();
-        }
-
-        if (isVeneers) {
-            tagColumnByHeader('Data', 'time-slot');
-            tagColumnByHeader('Lp', 'lp-desktop');
         }
 
         normalizeRadioButtons();
