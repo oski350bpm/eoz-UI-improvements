@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.5';
+    var VERSION = '2.2.6';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -53,6 +53,7 @@
 
     window.EOZ.whenReady(function() {
         setupHeaderMenu();
+        setupTouchDropdowns();
     });
 
     function setupHeaderMenu() {
@@ -196,5 +197,65 @@
         document.body.appendChild(overlay);
         
         console.log('[EOZ Header Menu v' + VERSION + '] Applied');
+    }
+
+    // Enable touch-friendly dropdowns in the top header menu
+    function setupTouchDropdowns() {
+        try {
+            var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            if (!isTouch) return;
+
+            // Ensure dropdowns can be toggled by tap, not just hover
+            var header = document.querySelector('ul.list-group.list-group-horizontal');
+            if (!header) return;
+
+            // Close any open dropdowns
+            function closeAll() {
+                header.querySelectorAll('li.list-group-item.dropdown.eoz-open').forEach(function(li) {
+                    li.classList.remove('eoz-open');
+                    var menu = li.querySelector('.dropdown-menu');
+                    if (menu) menu.style.display = '';
+                });
+            }
+
+            // Toggle handler for anchors inside dropdown items
+            header.querySelectorAll('li.list-group-item.dropdown > a').forEach(function(anchor) {
+                anchor.addEventListener('click', function(ev) {
+                    var li = anchor.closest('li.list-group-item.dropdown');
+                    if (!li) return;
+                    var menu = li.querySelector('.dropdown-menu');
+                    if (!menu) return;
+
+                    // First tap: open menu and prevent navigation
+                    if (!li.classList.contains('eoz-open')) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        closeAll();
+                        li.classList.add('eoz-open');
+                        menu.style.display = 'block';
+                        return false;
+                    }
+                    // Second tap will follow the link (allow default)
+                });
+            });
+
+            // Tapping a menu item should close the menu
+            header.querySelectorAll('li.list-group-item.dropdown .dropdown-menu').forEach(function(menu) {
+                menu.addEventListener('click', function() { closeAll(); });
+            });
+
+            // Click outside to close
+            document.addEventListener('click', function(ev) {
+                var target = ev.target;
+                if (!header.contains(target)) closeAll();
+            });
+
+            // Basic CSS aid: show menu when .eoz-open
+            var css = '' +
+                'ul.list-group.list-group-horizontal li.list-group-item.dropdown.eoz-open > .dropdown-menu{display:block !important;}\n';
+            window.EOZ.injectStyles(css, { id: 'eoz-header-menu-touch-dropdown' });
+        } catch (e) {
+            console.debug('[EOZ Header Menu v' + VERSION + '] touch dropdown setup failed', e);
+        }
     }
 })();
