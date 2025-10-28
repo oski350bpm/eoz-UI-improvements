@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.5';
+    var VERSION = '1.0.6';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -69,6 +69,69 @@
         '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-machines-panel-module-css' });
+
+    function createModal() {
+        // Create modal HTML structure
+        var modalHTML = '' +
+            '<div class="modal fade" id="eoz-uwagi-modal" tabindex="-1" role="dialog" aria-labelledby="eoz-uwagi-modal-label" aria-hidden="true">' +
+            '  <div class="modal-dialog mw-100 w-75" role="document">' +
+            '    <div class="modal-content">' +
+            '      <div class="modal-header">' +
+            '        <h4 class="modal-title" id="eoz-uwagi-modal-label">Uwagi</h4>' +
+            '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">' +
+            '          <span aria-hidden="true">&times;</span>' +
+            '        </button>' +
+            '      </div>' +
+            '      <div class="modal-body" id="eoz-uwagi-modal-body">' +
+            '        <div class="text-center"><i class="fa fa-spinner fa-spin"></i> Ładowanie...</div>' +
+            '      </div>' +
+            '      <div class="modal-footer">' +
+            '        <button type="button" class="btn btn-info" data-dismiss="modal">Zamknij</button>' +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+        
+        // Add modal to body if it doesn't exist
+        if (!document.getElementById('eoz-uwagi-modal')) {
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+    }
+
+    function showUwagiModal(orderId) {
+        createModal();
+        
+        // Show modal
+        var modal = document.getElementById('eoz-uwagi-modal');
+        var modalBody = document.getElementById('eoz-uwagi-modal-body');
+        
+        // Reset content
+        modalBody.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Ładowanie...</div>';
+        
+        // Show modal using Bootstrap
+        if (window.jQuery && window.jQuery.fn.modal) {
+            window.jQuery(modal).modal('show');
+        } else {
+            // Fallback if jQuery not available
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+        
+        // Load content via AJAX
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    modalBody.innerHTML = xhr.responseText;
+                } else {
+                    modalBody.innerHTML = '<div class="alert alert-danger">Błąd ładowania uwag. Spróbuj ponownie.</div>';
+                }
+            }
+        };
+        xhr.send();
+    }
 
     function waitAndRun() {
         window.EOZ.waitFor('table tbody tr', { timeout: 10000 })
@@ -261,14 +324,22 @@
             if (notesClientLink) {
                 var link1 = notesClientLink.cloneNode(true);
                 link1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
-                // Remove target="_blank" to open in internal popup
-                link1.removeAttribute('target');
+                link1.href = '#'; // Prevent default navigation
+                link1.onclick = function(e) {
+                    e.preventDefault();
+                    showUwagiModal(orderId);
+                    return false;
+                };
                 tdKl.appendChild(link1);
             } else if (orderId) {
                 var a1 = document.createElement('a');
-                a1.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
+                a1.href = '#';
                 a1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
-                // No target attribute = opens in internal popup
+                a1.onclick = function(e) {
+                    e.preventDefault();
+                    showUwagiModal(orderId);
+                    return false;
+                };
                 tdKl.appendChild(a1);
             }
 
