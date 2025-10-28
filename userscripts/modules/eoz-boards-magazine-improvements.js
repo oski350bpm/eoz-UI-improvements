@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.2';
+    var VERSION = '2.6.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -979,15 +979,18 @@
                               '<div><span class="eoz-m-label">' + materialLabel + ':</span><br>' + (plyta||'—') + '</div>' +
                               '<div><span class="eoz-m-label">Wymiar:</span><br>' + (wymiar||'—') + '</div>';
 
-            // Extract edit button from original cell
+            // Clone edit button from original cell (don't remove from original!)
             var editButton = null;
             
             if (przygotowaneCell){
-                // Find and extract the edit button from the original cell
+                // Find and clone the edit button (don't modify original cell)
                 var originalEditBtn = przygotowaneCell.querySelector('a.change-amount-manual');
                 if (originalEditBtn) {
-                    editButton = originalEditBtn;
-                    originalEditBtn.remove(); // Remove from original location
+                    editButton = originalEditBtn.cloneNode(true);
+                    // Copy onclick handler if it exists
+                    if (originalEditBtn.onclick) {
+                        editButton.onclick = originalEditBtn.onclick;
+                    }
                 }
             }
             
