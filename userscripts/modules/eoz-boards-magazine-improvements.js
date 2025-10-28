@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.0';
+    var VERSION = '2.6.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -415,12 +415,20 @@
         // Build dropdowns first so we can reuse them in mobile grid
         transformActionButtons();
         
+        // Debug radio buttons state BEFORE building mobile layout
+        debugRadioButtons('BEFORE_MOBILE_BUILD');
+        
         // Build mobile grid cell per row
         if (isVeneersGrouped) {
-            buildMobileLayoutVeneersGrouped();
+            // TEMPORARILY DISABLED FOR DEBUGGING
+            // buildMobileLayoutVeneersGrouped();
         } else {
-            buildMobileLayout();
+            // TEMPORARILY DISABLED FOR DEBUGGING  
+            // buildMobileLayout();
         }
+
+        // Debug radio buttons state AFTER building mobile layout
+        debugRadioButtons('AFTER_MOBILE_BUILD');
 
         normalizeRadioButtons();
         observeRadioMutations();
@@ -919,6 +927,7 @@
             var przygotowaneClone = null;
             var przygotowaneCell = getCell(idxPrzygot);
             if (przygotowaneCell){
+                // Clone the cell content WITHOUT moving original elements
                 przygotowaneClone = przygotowaneCell.cloneNode(true);
             }
             
@@ -1011,10 +1020,8 @@
             przygotowaneRow.appendChild(label);
             przygotowaneRow.appendChild(document.createElement('br'));
             if (przygotowaneClone) {
-                // Append all child nodes from the clone
-                while (przygotowaneClone.firstChild) {
-                    przygotowaneRow.appendChild(przygotowaneClone.firstChild);
-                }
+                // Use innerHTML from clone instead of moving nodes
+                przygotowaneRow.innerHTML = przygotowaneClone.innerHTML;
             }
             col4.appendChild(przygotowaneRow);
             
