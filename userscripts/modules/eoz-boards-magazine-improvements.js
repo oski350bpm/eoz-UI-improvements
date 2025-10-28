@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.1';
+    var VERSION = '2.5.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -146,10 +146,8 @@
 
     function applyCommentsTableFormatting() {
         var commentsTable = document.querySelector('table.table.table-borderd.table-condensed.table-md');
-        console.log('[EOZ Boards Magazine Module] Looking for comments table:', commentsTable);
         
         if (!commentsTable) {
-            console.log('[EOZ Boards Magazine Module] Comments table not found');
             return;
         }
         
@@ -157,23 +155,18 @@
         if (!tbody) return;
         
         var rows = Array.from(tbody.querySelectorAll('tr'));
-        console.log('[EOZ Boards Magazine Module] Found', rows.length, 'rows in comments table');
         
         // Create new rows array to replace existing tbody content
         var newRows = [];
         
         rows.forEach(function(row, index) {
             var cells = row.querySelectorAll('td');
-            console.log('[EOZ Boards Magazine Module] Row', index, 'has', cells.length, 'cells');
             
             if (cells.length === 3) {
                 // This is a data row (Data dodania, Tytuł, Dodał)
                 var dataText = cells[0].innerHTML; // Data dodania (preserve HTML like <b>)
                 var titleText = cells[1].textContent.trim(); // Tytuł
                 var authorText = cells[2].textContent.trim(); // Dodał
-                
-                console.log('[EOZ Boards Magazine Module] Processing row', index, ':', 
-                    cells[0].textContent.trim(), '|', titleText, '|', authorText);
                 
                 // Create first row: Data | Autor
                 var row1 = document.createElement('tr');
@@ -214,8 +207,6 @@
         newRows.forEach(function(row) {
             tbody.appendChild(row);
         });
-        
-        console.log('[EOZ Boards Magazine Module] Comments table formatting applied -', newRows.length, 'new rows created');
     }
 
     function fixButtonText() {
@@ -224,7 +215,6 @@
         if (button) {
             var originalText = button.textContent;
             button.textContent = originalText.replace('nie wydanych', 'niewydanych');
-            console.log('[EOZ Boards Magazine Module] Fixed button text:', originalText, '->', button.textContent);
         }
         
         // Fix "nie wydanych" to "niewydanych" in veneers
@@ -232,7 +222,6 @@
         if (veneersButton) {
             var originalText = veneersButton.textContent;
             veneersButton.textContent = originalText.replace('nie wydanych', 'niewydanych');
-            console.log('[EOZ Boards Magazine Module] Fixed veneers button text:', originalText, '->', veneersButton.textContent);
         }
     }
 
@@ -276,7 +265,66 @@
         // Keeping function for compatibility but making it a no-op
     }
 
+    function debugRadioButtons(phase){
+        var isMobile = window.innerWidth <= 960;
+        var viewType = isMobile ? 'MOBILE' : 'DESKTOP';
+        
+        console.log('[EOZ Radio Debug] ========== ' + phase + ' (' + viewType + ' - ' + window.innerWidth + 'px) ==========');
+        
+        var radioGroups = document.querySelectorAll('.switch-field');
+        console.log('[EOZ Radio Debug] Found', radioGroups.length, 'radio groups');
+        
+        radioGroups.forEach(function(group, groupIndex){
+            var radios = group.querySelectorAll('input[type="radio"]');
+            var checkedRadio = null;
+            
+            radios.forEach(function(radio){
+                var label = group.querySelector('label[for="' + radio.id + '"]');
+                if (!label) return;
+                
+                if (radio.checked) {
+                    checkedRadio = radio;
+                    var computedStyle = window.getComputedStyle(label);
+                    var bgColor = computedStyle.backgroundColor;
+                    var boxShadow = computedStyle.boxShadow;
+                    var color = computedStyle.color;
+                    
+                    console.log('[EOZ Radio Debug] Group ' + groupIndex + ' - Radio ' + radio.id + ' (CHECKED):');
+                    console.log('  HTML checked attr:', radio.hasAttribute('checked') ? 'YES' : 'NO');
+                    console.log('  JS checked prop:', radio.checked ? 'YES' : 'NO');
+                    console.log('  Label classes:', label.className);
+                    console.log('  Computed CSS:');
+                    console.log('    background:', bgColor);
+                    console.log('    color:', color);
+                    console.log('    box-shadow:', boxShadow);
+                    
+                    // Check which CSS rules match
+                    var matchingRules = [];
+                    if (isMobile) {
+                        if (group.closest('.eoz-mobile-cell')) matchingRules.push('.eoz-mobile-cell .switch-field input:checked+label');
+                        if (group.closest('td')) matchingRules.push('table tbody td .switch-field input:checked+label');
+                        matchingRules.push('.switch-field input:checked+label (mobile @media)');
+                    } else {
+                        if (group.closest('td')) matchingRules.push('table tbody td .switch-field input:checked+label (desktop @media)');
+                        matchingRules.push('.switch-field input:checked+label (desktop @media)');
+                        matchingRules.push('.switch-field input:checked+label (global)');
+                    }
+                    console.log('  Expected CSS selectors:', matchingRules.join(', '));
+                }
+            });
+            
+            if (!checkedRadio) {
+                console.log('[EOZ Radio Debug] Group ' + groupIndex + ' - NO CHECKED RADIO!');
+            }
+        });
+        
+        console.log('[EOZ Radio Debug] ========================================');
+    }
+
     function apply() {
+        // Debug radio buttons state BEFORE any modifications
+        debugRadioButtons('BEFORE_LOAD');
+        
         // Set data attribute to distinguish veneers from boards
         var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
         var isVeneersGrouped = isVeneers && window.location.href.indexOf('/3') !== -1;
@@ -317,6 +365,41 @@
             // Row numbers
             var bodyRows = document.querySelectorAll('table tbody tr');
             bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
+        } else {
+            // For veneers grouped view (/3): Change first header to Lp. and add custom LP numbers
+            var headerRow = document.querySelector('table thead tr');
+            if (headerRow) {
+                var firstHeaderCell = headerRow.querySelector('th:first-child');
+                if (firstHeaderCell) {
+                    firstHeaderCell.textContent = 'Lp.';
+                    var link = firstHeaderCell.querySelector('a');
+                    if (link) link.remove();
+                }
+            }
+
+            // Add custom LP numbers for grouped view (only for main rows with rowspan)
+            var bodyRows = document.querySelectorAll('table tbody tr');
+            var lpCounter = 0;
+            bodyRows.forEach(function(row){
+                var cells = row.querySelectorAll('td');
+                if (!cells || cells.length === 0) return;
+                
+                // Check if this is a main row (has rowspan)
+                var hasRowspan = false;
+                cells.forEach(function(cell){
+                    if (cell.hasAttribute('rowspan')) hasRowspan = true;
+                });
+                
+                if (hasRowspan) {
+                    lpCounter++;
+                    var firstCell = row.querySelector('td:first-child');
+                    if (firstCell) {
+                        firstCell.textContent = lpCounter.toString();
+                        firstCell.style.fontWeight = 'bold';
+                        firstCell.style.textAlign = 'center';
+                    }
+                }
+            });
         }
         
         // For veneers: tag and potentially hide columns using CSS (works for all veneers views including /3)
@@ -338,6 +421,9 @@
         normalizeRadioButtons();
         observeRadioMutations();
         installGlobalRadioSync();
+
+        // Debug radio buttons state
+        debugRadioButtons('AFTER_LOAD');
 
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
         
@@ -362,7 +448,6 @@
                                 node.classList.contains('table-condensed') && 
                                 node.classList.contains('table-md'))) {
                                 
-                                console.log('[EOZ Boards Magazine Module] Comments table detected dynamically, applying formatting');
                                 setTimeout(applyCommentsTableFormatting, 100); // Small delay to ensure DOM is ready
                             }
                         }
@@ -376,8 +461,6 @@
             childList: true,
             subtree: true
         });
-        
-        console.log('[EOZ Boards Magazine Module] Started watching for dynamic comments tables');
     }
 
     var ICON_LABELS = {
@@ -443,14 +526,6 @@
     }
 
     function buildMobileLayoutVeneersGrouped(){
-        console.log('[EOZ Boards Magazine Module] Building mobile layout for veneers grouped view (/3)');
-        console.log('[EOZ Boards Magazine Module] DEBUG: Starting buildMobileLayoutVeneersGrouped');
-        
-        var allHeaders = document.querySelectorAll('table thead th');
-        var headerNames = [];
-        allHeaders.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
-        console.log('[EOZ Boards Magazine Module] Headers found:', headerNames.join(', '));
-        
         // Header indices for veneers /3: Data | Klient | Zlecenie | Lp | Okleina | Wymiar | Ilość | Przygotowane | Opis | Uwagi | Opcje
         var idxData = findHeaderIndex('Data');
         var idxKlient = findHeaderIndex('Klient');
@@ -463,17 +538,10 @@
         var idxOpis = findHeaderIndex('Opis');
         var idxUwagi = findHeaderIndex('Uwagi');
         
-        console.log('[EOZ Boards Magazine Module] DEBUG: Column indices:', {
-            idxData, idxKlient, idxZlecenie, idxLp, idxOkleina, idxWymiar, idxIlosc, idxPrzygot, idxOpis, idxUwagi
-        });
-        
         var rows = document.querySelectorAll('table tbody tr');
         var orderCount = 0;
         
-        console.log('[EOZ Boards Magazine Module] DEBUG: Found', rows.length, 'rows');
-        
         if (rows.length === 0) {
-            console.log('[EOZ Boards Magazine Module] DEBUG: No rows found! Table may not be loaded yet.');
             return;
         }
         
@@ -482,12 +550,9 @@
             var cells = row.querySelectorAll('td');
             if (!cells || cells.length === 0) return;
             
-            console.log('[EOZ Boards Magazine Module] DEBUG: Processing row', rIndex, 'with', cells.length, 'cells');
-            
             // Skip grouping rows (date headers with colspan)
             var firstCell = row.querySelector('th[colspan], td[colspan]');
             if (firstCell && parseInt(firstCell.getAttribute('colspan')) > 1) {
-                console.log('[EOZ Boards Magazine Module] Skipping grouping header row', rIndex);
                 return;
             }
             
@@ -499,20 +564,14 @@
             
             if (!hasRowspan) {
                 // This is a sub-row (additional veneer) - skip it, we'll handle it with the main row
-                console.log('[EOZ Boards Magazine Module] Skipping sub-row', rIndex);
                 return;
             }
             
             // This is a main row - collect all veneers for this order
             orderCount++;
             
-            console.log('[EOZ Boards Magazine Module] DEBUG: Processing main row', rIndex, 'orderCount:', orderCount);
-            
             var data = orderCount.toString();
-            console.log('[EOZ Boards Magazine Module] DEBUG: data (LP) =', data);
-            
             var klient = cells[idxKlient] ? (cells[idxKlient].textContent||'').trim() : '';
-            console.log('[EOZ Boards Magazine Module] DEBUG: klient =', klient);
             
             var zlecenieLink = '';
             var zlecenie = '';
@@ -712,19 +771,9 @@
             mobileCell.appendChild(grid);
             row.appendChild(mobileCell);
         });
-        
-        console.log('[EOZ Boards Magazine Module] Veneers grouped mobile layout built:', orderCount, 'orders');
-        
-        if (orderCount === 0) {
-            console.log('[EOZ Boards Magazine Module] DEBUG: No orders processed! Check if rows have rowspan attributes.');
-        }
     }
 
     function buildMobileLayout(){
-        var allHeaders = document.querySelectorAll('table thead th');
-        var headerNames = [];
-        allHeaders.forEach(function(th){ headerNames.push((th.textContent||'').trim()); });
-        console.log('[EOZ Boards Magazine Module] Headers found:', headerNames.join(', '));
 
         // Check if this is boards or veneers view
         var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
@@ -768,13 +817,10 @@
                 if (cells[0].hasAttribute('colspan')) {
                     var colspanValue = parseInt(cells[0].getAttribute('colspan'));
                     if (colspanValue > 1) {
-                        console.log('[EOZ Boards Magazine Module] Skipping separator row', rIndex);
                         return;
                     }
                 }
                 // Skip grouping rows (e.g., date headers in veneers /3 view)
-                // These have only 1 cell without colspan
-                console.log('[EOZ Boards Magazine Module] Skipping grouping row', rIndex, ':', (cells[0].textContent || '').trim());
                 return;
             }
 
