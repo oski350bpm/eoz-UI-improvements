@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.8';
+    var VERSION = '1.0.9';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -544,7 +544,7 @@
     }
 
     function modifyScannerBehavior() {
-        // Modify scanner div behavior to redirect to control_panel_order
+        // Modify scanner div behavior to redirect like play button (safe, no auto-start)
         var scannerDiv = document.getElementById('scanner_div');
         if (!scannerDiv) return;
         
@@ -563,14 +563,23 @@
                 var orderCode = this.value.trim();
                 if (!orderCode) return;
                 
+                // Get current date
+                var today = new Date();
+                var year = today.getFullYear();
+                var month = String(today.getMonth() + 1).padStart(2, '0');
+                var day = String(today.getDate()).padStart(2, '0');
+                var operationDate = year + '-' + month + '-' + day;
+                
                 // Extract block_id from URL or use default
                 var urlParams = new URLSearchParams(window.location.search);
                 var blockId = urlParams.get('block_id') || '3250'; // fallback to example value
                 
-                // Build new URL - simplified to match real behavior
-                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_order?' +
+                // Build URL like play button - SAFE, no auto-start
+                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel?' +
                     'number2=' + encodeURIComponent(orderCode) +
-                    '&block_id=' + blockId;
+                    '&operation_date=' + operationDate +
+                    '&block_id=' + blockId +
+                    '&start=0';
                 
                 // Redirect to new URL
                 window.location.href = newUrl;
@@ -586,14 +595,23 @@
                 var orderCode = newInput.value.trim();
                 if (!orderCode) return;
                 
+                // Get current date
+                var today = new Date();
+                var year = today.getFullYear();
+                var month = String(today.getMonth() + 1).padStart(2, '0');
+                var day = String(today.getDate()).padStart(2, '0');
+                var operationDate = year + '-' + month + '-' + day;
+                
                 // Extract block_id from URL or use default
                 var urlParams = new URLSearchParams(window.location.search);
                 var blockId = urlParams.get('block_id') || '3250';
                 
-                // Build new URL - simplified to match real behavior
-                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_order?' +
+                // Build URL like play button - SAFE, no auto-start
+                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel?' +
                     'number2=' + encodeURIComponent(orderCode) +
-                    '&block_id=' + blockId;
+                    '&operation_date=' + operationDate +
+                    '&block_id=' + blockId +
+                    '&start=0';
                 
                 // Redirect to new URL
                 window.location.href = newUrl;
