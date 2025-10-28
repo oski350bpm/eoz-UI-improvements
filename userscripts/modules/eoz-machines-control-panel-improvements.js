@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.4';
+    var VERSION = '1.0.5';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -261,13 +261,14 @@
             if (notesClientLink) {
                 var link1 = notesClientLink.cloneNode(true);
                 link1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
-                link1.target = '_blank'; // Open in popup/new window
+                // Remove target="_blank" to open in internal popup
+                link1.removeAttribute('target');
                 tdKl.appendChild(link1);
             } else if (orderId) {
                 var a1 = document.createElement('a');
                 a1.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
                 a1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
-                a1.target = '_blank'; // Open in popup/new window
+                // No target attribute = opens in internal popup
                 tdKl.appendChild(a1);
             }
 
