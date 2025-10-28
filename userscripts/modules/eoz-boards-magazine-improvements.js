@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.3.0';
+    var VERSION = '2.3.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -44,8 +44,10 @@
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
         'body[data-veneer] table thead th:nth-child(1){display:none!important}\n' +
         'body[data-veneer] table thead th:nth-child(4){display:none!important}\n' +
-        'body[data-veneer] table tbody td:nth-child(1){display:none!important}\n' +
-        'body[data-veneer] table tbody td:nth-child(4){display:none!important}\n' +
+        'body[data-veneer] table tbody tr:not([class*="mobile"]) td:nth-child(1){display:none!important}\n' +
+        'body[data-veneer] table tbody tr:not([class*="mobile"]) td:nth-child(4){display:none!important}\n' +
+        'body[data-veneer] .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        'body[data-veneer] .switch-field label{cursor:pointer!important}\n' +
         '@media (min-width:961px){\n' +
         '  table tbody tr td.eoz-mobile-cell{display:none!important}\n' +
         '}\n' +
