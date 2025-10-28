@@ -7,8 +7,13 @@
 ├── core/
 │   └── eoz-core.js          # Wspólne utility (whenReady, waitFor, injectStyles, makeHeaderResponsive)
 ├── userscripts/
-│   ├── eoz-global.user.js           # Globalny skrypt (responsywne menu header)
-│   └── eoz-commission-list.user.js  # Widok listy zleceń
+│   ├── eoz-all-improvements.user.js    # Główny skrypt loader dla wszystkich modułów
+│   ├── eoz-global.user.js              # Globalny skrypt (responsywne menu header)
+│   ├── eoz-commission-list.user.js     # Widok listy zleceń
+│   └── modules/
+│       ├── eoz-header-menu.js                    # Moduł menu header
+│       ├── eoz-commission-list-improvements.js   # Moduł ulepszeń listy zleceń
+│       └── eoz-boards-magazine-improvements.js   # Moduł magazynu płyt i oklein
 ├── README.md
 ├── INSTALACJA.md
 └── WORKFLOW.md              # Ten plik
@@ -24,8 +29,13 @@
 Przed commitem **zawsze zwiększ** `@version` w plikach, które zmieniłeś:
 
 **Dla zmian w core (`core/eoz-core.js`):**
-- Zwiększ wersję w **obu** userscriptach (global + commission-list)
+- Zwiększ wersję w **wszystkich** userscriptach, które go używają
 - Core nie ma własnego `@version`, więc userscripty muszą być zaktualizowane
+
+**Dla zmian w modułach (`userscripts/modules/`):**
+- Zwiększ wersję modułu (zmienna VERSION)
+- Zwiększ wersję głównego skryptu (`eoz-all-improvements.user.js`)
+- Zaktualizuj URL-e wersji w @require i @updateURL/@downloadURL
 
 **Dla zmian w userscriptach:**
 - Zwiększ `@version` tylko w zmienionym pliku
@@ -77,6 +87,7 @@ Po pushu na GitHub:
 
 ## Linki instalacyjne (dla nowych urządzeń)
 
+- **Główny skrypt (zalecany):** https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js
 - Global: https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-global.user.js
 - Lista zleceń: https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-commission-list.user.js
 

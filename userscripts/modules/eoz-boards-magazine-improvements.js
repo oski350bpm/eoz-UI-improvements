@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.5';
+    var VERSION = '2.4.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -45,10 +45,6 @@
         '.switch-field label.eoz-radio-unchecked:first-of-type{border-radius:4px 0 0 4px!important}\n' +
         '.switch-field label.eoz-radio-unchecked:last-of-type{border-radius:0 4px 4px 0!important}\n' +
         '.switch-field label.eoz-radio-checked{background:#f06521!important;color:#fff!important;border:1px solid #f06521!important;box-shadow:none!important;font-weight:600!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}\n' +
-        // Fallback CSS dla wszystkich rozdzielczości (jak mobile)
-        '.switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
-        'table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
-        '.eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
         'body[data-veneer] table thead th[data-column="lp"],body[data-veneer] table tbody td[data-column="lp"]{display:none!important}\n' +
@@ -83,6 +79,9 @@
         '  .eoz-m-note-btn:hover{background:#f0f7ff!important;border-color:#0056b3!important}\n' +
         '  .eoz-m-note-btn i{font-size:20px;margin:0}\n' +
         '  .eoz-m-col5-actions{margin-top:8px}\n' +
+        '  .switch-field input[type="radio"]:checked+label.tippy{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  table tbody td .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
+        '  .eoz-mobile-cell .switch-field input[type="radio"]:checked+label{background:#f06521!important;box-shadow:inset 0 0 0 9999px #f06521!important;color:#fff!important;font-weight:bold!important}\n' +
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
@@ -232,18 +231,21 @@
 
     function normalizeRadioButtons(root){
         root = root || document;
-        
-        // NAJPIERW ustaw klasy na wszystkich radio buttonach
-        updateAllRadioGroups();
-        
-        // POTEM dodaj event listenery
         root.querySelectorAll('.switch-field').forEach(function(group){
             var radios = group.querySelectorAll('input[type="radio"]');
             radios.forEach(function(radio){
                 radio.removeEventListener('change', updateRadioVisualState);
                 radio.addEventListener('change', updateRadioVisualState);
+                // Also listen to input events to capture programmatic toggles that dispatch input
+                radio.removeEventListener('input', updateRadioVisualState);
+                radio.addEventListener('input', updateRadioVisualState);
             });
         });
+        // Initial syncs: immediate, next frame and after tiny delays to catch late DOM updates
+        updateAllRadioGroups();
+        requestAnimationFrame(updateAllRadioGroups);
+        setTimeout(updateAllRadioGroups, 50);
+        setTimeout(updateAllRadioGroups, 200);
     }
 
     function updateAllRadioGroups(){
@@ -256,13 +258,12 @@
             var label = group.querySelector('label[for="' + radio.id + '"]');
             if (!label) return;
             var isChecked = radio.checked;
-            
-            // Najpierw usuń obie klasy, potem dodaj odpowiednią
-            label.classList.remove('eoz-radio-checked', 'eoz-radio-unchecked');
-            
+            label.classList.add('eoz-radio-unchecked');
             if (isChecked){
                 label.classList.add('eoz-radio-checked');
+                label.classList.remove('eoz-radio-unchecked');
             } else {
+                label.classList.remove('eoz-radio-checked');
                 label.classList.add('eoz-radio-unchecked');
             }
         });
@@ -278,17 +279,56 @@
         var observer = new MutationObserver(function(mutations){
             var needsRefresh = false;
             mutations.forEach(function(mutation){
-                mutation.addedNodes.forEach(function(node){
-                    if (node.nodeType === 1 && node.querySelector && node.querySelector('.switch-field')){
-                        needsRefresh = true;
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(function(node){
+                        if (node.nodeType === 1 && node.querySelector && node.querySelector('.switch-field')){
+                            needsRefresh = true;
+                        }
+                    });
+                } else if (mutation.type === 'attributes' && mutation.attributeName === 'checked') {
+                    var target = mutation.target;
+                    if (target && target.closest) {
+                        var group = target.closest('.switch-field');
+                        if (group) {
+                            updateRadioGroupVisualState(group);
+                        }
                     }
-                });
+                }
             });
             if (needsRefresh){
                 normalizeRadioButtons();
             }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['checked'] });
+    }
+
+    // Debounce utility
+    function eozDebounce(fn, wait){
+        var timeoutId;
+        return function(){
+            clearTimeout(timeoutId);
+            var args = arguments;
+            timeoutId = setTimeout(function(){ fn.apply(null, args); }, wait);
+        };
+    }
+
+    function installGlobalRadioSync(){
+        if (!window.EOZ) window.EOZ = {};
+        if (!window.EOZ.BoardsMagazine) window.EOZ.BoardsMagazine = {};
+        if (window.EOZ.BoardsMagazine._radioSyncInstalled) return;
+        window.EOZ.BoardsMagazine._radioSyncInstalled = true;
+
+        // Re-evaluate on load (after all external scripts finished) and on viewport changes
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', function(){ updateAllRadioGroups(); }, { once: true });
+        } else {
+            // If already complete, still do one more async pass
+            setTimeout(updateAllRadioGroups, 0);
+        }
+
+        var debounced = eozDebounce(updateAllRadioGroups, 150);
+        window.addEventListener('resize', debounced);
+        window.addEventListener('orientationchange', debounced);
     }
 
     function apply() {
@@ -308,32 +348,32 @@
         
         // Skip header and row modifications for veneers /3 (grouped view)
         if (!isVeneersGrouped) {
-        // Change first header to Lp.
-        var headerRow = document.querySelector('table thead tr');
-        if (headerRow) {
-            var firstHeaderCell = headerRow.querySelector('th:first-child');
-            if (firstHeaderCell) {
-                firstHeaderCell.textContent = 'Lp.';
-                var link = firstHeaderCell.querySelector('a');
-                if (link) link.remove();
+            // Change first header to Lp.
+            var headerRow = document.querySelector('table thead tr');
+            if (headerRow) {
+                var firstHeaderCell = headerRow.querySelector('th:first-child');
+                if (firstHeaderCell) {
+                    firstHeaderCell.textContent = 'Lp.';
+                    var link = firstHeaderCell.querySelector('a');
+                    if (link) link.remove();
+                }
             }
+
+            // Try hide 5th column (Lp 1/1)
+            var allHeaders = document.querySelectorAll('table thead tr th');
+            var lpColumnIndex = -1;
+            allHeaders.forEach(function(th, index){ if (th.textContent.trim() === 'Lp' && index > 0) lpColumnIndex = index; });
+            if (lpColumnIndex !== -1) {
+                if (allHeaders[lpColumnIndex]) allHeaders[lpColumnIndex].style.display = 'none';
+                var rows = document.querySelectorAll('table tbody tr');
+                rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
+            }
+
+            // Row numbers
+            var bodyRows = document.querySelectorAll('table tbody tr');
+            bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
         }
 
-        // Try hide 5th column (Lp 1/1)
-        var allHeaders = document.querySelectorAll('table thead tr th');
-        var lpColumnIndex = -1;
-        allHeaders.forEach(function(th, index){ if (th.textContent.trim() === 'Lp' && index > 0) lpColumnIndex = index; });
-        if (lpColumnIndex !== -1) {
-            if (allHeaders[lpColumnIndex]) allHeaders[lpColumnIndex].style.display = 'none';
-            var rows = document.querySelectorAll('table tbody tr');
-            rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
-        }
-
-        // Row numbers
-        var bodyRows = document.querySelectorAll('table tbody tr');
-        bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
-        }
-        
         // Build dropdowns first so we can reuse them in mobile grid
         transformActionButtons();
         
@@ -341,7 +381,7 @@
         if (isVeneersGrouped) {
             buildMobileLayoutVeneersGrouped();
         } else {
-        buildMobileLayout();
+            buildMobileLayout();
         }
 
         if (isVeneers) {
@@ -351,6 +391,7 @@
 
         normalizeRadioButtons();
         observeRadioMutations();
+        installGlobalRadioSync();
 
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
         
@@ -743,7 +784,7 @@
         
         // Check if this is the /3 view (grouped by date in veneers)
         var isGroupedView = isVeneers && window.location.href.indexOf('/3') !== -1;
-
+        
         var idxKlient = findHeaderIndex('Klient');
         var idxZlecenie = findHeaderIndex('Zlecenie');
         var idxNazwa = findHeaderIndex('Nazwa zamówienia');
@@ -838,12 +879,12 @@
                 var plytaWymiarCell = getCell(idxPlytaWymiar);
                 if (plytaWymiarCell) {
                     var plytaWymiarText = (plytaWymiarCell.textContent||'').trim();
-                var lines = plytaWymiarText.split('\n');
-                if (lines.length >= 2) {
-                    plyta = lines[0].trim();
-                    wymiar = lines[1].trim();
-                } else if (lines.length === 1) {
-                    plyta = lines[0].trim();
+                    var lines = plytaWymiarText.split('\n');
+                    if (lines.length >= 2) {
+                        plyta = lines[0].trim();
+                        wymiar = lines[1].trim();
+                    } else if (lines.length === 1) {
+                        plyta = lines[0].trim();
                     }
                 }
             }
