@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.1';
+    var VERSION = '1.1.2';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -565,18 +565,42 @@
         console.log('[EOZ Machines Panel v' + VERSION + '] Scanner input cloned & replaced', { id: oldId, name: oldName });
 
         function buildSafeUrl(orderCode) {
-            var today = new Date();
-            var year = today.getFullYear();
-            var month = String(today.getMonth() + 1).padStart(2, '0');
-            var day = String(today.getDate()).padStart(2, '0');
-            var operationDate = year + '-' + month + '-' + day;
-            var urlParams = new URLSearchParams(window.location.search);
-            var blockId = urlParams.get('block_id') || '3250';
+            // Get operation_date from the actual form field (same as original system)
+            var operationDateInput = document.querySelector('input[name="operation_date"]');
+            var operationDate = operationDateInput ? operationDateInput.value : null;
+            
+            if (!operationDate) {
+                // Fallback to today's date if not found
+                var today = new Date();
+                var year = today.getFullYear();
+                var month = String(today.getMonth() + 1).padStart(2, '0');
+                var day = String(today.getDate()).padStart(2, '0');
+                operationDate = year + '-' + month + '-' + day;
+            }
+            
+            // Get block_id from existing play button URLs (same as play buttons)
+            var playButtons = document.querySelectorAll('a[href*="control_panel?"]');
+            var blockId = null;
+            for (var i = 0; i < playButtons.length; i++) {
+                var href = playButtons[i].href;
+                var match = href.match(/block_id=(\d+)/);
+                if (match) {
+                    blockId = match[1];
+                    break;
+                }
+            }
+            
+            // Fallback block_id if not found
+            if (!blockId) {
+                blockId = '3250';
+            }
+            
             var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel?' +
                 'number2=' + encodeURIComponent(orderCode) +
                 '&operation_date=' + operationDate +
                 '&block_id=' + blockId +
                 '&start=0';
+            
             return { url: url, operationDate: operationDate, blockId: blockId };
         }
 

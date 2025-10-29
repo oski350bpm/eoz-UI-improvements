@@ -1,23 +1,23 @@
 // ==UserScript==
 // @name         EOZ All UI Improvements
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      3.5.15
+// @version      3.5.16
 // @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów (Boards + Veneers)
 // @match        https://eoz.iplyty.erozrys.pl/*
-// @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=1761725542
-// @downloadURL  https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=1761725542
+// @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=1761725998
+// @downloadURL  https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js?v=1761725998
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/core/eoz-core.js?v=2.4.5
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-header-menu.js?v=2.2.7
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-commission-list-improvements.js?v=2.4.5
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-boards-magazine-improvements.js?v=1761642634
-// @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-machines-control-panel-improvements.js?v=1761725542
+// @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-machines-control-panel-improvements.js?v=1761725998
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    var VERSION = '3.5.15';
+    var VERSION = '3.5.16';
     
     if (!window.EOZ) {
         console.error('[EOZ All UI v' + VERSION + '] Core not loaded!');
