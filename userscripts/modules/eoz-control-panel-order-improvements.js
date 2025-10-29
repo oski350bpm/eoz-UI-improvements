@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.1';
+    var VERSION = '1.1.2';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -168,8 +168,12 @@
     }
 
     function removeFirstTable() {
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Starting removeFirstTable');
+        
         // Find first table (with plates info)
         var allTables = document.querySelectorAll('table');
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Total tables found:', allTables.length);
+        
         var firstTable = null;
         
         for (var i = 0; i < allTables.length; i++) {
@@ -183,6 +187,7 @@
             }
             if (hasPlateColumn) {
                 firstTable = allTables[i];
+                console.log('[EOZ Control Panel Order v' + VERSION + '] First table found at index', i);
                 break;
             }
         }
@@ -191,6 +196,12 @@
             console.warn('[EOZ Control Panel Order v' + VERSION + '] First table not found');
             return null;
         }
+        
+        console.log('[EOZ Control Panel Order v' + VERSION + '] First table details:', {
+            hasParent: !!firstTable.parentElement,
+            parentTag: firstTable.parentElement ? firstTable.parentElement.tagName : 'null',
+            rowsCount: firstTable.querySelector('tbody') ? firstTable.querySelector('tbody').querySelectorAll('tr').length : 0
+        });
         
         // Extract link from first column of first table
         var linkInfo = null;
@@ -224,31 +235,57 @@
     }
 
     function reorganizeTables(linkInfo) {
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Starting reorganizeTables', { linkInfo: linkInfo });
+        
         // Find tabs container
         var tabList = document.querySelector('[role="tablist"]');
         var tabPanels = document.querySelectorAll('[role="tabpanel"]');
         
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Found tabs:', {
+            hasTabList: !!tabList,
+            tabPanelsCount: tabPanels.length,
+            tabPanelsIds: Array.from(tabPanels).map(function(p) { return p.id || '(no id)'; })
+        });
+        
         if (!tabList || tabPanels.length === 0) {
-            console.warn('[EOZ Control Panel Order v' + VERSION + '] Tabs not found');
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] Tabs not found - tabList:', !!tabList, 'tabPanels:', tabPanels.length);
             return;
         }
         
         var container = tabList.parentElement;
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Container:', {
+            tagName: container ? container.tagName : 'null',
+            className: container ? container.className : 'null',
+            id: container ? container.id : 'null'
+        });
         
         // Get original tabs BEFORE removing tabList
         var originalTabs = document.querySelectorAll('[role="tab"]');
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Original tabs count:', originalTabs.length);
         
         // Remove tabs
         tabList.parentElement.removeChild(tabList);
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Tab list removed');
         
         // Process each tabpanel - remove tabpanel wrapper and show all tables
         var tablesHTML = [];
         var headers = null;
         
         for (var i = 0; i < tabPanels.length; i++) {
+            console.log('[EOZ Control Panel Order v' + VERSION + '] Processing panel', i, 'of', tabPanels.length);
             var panel = tabPanels[i];
             var table = panel.querySelector('table');
-            if (!table) continue;
+            
+            console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, ':', {
+                panelId: panel.id || '(no id)',
+                hasTable: !!table,
+                panelHTML: panel.outerHTML.substring(0, 200)
+            });
+            
+            if (!table) {
+                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'has no table, skipping');
+                continue;
+            }
             
             // Get title from original tab
             var tabTitle = '';
@@ -265,8 +302,15 @@
             var thead = table.querySelector('thead');
             var tbody = table.querySelector('tbody');
             
+            console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'table structure:', {
+                hasThead: !!thead,
+                hasTbody: !!tbody,
+                rowsCount: tbody ? tbody.querySelectorAll('tr').length : 0,
+                headersCount: thead ? thead.querySelectorAll('th').length : 0
+            });
+            
             if (!thead || !tbody) {
-                // Skip this panel if no table
+                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'missing thead or tbody, skipping');
                 continue;
             }
             
@@ -350,21 +394,43 @@
             tableWrapper.appendChild(titleDiv);
             tableWrapper.appendChild(tableClone);
             
-            tablesHTML.push(tableWrapper.outerHTML);
+            var wrapperHTML = tableWrapper.outerHTML;
+            console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'wrapper created, length:', wrapperHTML.length);
+            tablesHTML.push(wrapperHTML);
         }
+        
+        console.log('[EOZ Control Panel Order v' + VERSION + '] All panels processed, tablesHTML count:', tablesHTML.length);
         
         // Insert all tables one after another
         if (tablesHTML.length > 0) {
             var newContainer = document.createElement('div');
             newContainer.className = 'eoz-all-tables';
             newContainer.innerHTML = tablesHTML.join('');
-            container.appendChild(newContainer);
+            
+            console.log('[EOZ Control Panel Order v' + VERSION + '] Inserting new container:', {
+                containerHTML: newContainer.outerHTML.substring(0, 300),
+                parentContainer: container ? container.tagName : 'null',
+                parentId: container ? container.id : 'null'
+            });
+            
+            if (container) {
+                container.appendChild(newContainer);
+                console.log('[EOZ Control Panel Order v' + VERSION + '] Container appended successfully');
+            } else {
+                console.error('[EOZ Control Panel Order v' + VERSION + '] Container is null, cannot append!');
+            }
+        } else {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] No tables to insert!');
         }
         
         // Remove original tabpanels
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Removing original tabpanels...');
         for (var p = 0; p < tabPanels.length; p++) {
             if (tabPanels[p].parentElement) {
+                console.log('[EOZ Control Panel Order v' + VERSION + '] Removing tabpanel', p, tabPanels[p].id || '(no id)');
                 tabPanels[p].parentElement.removeChild(tabPanels[p]);
+            } else {
+                console.warn('[EOZ Control Panel Order v' + VERSION + '] Tabpanel', p, 'has no parent');
             }
         }
         
