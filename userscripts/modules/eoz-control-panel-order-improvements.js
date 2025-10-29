@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.7';
+    var VERSION = '1.2.0';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -383,15 +383,27 @@
                 continue;
             }
             
-            // Find columns to remove by checking first data row
-            // Structure: Numer, Nazwa, Ilość, Długość, Szerokość, Przód, Tył, Lewo, Prawo, Usłojenie (9), Obrazek (10), Opcje (11), Info/Zlecenie (12)
-            var firstDataRow = tbody.querySelector('tr:not(:empty)') || tbody.querySelector('tr');
+            // Find columns to remove - check both thead (if exists) and first data row
             var indicesToRemove = [];
             
-            if (firstDataRow) {
+            // If table has thead, use headers to find column indices
+            if (thead) {
+                var headerCells = thead.querySelectorAll('th');
+                for (var hIdx = 0; hIdx < headerCells.length; hIdx++) {
+                    var headerText = headerCells[hIdx].textContent.trim();
+                    if (headerText === 'Usłojenie' || headerText === 'Obrazek' || headerText === 'Info' || headerText === 'Zlecenie') {
+                        indicesToRemove.push(hIdx);
+                    }
+                }
+            }
+            
+            // Also check first data row to verify/find columns
+            var firstDataRow = tbody.querySelector('tr:not(:empty)') || tbody.querySelector('tr');
+            if (firstDataRow && indicesToRemove.length === 0) {
+                // If no thead or didn't find columns in headers, use data row
                 var sampleCells = firstDataRow.querySelectorAll('td');
                 
-                // Find Usłojenie (index 9), Obrazek (index 10), and Info/Zlecenie (last column, index 12)
+                // Find Usłojenie (index 9), Obrazek (index 10), and Info/Zlecenie (last column)
                 if (sampleCells.length > 10) {
                     // Check if cell at index 9 looks like Usłojenie (contains "Nie" or "Tak")
                     var cell9Text = sampleCells[9] ? sampleCells[9].textContent.trim() : '';
@@ -406,33 +418,14 @@
                         indicesToRemove.push(10); // Obrazek
                     }
                     
-                    // Check last column for "Info" or "Zlecenie" (usually index 12, but may vary)
-                    // Find the last column that doesn't contain buttons - this is Info/Zlecenie column
+                    // Check last column for "Info" or "Zlecenie"
                     var lastIndex = sampleCells.length - 1;
                     var lastCell = sampleCells[lastIndex];
                     if (lastCell) {
                         var lastCellText = lastCell.textContent.trim();
                         var hasButtons = lastCell.querySelector('a.tippy');
-                        // If last cell has no buttons and is empty or contains "Info"/"Zlecenie" text, remove it
-                        // Also check second-to-last in case there's an empty column before Info
-                        if (!hasButtons) {
-                            // Check if it's likely Info/Zlecenie column (empty or contains related text)
-                            if (lastCellText === '' || lastCellText.toLowerCase().indexOf('info') !== -1 || lastCellText.toLowerCase().indexOf('zlecenie') !== -1) {
-                                indicesToRemove.push(lastIndex);
-                            } else {
-                                // Check second-to-last column too
-                                var secondLastIndex = lastIndex - 1;
-                                if (secondLastIndex >= 0) {
-                                    var secondLastCell = sampleCells[secondLastIndex];
-                                    if (secondLastCell) {
-                                        var secondLastText = secondLastCell.textContent.trim();
-                                        var secondLastHasButtons = secondLastCell.querySelector('a.tippy');
-                                        if (!secondLastHasButtons && (secondLastText === '' || secondLastText.toLowerCase().indexOf('info') !== -1 || secondLastText.toLowerCase().indexOf('zlecenie') !== -1)) {
-                                            indicesToRemove.push(secondLastIndex);
-                                        }
-                                    }
-                                }
-                            }
+                        if (!hasButtons && (lastCellText === '' || lastCellText.toLowerCase().indexOf('info') !== -1 || lastCellText.toLowerCase().indexOf('zlecenie') !== -1)) {
+                            indicesToRemove.push(lastIndex);
                         }
                     }
                 }
@@ -521,10 +514,18 @@
                 }
             }
             
-            // Remove any thead (we don't want any headers - panels should display without them)
-            var addedThead = table.querySelector('thead');
-            if (addedThead) {
-                table.removeChild(addedThead);
+            // Remove thead headers (we don't want headers - panels should display without them)
+            // But first remove columns from thead if exists
+            if (thead) {
+                var headerCells = thead.querySelectorAll('th');
+                // Remove header cells in reverse order
+                indicesToRemove.sort(function(a, b) { return b - a; }).forEach(function(idx) {
+                    if (headerCells[idx]) {
+                        headerCells[idx].parentElement.removeChild(headerCells[idx]);
+                    }
+                });
+                // Then remove entire thead
+                table.removeChild(thead);
             }
             
             // Check if table has data rows (skip empty tables)
@@ -678,7 +679,22 @@
         window.jQuery(modal).modal('show');
     }
 
+    function getMachineId() {
+        // Try to get machine ID from end operation button URL
+        var endButton = document.querySelector('a.btn-danger.end_operation_button');
+        if (endButton && endButton.href) {
+            var match = endButton.href.match(/end_operation_2020\/(\d+)\//);
+            if (match) {
+                return parseInt(match[1], 10);
+            }
+        }
+        return null;
+    }
+
     function apply() {
+        // Get machine ID
+        var machineId = getMachineId();
+        
         addHeaderInfo();
         
         // Find check-double href before removing tables
@@ -688,9 +704,22 @@
         var tableData = removeFirstTable();
         if (tableData) {
             reorganizeTables(tableData);
+        } else {
+            // If no first table found, still reorganize tables (for machines with different structure)
+            reorganizeTables({ linkInfo: null, headers: null });
         }
         
-        addCheckDoubleButton(checkDoubleHref);
+        // Hide check-double button for machine ID 583 (Okleiniarka)
+        if (machineId === 583) {
+            var checkDoubleBtn = document.querySelector('.eoz-check-double-btn, a.btn-success.eoz-check-double-btn');
+            if (checkDoubleBtn) {
+                checkDoubleBtn.style.display = 'none';
+            }
+        } else {
+            // Add check-double button only if not machine 583
+            addCheckDoubleButton(checkDoubleHref);
+        }
+        
         addEndOperationConfirmation();
     }
 
