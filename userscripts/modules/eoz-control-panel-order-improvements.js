@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.1';
+    var VERSION = '1.2.2';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -486,6 +486,7 @@
                             indicesToRemove.push(lastIndex);
                         }
                     }
+                }
                 }
             }
             
