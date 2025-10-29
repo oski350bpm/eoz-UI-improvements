@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.9';
+    var VERSION = '1.1.0';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -544,79 +544,88 @@
     }
 
     function modifyScannerBehavior() {
-        // Modify scanner div behavior to redirect like play button (safe, no auto-start)
+        // Debug: initial detection
         var scannerDiv = document.getElementById('scanner_div');
-        if (!scannerDiv) return;
-        
-        var scannerInput = scannerDiv.querySelector('input.scanner');
-        if (!scannerInput) return;
-        
+        var scannerInput = (scannerDiv ? scannerDiv.querySelector('input.scanner') : null) || document.querySelector('input.scanner');
+        console.log('[EOZ Machines Panel v' + VERSION + '] Scanner detection:', {
+            hasScannerDiv: !!scannerDiv,
+            hasScannerInputInDiv: !!(scannerDiv && scannerDiv.querySelector && scannerDiv.querySelector('input.scanner')),
+            hasScannerInputGlobal: !!document.querySelector('input.scanner')
+        });
+        if (!scannerInput) {
+            console.warn('[EOZ Machines Panel v' + VERSION + '] Scanner input not found. Aborting custom redirect setup.');
+            return;
+        }
+
         // Remove existing event listeners by cloning the input
+        var oldId = scannerInput.id;
+        var oldName = scannerInput.name;
         var newInput = scannerInput.cloneNode(true);
         scannerInput.parentNode.replaceChild(newInput, scannerInput);
-        
-        // Add new submit handler
+        console.log('[EOZ Machines Panel v' + VERSION + '] Scanner input cloned & replaced', { id: oldId, name: oldName });
+
+        function buildSafeUrl(orderCode) {
+            var today = new Date();
+            var year = today.getFullYear();
+            var month = String(today.getMonth() + 1).padStart(2, '0');
+            var day = String(today.getDate()).padStart(2, '0');
+            var operationDate = year + '-' + month + '-' + day;
+            var urlParams = new URLSearchParams(window.location.search);
+            var blockId = urlParams.get('block_id') || '3250';
+            var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel?' +
+                'number2=' + encodeURIComponent(orderCode) +
+                '&operation_date=' + operationDate +
+                '&block_id=' + blockId +
+                '&start=0';
+            return { url: url, operationDate: operationDate, blockId: blockId };
+        }
+
+        // Add new keypress handler
         newInput.addEventListener('keypress', function(e) {
+            console.log('[EOZ Machines Panel v' + VERSION + '] keypress', { key: e.key, code: e.code, value: newInput.value });
             if (e.key === 'Enter') {
                 e.preventDefault();
-                
-                var orderCode = this.value.trim();
-                if (!orderCode) return;
-                
-                // Get current date
-                var today = new Date();
-                var year = today.getFullYear();
-                var month = String(today.getMonth() + 1).padStart(2, '0');
-                var day = String(today.getDate()).padStart(2, '0');
-                var operationDate = year + '-' + month + '-' + day;
-                
-                // Extract block_id from URL or use default
-                var urlParams = new URLSearchParams(window.location.search);
-                var blockId = urlParams.get('block_id') || '3250'; // fallback to example value
-                
-                // Build URL like play button - SAFE, no auto-start
-                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel?' +
-                    'number2=' + encodeURIComponent(orderCode) +
-                    '&operation_date=' + operationDate +
-                    '&block_id=' + blockId +
-                    '&start=0';
-                
-                // Redirect to new URL
-                window.location.href = newUrl;
-            }
-        });
-        
-        // Also handle form submission if there's a form
-        var form = scannerDiv.closest('form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
                 var orderCode = newInput.value.trim();
-                if (!orderCode) return;
-                
-                // Get current date
-                var today = new Date();
-                var year = today.getFullYear();
-                var month = String(today.getMonth() + 1).padStart(2, '0');
-                var day = String(today.getDate()).padStart(2, '0');
-                var operationDate = year + '-' + month + '-' + day;
-                
-                // Extract block_id from URL or use default
-                var urlParams = new URLSearchParams(window.location.search);
-                var blockId = urlParams.get('block_id') || '3250';
-                
-                // Build URL like play button - SAFE, no auto-start
-                var newUrl = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel?' +
-                    'number2=' + encodeURIComponent(orderCode) +
-                    '&operation_date=' + operationDate +
-                    '&block_id=' + blockId +
-                    '&start=0';
-                
-                // Redirect to new URL
-                window.location.href = newUrl;
-            });
+                console.log('[EOZ Machines Panel v' + VERSION + '] Enter pressed', { orderCode: orderCode });
+                if (!orderCode) {
+                    console.warn('[EOZ Machines Panel v' + VERSION + '] Empty order code, ignoring');
+                    return;
+                }
+                var built = buildSafeUrl(orderCode);
+                console.log('[EOZ Machines Panel v' + VERSION + '] Redirecting (keypress) to', built);
+                window.location.href = built.url;
+            }
+        }, true);
+
+        // Also handle form submission if there's a form
+        var form = newInput.closest && newInput.closest('form');
+        if (form) {
+            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form detected. Installing submit handler');
+            form.addEventListener('submit', function(e) {
+                console.log('[EOZ Machines Panel v' + VERSION + '] form.submit intercepted', { value: newInput.value });
+                e.preventDefault();
+                var orderCode = newInput.value.trim();
+                if (!orderCode) {
+                    console.warn('[EOZ Machines Panel v' + VERSION + '] Empty order code on submit, ignoring');
+                    return;
+                }
+                var built = buildSafeUrl(orderCode);
+                console.log('[EOZ Machines Panel v' + VERSION + '] Redirecting (submit) to', built);
+                window.location.href = built.url;
+            }, true);
+        } else {
+            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form not found. Relying on keypress Enter handler');
         }
+
+        // Global debug listeners to trace native behavior
+        document.addEventListener('keypress', function(e){
+            var tgt = e.target && e.target.id ? ('#' + e.target.id) : (e.target && e.target.name ? ('[name="' + e.target.name + '"]') : (e.target && e.target.tagName));
+            if (e.target === newInput) {
+                console.log('[EOZ Machines Panel v' + VERSION + '] document keypress (from scanner)', { key: e.key, code: e.code, target: tgt });
+            }
+        }, true);
+
+        console.log('[EOZ Machines Panel v' + VERSION + '] Custom scanner redirect initialized');
     }
 
     function apply() {
