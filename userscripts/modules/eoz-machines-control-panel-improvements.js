@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.4';
+    var VERSION = '1.1.5';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -680,12 +680,65 @@
         var tbody = table.querySelector('tbody');
         var firstRow = tbody ? tbody.querySelector('tr') : null;
         var firstCell = firstRow ? firstRow.querySelector('td') : null;
+        var allCells = table.querySelectorAll('td');
+        var allRows = table.querySelectorAll('tr');
+
+        // Get all CSS rules affecting datepicker
+        var datepickerStyles = [];
+        var datepickerTableStyles = [];
+        var datepickerCellStyles = [];
+        try {
+            var sheets = document.styleSheets;
+            for (var i = 0; i < sheets.length; i++) {
+                try {
+                    var rules = sheets[i].cssRules || sheets[i].rules;
+                    for (var j = 0; j < rules.length; j++) {
+                        var rule = rules[j];
+                        if (rule.selectorText) {
+                            if (rule.selectorText.includes('.datepicker') && !rule.selectorText.includes('table')) {
+                                datepickerStyles.push(rule.selectorText + ' -> ' + rule.style.cssText);
+                            }
+                            if (rule.selectorText.includes('.datepicker table') || rule.selectorText.includes('.datepicker-dropdown table')) {
+                                datepickerTableStyles.push(rule.selectorText + ' -> ' + rule.style.cssText);
+                            }
+                            if (rule.selectorText.includes('.datepicker td') || rule.selectorText.includes('.datepicker-dropdown td')) {
+                                datepickerCellStyles.push(rule.selectorText + ' -> ' + rule.style.cssText);
+                            }
+                            // Check for media queries
+                            if (rule.media && rule.media.mediaText) {
+                                var mediaText = rule.media.mediaText;
+                                if (mediaText.includes('960')) {
+                                    var mediaRules = rule.cssRules || [];
+                                    for (var k = 0; k < mediaRules.length; k++) {
+                                        var mediaRule = mediaRules[k];
+                                        if (mediaRule.selectorText && (mediaRule.selectorText.includes('.datepicker') || mediaRule.selectorText.includes('table'))) {
+                                            datepickerStyles.push('@media(' + mediaText + ') ' + mediaRule.selectorText + ' -> ' + mediaRule.style.cssText);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Cross-origin stylesheet, skip
+                }
+            }
+        } catch (e) {
+            console.log('[EOZ Datepicker Debug] Error reading stylesheets:', e);
+        }
+
+        var cellComputed = firstCell ? window.getComputedStyle(firstCell) : null;
+        var rowComputed = firstRow ? window.getComputedStyle(firstRow) : null;
 
         var info = {
             container: {
                 classes: containerClasses,
                 id: datepicker.id || '(none)',
-                parentClasses: datepicker.parentElement ? Array.from(datepicker.parentElement.classList) : []
+                parentClasses: datepicker.parentElement ? Array.from(datepicker.parentElement.classList) : [],
+                computedStyle: {
+                    display: window.getComputedStyle(datepicker).display,
+                    position: window.getComputedStyle(datepicker).position
+                }
             },
             table: {
                 classes: tableClasses,
@@ -693,21 +746,45 @@
                 width: computed.width,
                 tableLayout: computed.tableLayout,
                 flexDirection: computed.flexDirection,
-                gridTemplateColumns: computed.gridTemplateColumns
+                gridTemplateColumns: computed.gridTemplateColumns,
+                borderCollapse: computed.borderCollapse,
+                borderSpacing: computed.borderSpacing
             },
             structure: {
                 theadDisplay: thead ? window.getComputedStyle(thead).display : null,
                 tbodyDisplay: tbody ? window.getComputedStyle(tbody).display : null,
                 firstRowDisplay: firstRow ? window.getComputedStyle(firstRow).display : null,
-                firstCellDisplay: firstCell ? window.getComputedStyle(firstCell).display : null
+                firstRowFlexDirection: rowComputed ? rowComputed.flexDirection : null,
+                firstCellDisplay: firstCell ? window.getComputedStyle(firstCell).display : null,
+                firstCellWidth: cellComputed ? cellComputed.width : null,
+                firstCellPadding: cellComputed ? cellComputed.padding : null,
+                firstCellFlexDirection: cellComputed ? cellComputed.flexDirection : null,
+                totalRows: allRows.length,
+                totalCells: allCells.length,
+                cellsPerRow: firstRow ? firstRow.querySelectorAll('td').length : null
             },
             mediaQuery: {
                 windowWidth: window.innerWidth,
                 isMobile: window.innerWidth <= 960
+            },
+            cssRules: {
+                datepickerContainer: datepickerStyles,
+                datepickerTable: datepickerTableStyles,
+                datepickerCells: datepickerCellStyles
             }
         };
 
         console.log('[EOZ Datepicker Debug] Calendar parameters:', info);
+        console.log('[EOZ Datepicker Debug] First cell computed styles:', cellComputed ? {
+            display: cellComputed.display,
+            width: cellComputed.width,
+            padding: cellComputed.padding,
+            flexDirection: cellComputed.flexDirection,
+            gridTemplateColumns: cellComputed.gridTemplateColumns,
+            whiteSpace: cellComputed.whiteSpace,
+            wordBreak: cellComputed.wordBreak,
+            overflowWrap: cellComputed.overflowWrap
+        } : 'No cell found');
     }
 
     function setupDatepickerObserver() {
