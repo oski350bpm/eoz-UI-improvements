@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.4';
+    var VERSION = '1.1.5';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -375,11 +375,6 @@
                 tabTitle = originalTabs[i].textContent.trim();
             }
             
-            // Get headers from first table
-            if (!headers && table.querySelector('thead')) {
-                headers = table.querySelector('thead').cloneNode(true);
-            }
-            
             // Process table: remove columns and add link to first column
             var thead = table.querySelector('thead');
             var tbody = table.querySelector('tbody');
@@ -388,40 +383,37 @@
                 continue;
             }
             
-            // If table doesn't have thead, create one from saved headers or skip header processing
-            if (!thead && savedHeaders) {
-                thead = savedHeaders.cloneNode(true);
-                // Insert thead before tbody
-                table.insertBefore(thead, tbody);
-            }
-            
-            // First, find indices of columns to remove (Usłojenie, Obrazek)
-            var headerCells = thead ? thead.querySelectorAll('th') : null;
+            // Find columns to remove by checking first data row (Usłojenie should be around index 9, Obrazek around index 10)
+            // Based on structure: Numer, Nazwa, Ilość, Długość, Szerokość, Przód, Tył, Lewo, Prawo, Usłojenie (9), Obrazek (10), Opcje (11), Info (12)
+            var firstDataRow = tbody.querySelector('tr:not(:empty)') || tbody.querySelector('tr');
             var indicesToRemove = [];
             
-            if (headerCells && headerCells.length > 0) {
-                for (var k = 0; k < headerCells.length; k++) {
-                    var headerText = headerCells[k].textContent.trim();
-                    if (headerText === 'Usłojenie' || headerText === 'Obrazek') {
-                        indicesToRemove.push(k);
-                    }
+            if (firstDataRow) {
+                var sampleCells = firstDataRow.querySelectorAll('td');
+                // Check each cell to find Usłojenie and Obrazek columns by content pattern
+                for (var cellIdx = 0; cellIdx < sampleCells.length; cellIdx++) {
+                    var cellText = sampleCells[cellIdx].textContent.trim();
+                    // Usłojenie column typically contains "Nie" or "Tak"
+                    // Obrazek column is typically empty or contains image
+                    // Let's use fixed positions based on standard structure: Usłojenie at ~9, Obrazek at ~10
+                    // But first check if we can identify by position - these are usually at fixed positions
                 }
                 
-                // Remove header cells in reverse order
-                indicesToRemove.reverse().forEach(function(idx) {
-                    if (headerCells[idx]) {
-                        headerCells[idx].parentElement.removeChild(headerCells[idx]);
+                // Based on log structure, Usłojenie is at index 9, Obrazek at index 10
+                // Remove both by fixed index (but verify structure first)
+                if (sampleCells.length > 10) {
+                    // Check if cell at index 9 looks like Usłojenie (contains "Nie" or "Tak")
+                    var cell9Text = sampleCells[9] ? sampleCells[9].textContent.trim() : '';
+                    var cell10Text = sampleCells[10] ? sampleCells[10].textContent.trim() : '';
+                    
+                    // If cell 9 has "Nie" or "Tak", it's likely Usłojenie
+                    if (cell9Text === 'Nie' || cell9Text === 'Tak') {
+                        indicesToRemove.push(9); // Usłojenie
                     }
-                });
-            } else {
-                // If no headers, we need to find columns by checking content
-                // For now, let's check first row to determine column positions
-                if (tbody && tbody.querySelector('tr')) {
-                    var firstRow = tbody.querySelector('tr');
-                    var firstRowCells = firstRow.querySelectorAll('td');
-                    console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'using first row as reference, cells count:', firstRowCells.length);
-                    // We'll need to inspect the structure to find column indices
-                    // For now, skip column removal if no headers
+                    // If cell 10 is empty or looks like image column, it's Obrazek
+                    if (cell10Text === '' || sampleCells[10].querySelector('img')) {
+                        indicesToRemove.push(10); // Obrazek
+                    }
                 }
             }
             
@@ -441,63 +433,46 @@
                     cells[0].appendChild(link);
                 }
                 
-                // Remove data cells in reverse order
-                indicesToRemove.reverse().forEach(function(idx) {
+                // Remove data cells in reverse order (to maintain indices)
+                indicesToRemove.sort(function(a, b) { return b - a; }).forEach(function(idx) {
                     if (cells[idx]) {
                         cells[idx].parentElement.removeChild(cells[idx]);
                     }
                 });
-                indicesToRemove.reverse(); // Reverse back for next iteration
                 
                 // Remove buttons from Opcje column (fa-check and fa-check-double)
-                // Now find Opcje column with updated indices
-                if (thead) {
-                    var remainingHeaders = thead.querySelectorAll('th');
-                    var remainingCells = row.querySelectorAll('td');
-                    
-                    for (var m = 0; m < remainingHeaders.length; m++) {
-                        if (remainingHeaders[m].textContent.trim() === 'Opcje' && remainingCells[m]) {
-                            var optionsCell = remainingCells[m];
-                            var checkButtons = optionsCell.querySelectorAll('a.tippy');
-                            for (var n = 0; n < checkButtons.length; n++) {
-                                var icon = checkButtons[n].querySelector('i');
-                                if (icon) {
-                                    var hasCheck = icon.className.indexOf('fa-check') !== -1;
-                                    var hasCheckDouble = icon.className.indexOf('fa-check-double') !== -1;
-                                    if ((hasCheck && !hasCheckDouble) || hasCheckDouble) {
-                                        // Remove both single check and check-double
-                                        checkButtons[n].parentElement.removeChild(checkButtons[n]);
-                                        n--; // Adjust index after removal
-                                    }
+                // Opcje column is typically the second-to-last (before Info), but after removing Usłojenie and Obrazek
+                // it should be around position 11 (if starting from 0: 0-8 are data, 9 was Usłojenie, 10 was Obrazek, 11 is Opcje, 12 is Info)
+                // After removal: Opcje should be at index 11-2 = 9 (if both removed) or we find it by looking for buttons
+                var allCells = row.querySelectorAll('td');
+                // Find the cell that contains check buttons - this is the Opcje column
+                for (var m = 0; m < allCells.length; m++) {
+                    var cell = allCells[m];
+                    var checkButtons = cell.querySelectorAll('a.tippy');
+                    if (checkButtons.length > 0) {
+                        // This is likely the Opcje column - remove fa-check and fa-check-double buttons
+                        for (var n = 0; n < checkButtons.length; n++) {
+                            var icon = checkButtons[n].querySelector('i');
+                            if (icon) {
+                                var iconClasses = icon.className || '';
+                                var hasCheck = iconClasses.indexOf('fa-check') !== -1;
+                                var hasCheckDouble = iconClasses.indexOf('fa-check-double') !== -1;
+                                // Remove both fa-check (single) and fa-check-double
+                                if (hasCheck || hasCheckDouble) {
+                                    checkButtons[n].parentElement.removeChild(checkButtons[n]);
+                                    n--; // Adjust index after removal
                                 }
                             }
-                            break;
                         }
-                    }
-                } else {
-                    // If no headers, try to find Opcje column by checking for buttons
-                    // Typically Opcje column is the last one with buttons
-                    var allCells = row.querySelectorAll('td');
-                    for (var m = allCells.length - 1; m >= 0; m--) {
-                        var cell = allCells[m];
-                        var checkButtons = cell.querySelectorAll('a.tippy');
-                        if (checkButtons.length > 0) {
-                            // This might be Opcje column
-                            for (var n = 0; n < checkButtons.length; n++) {
-                                var icon = checkButtons[n].querySelector('i');
-                                if (icon) {
-                                    var hasCheck = icon.className.indexOf('fa-check') !== -1;
-                                    var hasCheckDouble = icon.className.indexOf('fa-check-double') !== -1;
-                                    if ((hasCheck && !hasCheckDouble) || hasCheckDouble) {
-                                        checkButtons[n].parentElement.removeChild(checkButtons[n]);
-                                        n--; // Adjust index after removal
-                                    }
-                                }
-                            }
-                            break;
-                        }
+                        break; // Found Opcje column, no need to continue
                     }
                 }
+            }
+            
+            // Remove any thead (we don't want any headers - panels should display without them)
+            var addedThead = table.querySelector('thead');
+            if (addedThead) {
+                table.removeChild(addedThead);
             }
             
             // Clone table with title (after processing rows)
