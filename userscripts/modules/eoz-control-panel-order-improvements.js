@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.1';
+    var VERSION = '1.1.0';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -57,20 +57,10 @@
                     if (cells.length >= 7) {
                         var plate = (cells[2] && cells[2].textContent) ? cells[2].textContent.trim() : '';
                         var sumPlates = parseInt((cells[6] && cells[6].textContent) ? cells[6].textContent.trim() : '0') || 0;
-                        if (plate) {
-                            if (platesMap[plate]) {
-                                platesMap[plate] += sumPlates;
-                            } else {
-                                platesMap[plate] = sumPlates;
-                            }
+                        if (plate && !platesInfo.find(function(p) { return p.plate === plate; })) {
+                            platesInfo.push({ plate: plate, sumPlates: sumPlates });
+                            totalPlates = sumPlates; // Take value, don't sum (one plate per order)
                         }
-                    }
-                }
-
-                for (var plateName in platesMap) {
-                    if (platesMap.hasOwnProperty(plateName)) {
-                        platesInfo.push({ plate: plateName, sumPlates: platesMap[plateName] });
-                        totalPlates += platesMap[plateName];
                     }
                 }
                 break;
@@ -177,8 +167,312 @@
         window.jQuery(modal).modal('show');
     }
 
+    function removeFirstTable() {
+        // Find first table (with plates info)
+        var allTables = document.querySelectorAll('table');
+        var firstTable = null;
+        
+        for (var i = 0; i < allTables.length; i++) {
+            var headers = allTables[i].querySelectorAll('thead th');
+            var hasPlateColumn = false;
+            for (var j = 0; j < headers.length; j++) {
+                if (headers[j].textContent.indexOf('Płyta') !== -1) {
+                    hasPlateColumn = true;
+                    break;
+                }
+            }
+            if (hasPlateColumn) {
+                firstTable = allTables[i];
+                break;
+            }
+        }
+        
+        if (!firstTable) {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] First table not found');
+            return null;
+        }
+        
+        // Extract link from first column of first table
+        var linkInfo = null;
+        var firstRow = firstTable.querySelector('tbody tr');
+        if (firstRow) {
+            var firstCell = firstRow.querySelector('td:first-child');
+            if (firstCell) {
+                var link = firstCell.querySelector('a');
+                if (link) {
+                    linkInfo = {
+                        href: link.href,
+                        text: link.textContent.trim(),
+                        html: link.outerHTML
+                    };
+                } else {
+                    // If no link, use text as link text
+                    linkInfo = {
+                        href: '#',
+                        text: firstCell.textContent.trim(),
+                        html: '<a href="#">' + firstCell.textContent.trim() + '</a>'
+                    };
+                }
+            }
+        }
+        
+        // Remove first table
+        firstTable.parentElement.removeChild(firstTable);
+        
+        console.log('[EOZ Control Panel Order v' + VERSION + '] First table removed', linkInfo);
+        return linkInfo;
+    }
+
+    function reorganizeTables(linkInfo) {
+        // Find tabs container
+        var tabList = document.querySelector('[role="tablist"]');
+        var tabPanels = document.querySelectorAll('[role="tabpanel"]');
+        
+        if (!tabList || tabPanels.length === 0) {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] Tabs not found');
+            return;
+        }
+        
+        var container = tabList.parentElement;
+        
+        // Remove tabs
+        tabList.parentElement.removeChild(tabList);
+        
+        // Process each tabpanel - remove tabpanel wrapper and show all tables
+        var tablesHTML = [];
+        var headers = null;
+        
+        for (var i = 0; i < tabPanels.length; i++) {
+            var panel = tabPanels[i];
+            var table = panel.querySelector('table');
+            if (!table) continue;
+            
+            // Get title from original tab
+            var tabTitle = '';
+            var originalTabs = document.querySelectorAll('[role="tab"]');
+            if (originalTabs[i]) {
+                tabTitle = originalTabs[i].textContent.trim();
+            }
+            
+            // Get headers from first table
+            if (!headers && table.querySelector('thead')) {
+                headers = table.querySelector('thead').cloneNode(true);
+            }
+            
+            // Process table: remove columns and add link to first column
+            var thead = table.querySelector('thead');
+            var tbody = table.querySelector('tbody');
+            
+            if (!thead || !tbody) {
+                // Skip this panel if no table
+                continue;
+            }
+            
+            // First, find indices of columns to remove (Usłojenie, Obrazek)
+            var headerCells = thead.querySelectorAll('th');
+            var indicesToRemove = [];
+            
+            for (var k = 0; k < headerCells.length; k++) {
+                var headerText = headerCells[k].textContent.trim();
+                if (headerText === 'Usłojenie' || headerText === 'Obrazek') {
+                    indicesToRemove.push(k);
+                }
+            }
+            
+            // Remove header cells in reverse order
+            indicesToRemove.reverse().forEach(function(idx) {
+                if (headerCells[idx]) {
+                    headerCells[idx].parentElement.removeChild(headerCells[idx]);
+                }
+            });
+            
+            // Now process rows
+            var rows = tbody.querySelectorAll('tr');
+            for (var j = 0; j < rows.length; j++) {
+                var row = rows[j];
+                var cells = row.querySelectorAll('td');
+                
+                // Add link to first cell if linkInfo exists and first cell doesn't have link
+                if (linkInfo && cells[0] && !cells[0].querySelector('a')) {
+                    var cellText = cells[0].textContent.trim();
+                    cells[0].innerHTML = '<a href="' + linkInfo.href + '">' + cellText + '</a>';
+                }
+                
+                // Remove data cells in reverse order
+                indicesToRemove.reverse().forEach(function(idx) {
+                    if (cells[idx]) {
+                        cells[idx].parentElement.removeChild(cells[idx]);
+                    }
+                });
+                indicesToRemove.reverse(); // Reverse back for next iteration
+                
+                // Remove buttons from Opcje column (fa-check and fa-check-double)
+                // Now find Opcje column with updated indices
+                var remainingHeaders = thead.querySelectorAll('th');
+                var remainingCells = row.querySelectorAll('td');
+                
+                for (var m = 0; m < remainingHeaders.length; m++) {
+                    if (remainingHeaders[m].textContent.trim() === 'Opcje' && remainingCells[m]) {
+                        var optionsCell = remainingCells[m];
+                        var checkButtons = optionsCell.querySelectorAll('a.tippy');
+                        for (var n = 0; n < checkButtons.length; n++) {
+                            var icon = checkButtons[n].querySelector('i');
+                            if (icon) {
+                                var hasCheck = icon.className.indexOf('fa-check') !== -1;
+                                var hasCheckDouble = icon.className.indexOf('fa-check-double') !== -1;
+                                if ((hasCheck && !hasCheckDouble) || hasCheckDouble) {
+                                    // Remove both single check and check-double
+                                    checkButtons[n].parentElement.removeChild(checkButtons[n]);
+                                    n--; // Adjust index after removal
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+                
+                // Clone table with title
+                var tableClone = table.cloneNode(true);
+                var titleDiv = document.createElement('div');
+                titleDiv.className = 'eoz-table-title';
+                titleDiv.style.cssText = 'font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;';
+                titleDiv.textContent = tabTitle;
+                
+                var tableWrapper = document.createElement('div');
+                tableWrapper.className = 'eoz-table-wrapper';
+                tableWrapper.appendChild(titleDiv);
+                tableWrapper.appendChild(tableClone);
+                
+                tablesHTML.push(tableWrapper.outerHTML);
+            }
+        }
+        
+        // Insert all tables one after another
+        if (tablesHTML.length > 0) {
+            var newContainer = document.createElement('div');
+            newContainer.className = 'eoz-all-tables';
+            newContainer.innerHTML = tablesHTML.join('');
+            container.appendChild(newContainer);
+        }
+        
+        // Remove original tabpanels
+        for (var p = 0; p < tabPanels.length; p++) {
+            if (tabPanels[p].parentElement) {
+                tabPanels[p].parentElement.removeChild(tabPanels[p]);
+            }
+        }
+        
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Tables reorganized');
+    }
+
+    function findCheckDoubleHref() {
+        // Find check-double button href from any table
+        var checkDoubleButtons = document.querySelectorAll('a.tippy');
+        
+        for (var i = 0; i < checkDoubleButtons.length; i++) {
+            var icon = checkDoubleButtons[i].querySelector('i');
+            if (icon && icon.className.indexOf('fa-check-double') !== -1) {
+                return checkDoubleButtons[i].href;
+            }
+        }
+        
+        return null;
+    }
+
+    function addCheckDoubleButton(checkDoubleHref) {
+        if (!checkDoubleHref) {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] Check-double button href not provided');
+            return;
+        }
+        
+        // Find end operation button
+        var endButton = document.querySelector('a.btn-danger.end_operation_button');
+        if (!endButton) {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] End operation button not found');
+            return;
+        }
+        
+        // Create new check-double button
+        var newButton = document.createElement('a');
+        newButton.href = checkDoubleHref;
+        newButton.className = 'btn btn-success end_operation_button eoz-check-double-btn';
+        newButton.style.cssText = 'margin-left: 10px;';
+        newButton.innerHTML = '<i class="fa fa-check-double"></i> Zakończ wszystkie';
+        
+        // Add click handler with confirmation
+        newButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (window.jQuery && window.jQuery.fn.modal) {
+                showCheckDoubleConfirmationModal(checkDoubleHref);
+            } else {
+                if (confirm('Czy na pewno chcesz zakończyć wszystkie elementy?\n\nUWAGA: Operacji nie można cofnąć!')) {
+                    window.location.href = checkDoubleHref;
+                }
+            }
+        });
+        
+        // Insert after end button
+        endButton.parentElement.insertBefore(newButton, endButton.nextSibling);
+        
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Check-double button added');
+    }
+
+    function showCheckDoubleConfirmationModal(originalHref) {
+        var modalId = 'eoz-check-double-confirmation-modal';
+        var existingModal = document.getElementById(modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        var modalHTML = '' +
+            '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog" aria-labelledby="' + modalId + '-label" aria-hidden="true">' +
+            '  <div class="modal-dialog" role="document">' +
+            '    <div class="modal-content">' +
+            '      <div class="modal-header" style="background-color: #28a745; color: white;">' +
+            '        <h4 class="modal-title" id="' + modalId + '-label" style="color: white;">Potwierdzenie zakończenia wszystkich elementów</h4>' +
+            '        <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white;">' +
+            '          <span aria-hidden="true">&times;</span>' +
+            '        </button>' +
+            '      </div>' +
+            '      <div class="modal-body">' +
+            '        <p><strong>Czy na pewno chcesz zakończyć wszystkie elementy?</strong></p>' +
+            '        <div class="alert alert-warning" role="alert">' +
+            '          <strong>UWAGA:</strong> Operacji nie można cofnąć!' +
+            '        </div>' +
+            '      </div>' +
+            '      <div class="modal-footer">' +
+            '        <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>' +
+            '        <button type="button" class="btn btn-success" id="eoz-confirm-check-double">Zakończ wszystkie</button>' +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        var modal = document.getElementById(modalId);
+        var confirmBtn = document.getElementById('eoz-confirm-check-double');
+        
+        confirmBtn.addEventListener('click', function() {
+            window.location.href = originalHref;
+        });
+        
+        window.jQuery(modal).modal('show');
+    }
+
     function apply() {
         addHeaderInfo();
+        
+        // Find check-double href before removing tables
+        var checkDoubleHref = findCheckDoubleHref();
+        
+        // Reorganize tables: remove first, reorganize second
+        var linkInfo = removeFirstTable();
+        reorganizeTables(linkInfo);
+        
+        addCheckDoubleButton(checkDoubleHref);
         addEndOperationConfirmation();
         console.log('[EOZ Control Panel Order Module v' + VERSION + '] Applied');
     }
