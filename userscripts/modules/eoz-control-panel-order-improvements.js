@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.6';
+    var VERSION = '1.1.7';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -383,24 +383,15 @@
                 continue;
             }
             
-            // Find columns to remove by checking first data row (Usłojenie should be around index 9, Obrazek around index 10)
-            // Based on structure: Numer, Nazwa, Ilość, Długość, Szerokość, Przód, Tył, Lewo, Prawo, Usłojenie (9), Obrazek (10), Opcje (11), Info (12)
+            // Find columns to remove by checking first data row
+            // Structure: Numer, Nazwa, Ilość, Długość, Szerokość, Przód, Tył, Lewo, Prawo, Usłojenie (9), Obrazek (10), Opcje (11), Info/Zlecenie (12)
             var firstDataRow = tbody.querySelector('tr:not(:empty)') || tbody.querySelector('tr');
             var indicesToRemove = [];
             
             if (firstDataRow) {
                 var sampleCells = firstDataRow.querySelectorAll('td');
-                // Check each cell to find Usłojenie and Obrazek columns by content pattern
-                for (var cellIdx = 0; cellIdx < sampleCells.length; cellIdx++) {
-                    var cellText = sampleCells[cellIdx].textContent.trim();
-                    // Usłojenie column typically contains "Nie" or "Tak"
-                    // Obrazek column is typically empty or contains image
-                    // Let's use fixed positions based on standard structure: Usłojenie at ~9, Obrazek at ~10
-                    // But first check if we can identify by position - these are usually at fixed positions
-                }
                 
-                // Based on log structure, Usłojenie is at index 9, Obrazek at index 10
-                // Remove both by fixed index (but verify structure first)
+                // Find Usłojenie (index 9), Obrazek (index 10), and Info/Zlecenie (last column, index 12)
                 if (sampleCells.length > 10) {
                     // Check if cell at index 9 looks like Usłojenie (contains "Nie" or "Tak")
                     var cell9Text = sampleCells[9] ? sampleCells[9].textContent.trim() : '';
@@ -411,8 +402,38 @@
                         indicesToRemove.push(9); // Usłojenie
                     }
                     // If cell 10 is empty or looks like image column, it's Obrazek
-                    if (cell10Text === '' || sampleCells[10].querySelector('img')) {
+                    if (cell10Text === '' || (sampleCells[10] && sampleCells[10].querySelector('img'))) {
                         indicesToRemove.push(10); // Obrazek
+                    }
+                    
+                    // Check last column for "Info" or "Zlecenie" (usually index 12, but may vary)
+                    // Find the last column that doesn't contain buttons - this is Info/Zlecenie column
+                    var lastIndex = sampleCells.length - 1;
+                    var lastCell = sampleCells[lastIndex];
+                    if (lastCell) {
+                        var lastCellText = lastCell.textContent.trim();
+                        var hasButtons = lastCell.querySelector('a.tippy');
+                        // If last cell has no buttons and is empty or contains "Info"/"Zlecenie" text, remove it
+                        // Also check second-to-last in case there's an empty column before Info
+                        if (!hasButtons) {
+                            // Check if it's likely Info/Zlecenie column (empty or contains related text)
+                            if (lastCellText === '' || lastCellText.toLowerCase().indexOf('info') !== -1 || lastCellText.toLowerCase().indexOf('zlecenie') !== -1) {
+                                indicesToRemove.push(lastIndex);
+                            } else {
+                                // Check second-to-last column too
+                                var secondLastIndex = lastIndex - 1;
+                                if (secondLastIndex >= 0) {
+                                    var secondLastCell = sampleCells[secondLastIndex];
+                                    if (secondLastCell) {
+                                        var secondLastText = secondLastCell.textContent.trim();
+                                        var secondLastHasButtons = secondLastCell.querySelector('a.tippy');
+                                        if (!secondLastHasButtons && (secondLastText === '' || secondLastText.toLowerCase().indexOf('info') !== -1 || secondLastText.toLowerCase().indexOf('zlecenie') !== -1)) {
+                                            indicesToRemove.push(secondLastIndex);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -431,6 +452,25 @@
                     link.textContent = cellText;
                     cells[0].textContent = '';
                     cells[0].appendChild(link);
+                }
+                
+                // Format numbers in Przód, Tył, Lewo, Prawo columns (remove .00)
+                // These are typically at indices 5, 6, 7, 8 (after Numer, Nazwa, Ilość, Długość, Szerokość)
+                // But we need to check dynamically since structure may vary
+                for (var numIdx = 0; numIdx < cells.length; numIdx++) {
+                    var cell = cells[numIdx];
+                    if (cell) {
+                        var cellText = cell.textContent.trim();
+                        // Check if it's a number ending with .00 (like "1.00", "0.00", may have spaces)
+                        // Match pattern: optional spaces, digits, .00, optional spaces
+                        var match = cellText.match(/^\s*(\d+)\.00\s*$/);
+                        if (match) {
+                            var numValue = parseInt(match[1], 10);
+                            if (!isNaN(numValue)) {
+                                cell.textContent = numValue.toString();
+                            }
+                        }
+                    }
                 }
                 
                 // Remove data cells in reverse order (to maintain indices)
@@ -485,6 +525,22 @@
             var addedThead = table.querySelector('thead');
             if (addedThead) {
                 table.removeChild(addedThead);
+            }
+            
+            // Check if table has data rows (skip empty tables)
+            var dataRows = tbody.querySelectorAll('tr');
+            var hasDataRows = false;
+            for (var dr = 0; dr < dataRows.length; dr++) {
+                var rowCells = dataRows[dr].querySelectorAll('td');
+                if (rowCells.length > 0) {
+                    hasDataRows = true;
+                    break;
+                }
+            }
+            
+            // Skip empty tables (don't display them)
+            if (!hasDataRows) {
+                continue;
             }
             
             // Clone table with title (after processing rows)
