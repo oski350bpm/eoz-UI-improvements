@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.7.2';
+    var VERSION = '2.7.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -25,6 +25,8 @@
         'table{width:100%!important;table-layout:auto!important}\n' +
         'table thead th, table tbody td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important}\n' +
         'table thead th, table tbody td{padding:6px 8px!important;font-size:13px!important}\n' +
+        '.datepicker table, .datepicker-dropdown table{width:auto!important;table-layout:auto!important}\n' +
+        '.datepicker table thead th, .datepicker table tbody td, .datepicker-dropdown table thead th, .datepicker-dropdown table tbody td{white-space:normal!important;word-break:normal!important;overflow-wrap:normal!important;padding:8px!important}\n' +
         'body:not([data-veneer]) #btn-zestawienie-materialow, body:not([data-veneer]) #btn-zestawienie-zlecen-historia{display:none!important}\n' +
         'body[data-veneer] #btn-zestawienie-zlecen-podsumowanie{display:none!important}\n' +
         '.select2-container{width:100%!important}\n' +
@@ -60,6 +62,9 @@
         '  table thead{display:none!important}\n' +
         '  table tbody tr td:not(.eoz-mobile-cell):not([colspan]){display:none!important}\n' +
         '  table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
+        '  .datepicker table thead, .datepicker-dropdown table thead{display:table-header-group!important}\n' +
+        '  .datepicker table tbody, .datepicker-dropdown table tbody{display:table-row-group!important}\n' +
+        '  .datepicker table tbody tr td, .datepicker-dropdown table tbody tr td{display:table-cell!important}\n' +
         '  table tbody tr td[colspan]{display:table-cell!important;padding:8px!important;background:#f8f9fa!important;border-top:1px solid #dee2e6!important}\n' +
         '  table.table.table-borderd.table-condensed.table-md thead{display:none!important}\n' +
         '  table.table.table-borderd.table-condensed.table-md tbody tr.eoz-comment-row-1 td{display:table-cell!important;padding:8px!important;border:1px solid #dee2e6!important}\n' +

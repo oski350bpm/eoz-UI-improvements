@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.5';
+    var VERSION = '1.1.6';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -31,6 +31,8 @@
         'table{width:100%!important;table-layout:auto!important}\n' +
         'table thead th, table tbody td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important}\n' +
         'table thead th, table tbody td{padding:6px 8px!important;font-size:13px!important}\n' +
+        '.datepicker table, .datepicker-dropdown table{width:auto!important;table-layout:auto!important}\n' +
+        '.datepicker table thead th, .datepicker table tbody td, .datepicker-dropdown table thead th, .datepicker-dropdown table tbody td{white-space:normal!important;word-break:normal!important;overflow-wrap:normal!important;padding:8px!important}\n' +
         '.eoz-hidden-column{display:none!important}\n' +
         '.eoz-dropdown-toggle{display:none}\n' +
         '.eoz-dropdown-label{width:100%!important;height:48px!important;background:#007bff!important;color:#fff!important;border:none!important;border-radius:8px!important;font-size:14px!important;font-weight:bold!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;transition:background-color .2s!important;padding:10px!important;box-shadow:0 2px 4px rgba(0,0,0,.1)!important;user-select:none!important}\n' +
@@ -51,6 +53,9 @@
         '  .machines-panel table thead{display:none!important}\n' +
         '  .machines-panel table tbody tr td:not(.eoz-mobile-cell):not([colspan]){display:none!important}\n' +
         '  .machines-panel table tbody tr td.eoz-mobile-cell{display:table-cell!important;padding:8px!important}\n' +
+        '  .datepicker table thead, .datepicker-dropdown table thead{display:table-header-group!important}\n' +
+        '  .datepicker table tbody, .datepicker-dropdown table tbody{display:table-row-group!important}\n' +
+        '  .datepicker table tbody tr td, .datepicker-dropdown table tbody tr td{display:table-cell!important}\n' +
         '  .eoz-mp-grid{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}\n' +
         '  .eoz-mp-header{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}\n' +
         '  .eoz-mp-lp{font-size:12px;color:#666}\n' +
