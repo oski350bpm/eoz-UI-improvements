@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.2';
+    var VERSION = '1.1.3';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -227,15 +227,37 @@
             }
         }
         
+        // Save headers from first table before removal
+        var savedHeaders = null;
+        var thead = firstTable.querySelector('thead');
+        if (thead) {
+            savedHeaders = thead.cloneNode(true);
+            console.log('[EOZ Control Panel Order v' + VERSION + '] Saved headers from first table:', {
+                headersCount: savedHeaders.querySelectorAll('th').length,
+                headersText: Array.from(savedHeaders.querySelectorAll('th')).map(function(th) { return th.textContent.trim(); })
+            });
+        } else {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] First table has no thead');
+        }
+        
         // Remove first table
         firstTable.parentElement.removeChild(firstTable);
         
         console.log('[EOZ Control Panel Order v' + VERSION + '] First table removed', linkInfo);
-        return linkInfo;
+        return {
+            linkInfo: linkInfo,
+            headers: savedHeaders
+        };
     }
 
-    function reorganizeTables(linkInfo) {
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Starting reorganizeTables', { linkInfo: linkInfo });
+    function reorganizeTables(data) {
+        var linkInfo = data && data.linkInfo ? data.linkInfo : null;
+        var savedHeaders = data && data.headers ? data.headers : null;
+        
+        console.log('[EOZ Control Panel Order v' + VERSION + '] Starting reorganizeTables', { 
+            linkInfo: linkInfo,
+            hasSavedHeaders: !!savedHeaders
+        });
         
         // Find tabs container
         var tabList = document.querySelector('[role="tablist"]');
@@ -306,31 +328,55 @@
                 hasThead: !!thead,
                 hasTbody: !!tbody,
                 rowsCount: tbody ? tbody.querySelectorAll('tr').length : 0,
-                headersCount: thead ? thead.querySelectorAll('th').length : 0
+                headersCount: thead ? thead.querySelectorAll('th').length : 0,
+                hasSavedHeaders: !!savedHeaders
             });
             
-            if (!thead || !tbody) {
-                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'missing thead or tbody, skipping');
+            if (!tbody) {
+                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'missing tbody, skipping');
                 continue;
             }
             
-            // First, find indices of columns to remove (Usłojenie, Obrazek)
-            var headerCells = thead.querySelectorAll('th');
-            var indicesToRemove = [];
-            
-            for (var k = 0; k < headerCells.length; k++) {
-                var headerText = headerCells[k].textContent.trim();
-                if (headerText === 'Usłojenie' || headerText === 'Obrazek') {
-                    indicesToRemove.push(k);
-                }
+            // If table doesn't have thead, create one from saved headers or skip header processing
+            if (!thead && savedHeaders) {
+                thead = savedHeaders.cloneNode(true);
+                // Insert thead before tbody
+                table.insertBefore(thead, tbody);
+                console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'added thead from saved headers');
+            } else if (!thead) {
+                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'has no thead and no saved headers');
+                // Continue without header processing - we'll process columns by position
             }
             
-            // Remove header cells in reverse order
-            indicesToRemove.reverse().forEach(function(idx) {
-                if (headerCells[idx]) {
-                    headerCells[idx].parentElement.removeChild(headerCells[idx]);
+            // First, find indices of columns to remove (Usłojenie, Obrazek)
+            var headerCells = thead ? thead.querySelectorAll('th') : null;
+            var indicesToRemove = [];
+            
+            if (headerCells && headerCells.length > 0) {
+                for (var k = 0; k < headerCells.length; k++) {
+                    var headerText = headerCells[k].textContent.trim();
+                    if (headerText === 'Usłojenie' || headerText === 'Obrazek') {
+                        indicesToRemove.push(k);
+                    }
                 }
-            });
+                
+                // Remove header cells in reverse order
+                indicesToRemove.reverse().forEach(function(idx) {
+                    if (headerCells[idx]) {
+                        headerCells[idx].parentElement.removeChild(headerCells[idx]);
+                    }
+                });
+            } else {
+                // If no headers, we need to find columns by checking content
+                // For now, let's check first row to determine column positions
+                if (tbody && tbody.querySelector('tr')) {
+                    var firstRow = tbody.querySelector('tr');
+                    var firstRowCells = firstRow.querySelectorAll('td');
+                    console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'using first row as reference, cells count:', firstRowCells.length);
+                    // We'll need to inspect the structure to find column indices
+                    // For now, skip column removal if no headers
+                }
+            }
             
             // Now process rows
             var rows = tbody.querySelectorAll('tr');
@@ -358,26 +404,51 @@
                 
                 // Remove buttons from Opcje column (fa-check and fa-check-double)
                 // Now find Opcje column with updated indices
-                var remainingHeaders = thead.querySelectorAll('th');
-                var remainingCells = row.querySelectorAll('td');
-                
-                for (var m = 0; m < remainingHeaders.length; m++) {
-                    if (remainingHeaders[m].textContent.trim() === 'Opcje' && remainingCells[m]) {
-                        var optionsCell = remainingCells[m];
-                        var checkButtons = optionsCell.querySelectorAll('a.tippy');
-                        for (var n = 0; n < checkButtons.length; n++) {
-                            var icon = checkButtons[n].querySelector('i');
-                            if (icon) {
-                                var hasCheck = icon.className.indexOf('fa-check') !== -1;
-                                var hasCheckDouble = icon.className.indexOf('fa-check-double') !== -1;
-                                if ((hasCheck && !hasCheckDouble) || hasCheckDouble) {
-                                    // Remove both single check and check-double
-                                    checkButtons[n].parentElement.removeChild(checkButtons[n]);
-                                    n--; // Adjust index after removal
+                if (thead) {
+                    var remainingHeaders = thead.querySelectorAll('th');
+                    var remainingCells = row.querySelectorAll('td');
+                    
+                    for (var m = 0; m < remainingHeaders.length; m++) {
+                        if (remainingHeaders[m].textContent.trim() === 'Opcje' && remainingCells[m]) {
+                            var optionsCell = remainingCells[m];
+                            var checkButtons = optionsCell.querySelectorAll('a.tippy');
+                            for (var n = 0; n < checkButtons.length; n++) {
+                                var icon = checkButtons[n].querySelector('i');
+                                if (icon) {
+                                    var hasCheck = icon.className.indexOf('fa-check') !== -1;
+                                    var hasCheckDouble = icon.className.indexOf('fa-check-double') !== -1;
+                                    if ((hasCheck && !hasCheckDouble) || hasCheckDouble) {
+                                        // Remove both single check and check-double
+                                        checkButtons[n].parentElement.removeChild(checkButtons[n]);
+                                        n--; // Adjust index after removal
+                                    }
                                 }
                             }
+                            break;
                         }
-                        break;
+                    }
+                } else {
+                    // If no headers, try to find Opcje column by checking for buttons
+                    // Typically Opcje column is the last one with buttons
+                    var allCells = row.querySelectorAll('td');
+                    for (var m = allCells.length - 1; m >= 0; m--) {
+                        var cell = allCells[m];
+                        var checkButtons = cell.querySelectorAll('a.tippy');
+                        if (checkButtons.length > 0) {
+                            // This might be Opcje column
+                            for (var n = 0; n < checkButtons.length; n++) {
+                                var icon = checkButtons[n].querySelector('i');
+                                if (icon) {
+                                    var hasCheck = icon.className.indexOf('fa-check') !== -1;
+                                    var hasCheckDouble = icon.className.indexOf('fa-check-double') !== -1;
+                                    if ((hasCheck && !hasCheckDouble) || hasCheckDouble) {
+                                        checkButtons[n].parentElement.removeChild(checkButtons[n]);
+                                        n--; // Adjust index after removal
+                                    }
+                                }
+                            }
+                            break;
+                        }
                     }
                 }
             }
@@ -540,8 +611,10 @@
         var checkDoubleHref = findCheckDoubleHref();
         
         // Reorganize tables: remove first, reorganize second
-        var linkInfo = removeFirstTable();
-        reorganizeTables(linkInfo);
+        var tableData = removeFirstTable();
+        if (tableData) {
+            reorganizeTables(tableData);
+        }
         
         addCheckDoubleButton(checkDoubleHref);
         addEndOperationConfirmation();
