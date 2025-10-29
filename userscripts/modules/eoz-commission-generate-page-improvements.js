@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.1';
+    var VERSION = '1.0.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -27,7 +27,7 @@
     var styles = '' +
         '.eoz-generate-page-hidden-column{display:none!important}\n' +
         '.eoz-generate-page-lp-column{font-weight:bold!important;text-align:center!important;width:50px!important}\n' +
-        '.eoz-generate-page-barcode-img{height:60px!important;width:auto!important;max-width:250px!important;object-fit:contain!important}\n';
+        '.eoz-generate-page-barcode-img{height:60px!important;width:250px!important;object-fit:fill!important}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-commission-generate-page-module-css' });
 
