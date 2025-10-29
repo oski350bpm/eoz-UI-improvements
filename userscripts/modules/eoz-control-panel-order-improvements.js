@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.3';
+    var VERSION = '1.1.4';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -93,11 +93,6 @@
         // Insert after breadcrumb
         breadcrumb.insertAdjacentHTML('afterend', infoHTML);
         
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Header info added', {
-            orderNumber: orderNumber,
-            platesInfo: platesInfo,
-            totalPlates: totalPlates
-        });
     }
 
     function addEndOperationConfirmation() {
@@ -167,13 +162,68 @@
         window.jQuery(modal).modal('show');
     }
 
-    function removeFirstTable() {
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Starting removeFirstTable');
+    function logTableStructure(table, label) {
+        if (!table) {
+            console.log('[EOZ Table Debug] ' + label + ': Table is null');
+            return;
+        }
         
+        var structure = {
+            label: label,
+            hasThead: !!table.querySelector('thead'),
+            hasTbody: !!table.querySelector('tbody'),
+            headers: [],
+            rows: []
+        };
+        
+        // Log headers
+        var thead = table.querySelector('thead');
+        if (thead) {
+            var headerCells = thead.querySelectorAll('th');
+            for (var i = 0; i < headerCells.length; i++) {
+                structure.headers.push({
+                    index: i,
+                    text: headerCells[i].textContent.trim(),
+                    html: headerCells[i].outerHTML.substring(0, 100)
+                });
+            }
+        }
+        
+        // Log rows
+        var tbody = table.querySelector('tbody');
+        if (tbody) {
+            var rows = tbody.querySelectorAll('tr');
+            for (var j = 0; j < rows.length; j++) {
+                var row = rows[j];
+                var cells = row.querySelectorAll('td');
+                var rowData = {
+                    rowIndex: j,
+                    cells: []
+                };
+                
+                for (var k = 0; k < cells.length; k++) {
+                    var cell = cells[k];
+                    var link = cell.querySelector('a');
+                    rowData.cells.push({
+                        cellIndex: k,
+                        text: cell.textContent.trim(),
+                        hasLink: !!link,
+                        linkHref: link ? link.href : null,
+                        linkHTML: link ? link.outerHTML : null,
+                        cellHTML: cell.outerHTML.substring(0, 150)
+                    });
+                }
+                
+                structure.rows.push(rowData);
+            }
+        }
+        
+        console.log('[EOZ Table Debug] ' + label + ':', JSON.stringify(structure, null, 2));
+    }
+
+    function removeFirstTable() {
         // Find first table (with plates info)
         var allTables = document.querySelectorAll('table');
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Total tables found:', allTables.length);
-        
         var firstTable = null;
         
         for (var i = 0; i < allTables.length; i++) {
@@ -187,7 +237,6 @@
             }
             if (hasPlateColumn) {
                 firstTable = allTables[i];
-                console.log('[EOZ Control Panel Order v' + VERSION + '] First table found at index', i);
                 break;
             }
         }
@@ -197,34 +246,69 @@
             return null;
         }
         
-        console.log('[EOZ Control Panel Order v' + VERSION + '] First table details:', {
-            hasParent: !!firstTable.parentElement,
-            parentTag: firstTable.parentElement ? firstTable.parentElement.tagName : 'null',
-            rowsCount: firstTable.querySelector('tbody') ? firstTable.querySelector('tbody').querySelectorAll('tr').length : 0
-        });
+        // Log first table structure BEFORE modification
+        logTableStructure(firstTable, 'FIRST TABLE (before removal)');
         
-        // Extract link from first column of first table
+        // Check for link in second table (in tabpanels) - this might be the actual link we need
+        var tabPanels = document.querySelectorAll('[role="tabpanel"]');
         var linkInfo = null;
-        var firstRow = firstTable.querySelector('tbody tr');
-        if (firstRow) {
-            var firstCell = firstRow.querySelector('td:first-child');
-            if (firstCell) {
-                var link = firstCell.querySelector('a');
-                if (link) {
-                    linkInfo = {
-                        href: link.href,
-                        text: link.textContent.trim(),
-                        html: link.outerHTML
-                    };
-                } else {
-                    // If no link, use text as link text
-                    linkInfo = {
-                        href: '#',
-                        text: firstCell.textContent.trim(),
-                        html: '<a href="#">' + firstCell.textContent.trim() + '</a>'
-                    };
+        
+        // Try to find link in second table first (this is probably where the real link is)
+        for (var p = 0; p < tabPanels.length; p++) {
+            var panel = tabPanels[p];
+            var table = panel.querySelector('table');
+            if (table && table.querySelector('tbody')) {
+                var firstRow = table.querySelector('tbody tr');
+                if (firstRow) {
+                    var firstCell = firstRow.querySelector('td:first-child');
+                    if (firstCell) {
+                        var link = firstCell.querySelector('a');
+                        if (link) {
+                            linkInfo = {
+                                href: link.href,
+                                text: link.textContent.trim(),
+                                html: link.outerHTML,
+                                source: 'second-table-panel-' + (panel.id || p)
+                            };
+                            break;
+                        }
+                    }
                 }
             }
+        }
+        
+        // If no link in second table, try first table
+        if (!linkInfo) {
+            var firstRow = firstTable.querySelector('tbody tr');
+            if (firstRow) {
+                var firstCell = firstRow.querySelector('td:first-child');
+                if (firstCell) {
+                    var link = firstCell.querySelector('a');
+                    if (link) {
+                        linkInfo = {
+                            href: link.href,
+                            text: link.textContent.trim(),
+                            html: link.outerHTML,
+                            source: 'first-table'
+                        };
+                    } else {
+                        // If no link, use text but don't create invalid link
+                        linkInfo = {
+                            href: null,
+                            text: firstCell.textContent.trim(),
+                            html: null,
+                            source: 'first-table-no-link'
+                        };
+                    }
+                }
+            }
+        }
+        
+        // Log link info for debugging
+        if (linkInfo) {
+            console.log('[EOZ Link Debug] Final linkInfo:', JSON.stringify(linkInfo, null, 2));
+        } else {
+            console.warn('[EOZ Link Debug] No link found in any table!');
         }
         
         // Save headers from first table before removal
@@ -232,18 +316,11 @@
         var thead = firstTable.querySelector('thead');
         if (thead) {
             savedHeaders = thead.cloneNode(true);
-            console.log('[EOZ Control Panel Order v' + VERSION + '] Saved headers from first table:', {
-                headersCount: savedHeaders.querySelectorAll('th').length,
-                headersText: Array.from(savedHeaders.querySelectorAll('th')).map(function(th) { return th.textContent.trim(); })
-            });
-        } else {
-            console.warn('[EOZ Control Panel Order v' + VERSION + '] First table has no thead');
         }
         
         // Remove first table
         firstTable.parentElement.removeChild(firstTable);
         
-        console.log('[EOZ Control Panel Order v' + VERSION + '] First table removed', linkInfo);
         return {
             linkInfo: linkInfo,
             headers: savedHeaders
@@ -254,58 +331,41 @@
         var linkInfo = data && data.linkInfo ? data.linkInfo : null;
         var savedHeaders = data && data.headers ? data.headers : null;
         
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Starting reorganizeTables', { 
-            linkInfo: linkInfo,
-            hasSavedHeaders: !!savedHeaders
-        });
-        
         // Find tabs container
         var tabList = document.querySelector('[role="tablist"]');
         var tabPanels = document.querySelectorAll('[role="tabpanel"]');
         
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Found tabs:', {
-            hasTabList: !!tabList,
-            tabPanelsCount: tabPanels.length,
-            tabPanelsIds: Array.from(tabPanels).map(function(p) { return p.id || '(no id)'; })
-        });
-        
         if (!tabList || tabPanels.length === 0) {
-            console.warn('[EOZ Control Panel Order v' + VERSION + '] Tabs not found - tabList:', !!tabList, 'tabPanels:', tabPanels.length);
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] Tabs not found');
             return;
         }
         
         var container = tabList.parentElement;
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Container:', {
-            tagName: container ? container.tagName : 'null',
-            className: container ? container.className : 'null',
-            id: container ? container.id : 'null'
-        });
         
         // Get original tabs BEFORE removing tabList
         var originalTabs = document.querySelectorAll('[role="tab"]');
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Original tabs count:', originalTabs.length);
+        
+        // Log all panels BEFORE modification
+        for (var pi = 0; pi < tabPanels.length; pi++) {
+            var panel = tabPanels[pi];
+            var table = panel.querySelector('table');
+            if (table) {
+                logTableStructure(table, 'PANEL ' + pi + ' (' + (panel.id || 'no-id') + ') - BEFORE');
+            }
+        }
         
         // Remove tabs
         tabList.parentElement.removeChild(tabList);
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Tab list removed');
         
         // Process each tabpanel - remove tabpanel wrapper and show all tables
         var tablesHTML = [];
         var headers = null;
         
         for (var i = 0; i < tabPanels.length; i++) {
-            console.log('[EOZ Control Panel Order v' + VERSION + '] Processing panel', i, 'of', tabPanels.length);
             var panel = tabPanels[i];
             var table = panel.querySelector('table');
             
-            console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, ':', {
-                panelId: panel.id || '(no id)',
-                hasTable: !!table,
-                panelHTML: panel.outerHTML.substring(0, 200)
-            });
-            
             if (!table) {
-                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'has no table, skipping');
                 continue;
             }
             
@@ -324,16 +384,7 @@
             var thead = table.querySelector('thead');
             var tbody = table.querySelector('tbody');
             
-            console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'table structure:', {
-                hasThead: !!thead,
-                hasTbody: !!tbody,
-                rowsCount: tbody ? tbody.querySelectorAll('tr').length : 0,
-                headersCount: thead ? thead.querySelectorAll('th').length : 0,
-                hasSavedHeaders: !!savedHeaders
-            });
-            
             if (!tbody) {
-                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'missing tbody, skipping');
                 continue;
             }
             
@@ -342,10 +393,6 @@
                 thead = savedHeaders.cloneNode(true);
                 // Insert thead before tbody
                 table.insertBefore(thead, tbody);
-                console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'added thead from saved headers');
-            } else if (!thead) {
-                console.warn('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'has no thead and no saved headers');
-                // Continue without header processing - we'll process columns by position
             }
             
             // First, find indices of columns to remove (Usłojenie, Obrazek)
@@ -384,8 +431,8 @@
                 var row = rows[j];
                 var cells = row.querySelectorAll('td');
                 
-                // Add link to first cell if linkInfo exists and first cell doesn't have link
-                if (linkInfo && cells[0] && !cells[0].querySelector('a')) {
+                // Add link to first cell if linkInfo exists and has valid href and first cell doesn't have link
+                if (linkInfo && linkInfo.href && cells[0] && !cells[0].querySelector('a')) {
                     var cellText = cells[0].textContent.trim();
                     var link = document.createElement('a');
                     link.href = linkInfo.href;
@@ -466,11 +513,8 @@
             tableWrapper.appendChild(tableClone);
             
             var wrapperHTML = tableWrapper.outerHTML;
-            console.log('[EOZ Control Panel Order v' + VERSION + '] Panel', i, 'wrapper created, length:', wrapperHTML.length);
             tablesHTML.push(wrapperHTML);
         }
-        
-        console.log('[EOZ Control Panel Order v' + VERSION + '] All panels processed, tablesHTML count:', tablesHTML.length);
         
         // Insert all tables one after another
         if (tablesHTML.length > 0) {
@@ -478,34 +522,23 @@
             newContainer.className = 'eoz-all-tables';
             newContainer.innerHTML = tablesHTML.join('');
             
-            console.log('[EOZ Control Panel Order v' + VERSION + '] Inserting new container:', {
-                containerHTML: newContainer.outerHTML.substring(0, 300),
-                parentContainer: container ? container.tagName : 'null',
-                parentId: container ? container.id : 'null'
-            });
-            
             if (container) {
                 container.appendChild(newContainer);
-                console.log('[EOZ Control Panel Order v' + VERSION + '] Container appended successfully');
-            } else {
-                console.error('[EOZ Control Panel Order v' + VERSION + '] Container is null, cannot append!');
+                
+                // Log structure of inserted tables AFTER modification
+                var insertedTables = newContainer.querySelectorAll('table');
+                for (var ti = 0; ti < insertedTables.length; ti++) {
+                    logTableStructure(insertedTables[ti], 'FINAL TABLE ' + ti + ' (after insertion)');
+                }
             }
-        } else {
-            console.warn('[EOZ Control Panel Order v' + VERSION + '] No tables to insert!');
         }
         
         // Remove original tabpanels
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Removing original tabpanels...');
         for (var p = 0; p < tabPanels.length; p++) {
             if (tabPanels[p].parentElement) {
-                console.log('[EOZ Control Panel Order v' + VERSION + '] Removing tabpanel', p, tabPanels[p].id || '(no id)');
                 tabPanels[p].parentElement.removeChild(tabPanels[p]);
-            } else {
-                console.warn('[EOZ Control Panel Order v' + VERSION + '] Tabpanel', p, 'has no parent');
             }
         }
-        
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Tables reorganized');
     }
 
     function findCheckDoubleHref() {
@@ -557,8 +590,6 @@
         
         // Insert after end button
         endButton.parentElement.insertBefore(newButton, endButton.nextSibling);
-        
-        console.log('[EOZ Control Panel Order v' + VERSION + '] Check-double button added');
     }
 
     function showCheckDoubleConfirmationModal(originalHref) {
@@ -618,7 +649,6 @@
         
         addCheckDoubleButton(checkDoubleHref);
         addEndOperationConfirmation();
-        console.log('[EOZ Control Panel Order Module v' + VERSION + '] Applied');
     }
 
     function waitAndRun() {
