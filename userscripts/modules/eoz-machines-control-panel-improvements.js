@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.0';
+    var VERSION = '1.1.1';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -597,13 +597,20 @@
             }
         }, true);
 
-        // Also handle form submission if there's a form
+        // Also handle form submission if there's a form - DISABLE ORIGINAL FORM COMPLETELY
         var form = newInput.closest && newInput.closest('form');
         if (form) {
-            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form detected. Installing submit handler');
+            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form detected. Installing submit handler and DISABLING original form');
+            
+            // Disable the original form completely
+            form.style.display = 'none';
+            console.log('[EOZ Machines Panel v' + VERSION + '] Original form hidden');
+            
             form.addEventListener('submit', function(e) {
                 console.log('[EOZ Machines Panel v' + VERSION + '] form.submit intercepted', { value: newInput.value });
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 var orderCode = newInput.value.trim();
                 if (!orderCode) {
                     console.warn('[EOZ Machines Panel v' + VERSION + '] Empty order code on submit, ignoring');
@@ -613,6 +620,14 @@
                 console.log('[EOZ Machines Panel v' + VERSION + '] Redirecting (submit) to', built);
                 window.location.href = built.url;
             }, true);
+            
+            // Also remove any existing submit buttons or handlers
+            var submitButtons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+            submitButtons.forEach(function(btn) {
+                btn.style.display = 'none';
+                console.log('[EOZ Machines Panel v' + VERSION + '] Submit button hidden:', btn);
+            });
+            
         } else {
             console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form not found. Relying on keypress Enter handler');
         }
