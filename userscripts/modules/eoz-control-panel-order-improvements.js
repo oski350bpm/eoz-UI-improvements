@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.0';
+    var VERSION = '1.1.1';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -235,6 +235,9 @@
         
         var container = tabList.parentElement;
         
+        // Get original tabs BEFORE removing tabList
+        var originalTabs = document.querySelectorAll('[role="tab"]');
+        
         // Remove tabs
         tabList.parentElement.removeChild(tabList);
         
@@ -249,7 +252,6 @@
             
             // Get title from original tab
             var tabTitle = '';
-            var originalTabs = document.querySelectorAll('[role="tab"]');
             if (originalTabs[i]) {
                 tabTitle = originalTabs[i].textContent.trim();
             }
@@ -295,7 +297,11 @@
                 // Add link to first cell if linkInfo exists and first cell doesn't have link
                 if (linkInfo && cells[0] && !cells[0].querySelector('a')) {
                     var cellText = cells[0].textContent.trim();
-                    cells[0].innerHTML = '<a href="' + linkInfo.href + '">' + cellText + '</a>';
+                    var link = document.createElement('a');
+                    link.href = linkInfo.href;
+                    link.textContent = cellText;
+                    cells[0].textContent = '';
+                    cells[0].appendChild(link);
                 }
                 
                 // Remove data cells in reverse order
@@ -331,21 +337,20 @@
                     }
                 }
             }
-                
-                // Clone table with title
-                var tableClone = table.cloneNode(true);
-                var titleDiv = document.createElement('div');
-                titleDiv.className = 'eoz-table-title';
-                titleDiv.style.cssText = 'font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;';
-                titleDiv.textContent = tabTitle;
-                
-                var tableWrapper = document.createElement('div');
-                tableWrapper.className = 'eoz-table-wrapper';
-                tableWrapper.appendChild(titleDiv);
-                tableWrapper.appendChild(tableClone);
-                
-                tablesHTML.push(tableWrapper.outerHTML);
-            }
+            
+            // Clone table with title (after processing rows)
+            var tableClone = table.cloneNode(true);
+            var titleDiv = document.createElement('div');
+            titleDiv.className = 'eoz-table-title';
+            titleDiv.style.cssText = 'font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;';
+            titleDiv.textContent = tabTitle;
+            
+            var tableWrapper = document.createElement('div');
+            tableWrapper.className = 'eoz-table-wrapper';
+            tableWrapper.appendChild(titleDiv);
+            tableWrapper.appendChild(tableClone);
+            
+            tablesHTML.push(tableWrapper.outerHTML);
         }
         
         // Insert all tables one after another
