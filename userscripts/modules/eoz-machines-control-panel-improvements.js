@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.7';
+    var VERSION = '1.1.8';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -107,6 +107,28 @@
         if (!document.getElementById('eoz-uwagi-modal')) {
             document.body.insertAdjacentHTML('beforeend', modalHTML);
         }
+    }
+
+    function checkClientNotesExists(orderId, callback) {
+        // Check if client notes exist by making a lightweight request
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    // Check if response contains actual content (not empty or error message)
+                    var responseText = xhr.responseText.trim();
+                    var hasContent = responseText.length > 0 && 
+                                     responseText.indexOf('Brak') === -1 && 
+                                     responseText.indexOf('brak') === -1 &&
+                                     responseText.indexOf('<div') !== -1;
+                    callback(hasContent);
+                } else {
+                    callback(false);
+                }
+            }
+        };
+        xhr.send();
     }
 
     function showUwagiModal(orderId) {
@@ -332,9 +354,13 @@
             var tdKl = document.createElement('td');
             var tdWew = document.createElement('td');
             // Uwagi klienta (send_info)
-            if (notesClientLink) {
-                var link1 = notesClientLink.cloneNode(true);
-                link1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
+            // Check if client notes exist - if link exists in actions, use solid icon, otherwise use outline
+            var hasClientNotes = !!notesClientLink;
+            var clientIconClass = hasClientNotes ? 'fa fa-2x fa-comment' : 'far fa-2x fa-comment';
+            
+            if (notesClientLink || orderId) {
+                var link1 = notesClientLink ? notesClientLink.cloneNode(true) : document.createElement('a');
+                link1.innerHTML = '<i class="tableoptions ' + clientIconClass + '"></i>';
                 link1.href = '#'; // Prevent default navigation
                 link1.onclick = function(e) {
                     e.preventDefault();
@@ -342,16 +368,20 @@
                     return false;
                 };
                 tdKl.appendChild(link1);
-            } else if (orderId) {
-                var a1 = document.createElement('a');
-                a1.href = '#';
-                a1.innerHTML = '<i class="tableoptions fa fa-2x fa-comment"></i>';
-                a1.onclick = function(e) {
-                    e.preventDefault();
-                    showUwagiModal(orderId);
-                    return false;
-                };
-                tdKl.appendChild(a1);
+                
+                // Asynchronously check if notes actually exist and update icon
+                if (orderId && !hasClientNotes) {
+                    checkClientNotesExists(orderId, function(hasNotes) {
+                        var icon = link1.querySelector('i');
+                        if (icon) {
+                            if (hasNotes) {
+                                icon.className = 'tableoptions fa fa-2x fa-comment';
+                            } else {
+                                icon.className = 'tableoptions far fa-2x fa-comment';
+                            }
+                        }
+                    });
+                }
             }
 
             // Uwagi wewnętrzne (notes)
