@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.2';
+    var VERSION = '1.1.3';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -621,15 +621,12 @@
             }
         }, true);
 
-        // Also handle form submission if there's a form - DISABLE ORIGINAL FORM COMPLETELY
+        // Also handle form submission if there's a form - INTERCEPT SUBMIT BUT KEEP FORM VISIBLE
         var form = newInput.closest && newInput.closest('form');
         if (form) {
-            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form detected. Installing submit handler and DISABLING original form');
+            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form detected. Installing submit handler (form stays visible)');
             
-            // Disable the original form completely
-            form.style.display = 'none';
-            console.log('[EOZ Machines Panel v' + VERSION + '] Original form hidden');
-            
+            // Intercept form submission but keep form visible
             form.addEventListener('submit', function(e) {
                 console.log('[EOZ Machines Panel v' + VERSION + '] form.submit intercepted', { value: newInput.value });
                 e.preventDefault();
@@ -638,19 +635,15 @@
                 var orderCode = newInput.value.trim();
                 if (!orderCode) {
                     console.warn('[EOZ Machines Panel v' + VERSION + '] Empty order code on submit, ignoring');
-                    return;
+                    return false;
                 }
                 var built = buildSafeUrl(orderCode);
                 console.log('[EOZ Machines Panel v' + VERSION + '] Redirecting (submit) to', built);
                 window.location.href = built.url;
+                return false;
             }, true);
             
-            // Also remove any existing submit buttons or handlers
-            var submitButtons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
-            submitButtons.forEach(function(btn) {
-                btn.style.display = 'none';
-                console.log('[EOZ Machines Panel v' + VERSION + '] Submit button hidden:', btn);
-            });
+            console.log('[EOZ Machines Panel v' + VERSION + '] Form submit handler installed');
             
         } else {
             console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form not found. Relying on keypress Enter handler');
