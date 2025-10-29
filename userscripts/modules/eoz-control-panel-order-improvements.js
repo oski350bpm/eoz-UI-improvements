@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.5';
+    var VERSION = '1.1.6';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -451,17 +451,29 @@
                     var checkButtons = cell.querySelectorAll('a.tippy');
                     if (checkButtons.length > 0) {
                         // This is likely the Opcje column - remove fa-check and fa-check-double buttons
+                        // Collect buttons to remove first (to avoid modifying NodeList while iterating)
+                        var buttonsToRemove = [];
                         for (var n = 0; n < checkButtons.length; n++) {
                             var icon = checkButtons[n].querySelector('i');
                             if (icon) {
                                 var iconClasses = icon.className || '';
                                 var hasCheck = iconClasses.indexOf('fa-check') !== -1;
                                 var hasCheckDouble = iconClasses.indexOf('fa-check-double') !== -1;
-                                // Remove both fa-check (single) and fa-check-double
+                                // Collect buttons to remove
                                 if (hasCheck || hasCheckDouble) {
-                                    checkButtons[n].parentElement.removeChild(checkButtons[n]);
-                                    n--; // Adjust index after removal
+                                    buttonsToRemove.push(checkButtons[n]);
                                 }
+                            }
+                        }
+                        // Now remove collected buttons
+                        for (var r = 0; r < buttonsToRemove.length; r++) {
+                            var button = buttonsToRemove[r];
+                            if (button && button.parentElement) {
+                                button.parentElement.removeChild(button);
+                            } else if (button && button.parentNode) {
+                                button.parentNode.removeChild(button);
+                            } else if (button && button.remove) {
+                                button.remove();
                             }
                         }
                         break; // Found Opcje column, no need to continue
