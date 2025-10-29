@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.0';
+    var VERSION = '1.2.1';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -254,6 +254,7 @@
         var linkInfo = null;
         
         // Try to find link in second table first (this is probably where the real link is)
+        // Also check for check-double buttons in Opcje column - they have the link we need
         for (var p = 0; p < tabPanels.length; p++) {
             var panel = tabPanels[p];
             var table = panel.querySelector('table');
@@ -273,6 +274,60 @@
                             break;
                         }
                     }
+                    
+                    // If no link in first cell, check Opcje column for check-double button
+                    // This link can be used to construct links for first column
+                    var allCells = firstRow.querySelectorAll('td');
+                    for (var cellIdx = 0; cellIdx < allCells.length; cellIdx++) {
+                        var cell = allCells[cellIdx];
+                        var checkDoubleBtn = cell.querySelector('a.tippy');
+                        if (checkDoubleBtn) {
+                            var icon = checkDoubleBtn.querySelector('i');
+                            if (icon && icon.className.indexOf('fa-check-double') !== -1) {
+                                // Extract parameters from check-double button href
+                                // Format: .../control_panel_set_suborder_elements_status_done_by_form/ORDER_CODE?number2=X&block_id=Y&code=Z
+                                var href = checkDoubleBtn.href;
+                                var firstCellText = firstCell ? firstCell.textContent.trim() : '';
+                                
+                                // Parse URL
+                                var urlParts = href.split('?');
+                                var baseUrl = urlParts[0];
+                                var paramsStr = urlParts[1] || '';
+                                var params = new URLSearchParams(paramsStr);
+                                
+                                // Get number2 and block_id from params
+                                var number2 = params.get('number2') || '';
+                                var blockId = params.get('block_id') || '';
+                                
+                                // Construct link for first column element
+                                // Use control_panel_set_element_status_done_by_form for single elements
+                                // Format: .../control_panel_set_element_status_done_by_form/ELEMENT_CODE?number2=ORDER_CODE&block_id=BLOCK_ID&code=ELEMENT_CODE
+                                var elementCode = firstCellText;
+                                var elementLinkBase = baseUrl.replace('control_panel_set_suborder_elements_status_done_by_form', 'control_panel_set_element_status_done_by_form');
+                                var elementLink = elementLinkBase.replace(/\/[^\/]+\?/, '/' + elementCode + '?');
+                                
+                                // Construct full href with correct code parameter
+                                var newParams = new URLSearchParams();
+                                newParams.set('number2', number2);
+                                newParams.set('block_id', blockId);
+                                newParams.set('code', elementCode);
+                                
+                                linkInfo = {
+                                    href: elementLinkBase.split('/').slice(0, -1).join('/') + '/' + elementCode + '?' + newParams.toString(),
+                                    text: firstCellText,
+                                    html: null,
+                                    source: 'from-check-double-button',
+                                    template: true, // Indicates we need to replace code for each row
+                                    baseUrl: elementLinkBase.split('/').slice(0, -1).join('/'),
+                                    number2: number2,
+                                    blockId: blockId
+                                };
+                                break;
+                            }
+                        }
+                        if (linkInfo) break;
+                    }
+                    if (linkInfo) break;
                 }
             }
         }
@@ -397,11 +452,14 @@
                 }
             }
             
-            // Also check first data row to verify/find columns
+            // Also check first data row to verify/find columns (if no thead or didn't find all in thead)
             var firstDataRow = tbody.querySelector('tr:not(:empty)') || tbody.querySelector('tr');
-            if (firstDataRow && indicesToRemove.length === 0) {
-                // If no thead or didn't find columns in headers, use data row
-                var sampleCells = firstDataRow.querySelectorAll('td');
+            if (firstDataRow) {
+                // If we found columns from thead, verify they're correct by checking data
+                // If we didn't find from thead, find from data
+                if (indicesToRemove.length === 0) {
+                    // If no thead or didn't find columns in headers, use data row
+                    var sampleCells = firstDataRow.querySelectorAll('td');
                 
                 // Find Usłojenie (index 9), Obrazek (index 10), and Info/Zlecenie (last column)
                 if (sampleCells.length > 10) {
@@ -441,7 +499,22 @@
                 if (linkInfo && linkInfo.href && cells[0] && !cells[0].querySelector('a')) {
                     var cellText = cells[0].textContent.trim();
                     var link = document.createElement('a');
-                    link.href = linkInfo.href;
+                    
+                    // If linkInfo has template flag, construct href for this specific row
+                    if (linkInfo.template && linkInfo.baseUrl && linkInfo.number2 && linkInfo.blockId) {
+                        // Construct link for this specific element code
+                        var newParams = new URLSearchParams();
+                        newParams.set('number2', linkInfo.number2);
+                        newParams.set('block_id', linkInfo.blockId);
+                        newParams.set('code', cellText);
+                        link.href = linkInfo.baseUrl + '/' + cellText + '?' + newParams.toString();
+                    } else if (linkInfo.template) {
+                        // Fallback: try to replace code in existing href
+                        link.href = linkInfo.href.replace(/code=[^&]+/, 'code=' + cellText);
+                    } else {
+                        link.href = linkInfo.href;
+                    }
+                    
                     link.textContent = cellText;
                     cells[0].textContent = '';
                     cells[0].appendChild(link);
@@ -691,6 +764,12 @@
         return null;
     }
 
+    function isOkleiniarkaMachine() {
+        // Check if current machine is Okleiniarka by text content
+        var machineText = document.body.innerText || document.body.textContent || '';
+        return machineText.indexOf('Okleiniarka') !== -1;
+    }
+
     function apply() {
         // Get machine ID
         var machineId = getMachineId();
@@ -709,14 +788,17 @@
             reorganizeTables({ linkInfo: null, headers: null });
         }
         
-        // Hide check-double button for machine ID 583 (Okleiniarka)
-        if (machineId === 583) {
+        // Hide check-double button for Okleiniarka machine (detect by text, not ID)
+        var isOkleiniarka = isOkleiniarkaMachine();
+        if (isOkleiniarka) {
+            // Don't add the button for Okleiniarka
+            // Also hide it if it was already added
             var checkDoubleBtn = document.querySelector('.eoz-check-double-btn, a.btn-success.eoz-check-double-btn');
             if (checkDoubleBtn) {
                 checkDoubleBtn.style.display = 'none';
             }
         } else {
-            // Add check-double button only if not machine 583
+            // Add check-double button for other machines
             addCheckDoubleButton(checkDoubleHref);
         }
         
