@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.3';
+    var VERSION = '1.1.4';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -660,6 +660,100 @@
         console.log('[EOZ Machines Panel v' + VERSION + '] Custom scanner redirect initialized');
     }
 
+    function logDatepickerInfo() {
+        var datepicker = document.querySelector('.datepicker');
+        if (!datepicker) {
+            console.log('[EOZ Datepicker Debug] Calendar not found');
+            return;
+        }
+
+        var table = datepicker.querySelector('table');
+        if (!table) {
+            console.log('[EOZ Datepicker Debug] Calendar table not found');
+            return;
+        }
+
+        var containerClasses = Array.from(datepicker.classList);
+        var tableClasses = Array.from(table.classList);
+        var computed = window.getComputedStyle(table);
+        var thead = table.querySelector('thead');
+        var tbody = table.querySelector('tbody');
+        var firstRow = tbody ? tbody.querySelector('tr') : null;
+        var firstCell = firstRow ? firstRow.querySelector('td') : null;
+
+        var info = {
+            container: {
+                classes: containerClasses,
+                id: datepicker.id || '(none)',
+                parentClasses: datepicker.parentElement ? Array.from(datepicker.parentElement.classList) : []
+            },
+            table: {
+                classes: tableClasses,
+                display: computed.display,
+                width: computed.width,
+                tableLayout: computed.tableLayout,
+                flexDirection: computed.flexDirection,
+                gridTemplateColumns: computed.gridTemplateColumns
+            },
+            structure: {
+                theadDisplay: thead ? window.getComputedStyle(thead).display : null,
+                tbodyDisplay: tbody ? window.getComputedStyle(tbody).display : null,
+                firstRowDisplay: firstRow ? window.getComputedStyle(firstRow).display : null,
+                firstCellDisplay: firstCell ? window.getComputedStyle(firstCell).display : null
+            },
+            mediaQuery: {
+                windowWidth: window.innerWidth,
+                isMobile: window.innerWidth <= 960
+            }
+        };
+
+        console.log('[EOZ Datepicker Debug] Calendar parameters:', info);
+    }
+
+    function setupDatepickerObserver() {
+        // Log when datepicker appears
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1 && node.classList && node.classList.contains('datepicker')) {
+                            setTimeout(function() {
+                                logDatepickerInfo();
+                            }, 100);
+                        }
+                    });
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Also check if datepicker already exists
+        if (document.querySelector('.datepicker')) {
+            setTimeout(function() {
+                logDatepickerInfo();
+            }, 100);
+        }
+
+        // Log when date input is clicked (calendar might open)
+        var dateInput = document.querySelector('input[name="operation_date"]');
+        if (dateInput) {
+            dateInput.addEventListener('click', function() {
+                setTimeout(function() {
+                    logDatepickerInfo();
+                }, 200);
+            });
+            dateInput.addEventListener('focus', function() {
+                setTimeout(function() {
+                    logDatepickerInfo();
+                }, 200);
+            });
+        }
+    }
+
     function apply() {
         // Add class to body to scope CSS to this page only
         document.body.classList.add('machines-panel');
@@ -672,6 +766,7 @@
         buildMobileLayout();
         addStartOperationConfirmation();
         modifyScannerBehavior();
+        setupDatepickerObserver();
         console.log('[EOZ Machines Panel Module v' + VERSION + '] Applied');
     }
 
