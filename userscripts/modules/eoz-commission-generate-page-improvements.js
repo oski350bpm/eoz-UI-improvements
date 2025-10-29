@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.0';
+    var VERSION = '1.0.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -26,7 +26,8 @@
 
     var styles = '' +
         '.eoz-generate-page-hidden-column{display:none!important}\n' +
-        '.eoz-generate-page-lp-column{font-weight:bold!important;text-align:center!important;width:50px!important}\n';
+        '.eoz-generate-page-lp-column{font-weight:bold!important;text-align:center!important;width:50px!important}\n' +
+        '.eoz-generate-page-barcode-img{height:60px!important;width:auto!important;max-width:250px!important;object-fit:contain!important}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-commission-generate-page-module-css' });
 
@@ -94,7 +95,8 @@
         var currentText = h1.textContent || '';
         // Sprawdzamy czy nazwa już nie jest dodana (żeby nie duplikować)
         if (currentText.indexOf(commissionName) === -1) {
-            h1.textContent = currentText + ' - ' + commissionName;
+            // Używamy innerHTML aby <br> było renderowane, a nie textContent
+            h1.innerHTML = currentText.trim() + '<br>' + commissionName;
             console.log('[EOZ Commission Generate Page Module] Commission name added to H1: ' + commissionName);
         }
     }
@@ -230,6 +232,28 @@
     }
 
     /**
+     * Ustawia jednakowe rozmiary dla wszystkich kodów kreskowych
+     */
+    function normalizeBarcodeImages() {
+        // Znajdź wszystkie obrazki - prawdopodobnie wszystkie są kodami kreskowymi
+        var images = document.querySelectorAll('img');
+        var barcodeCount = 0;
+        
+        images.forEach(function(img) {
+            // Sprawdź czy obrazek jest widoczny i ma rozmiar (pomijamy ukryte/dekoracyjne)
+            if (img.offsetWidth > 0 || img.offsetHeight > 0) {
+                // Dodaj klasę CSS do wszystkich widocznych obrazków (zakładamy że to kody kreskowe)
+                img.classList.add('eoz-generate-page-barcode-img');
+                barcodeCount++;
+            }
+        });
+        
+        if (barcodeCount > 0) {
+            console.log('[EOZ Commission Generate Page Module] Normalized ' + barcodeCount + ' barcode image(s)');
+        }
+    }
+
+    /**
      * Główna funkcja aplikująca modyfikacje
      */
     function apply() {
@@ -245,6 +269,9 @@
         
         // Zmodyfikuj tabelę procesu produkcyjnego
         modifyProductionProcessTable();
+        
+        // Ustaw jednakowe rozmiary kodów kreskowych
+        normalizeBarcodeImages();
         
         console.log('[EOZ Commission Generate Page Module v' + VERSION + '] Applied');
     }
