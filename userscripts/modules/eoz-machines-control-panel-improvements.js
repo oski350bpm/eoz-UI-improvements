@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.20';
+    var VERSION = '1.1.21';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -44,7 +44,7 @@
         '.eoz-dropdown-label{width:100%!important;height:48px!important;background:#007bff!important;color:#fff!important;border:none!important;border-radius:8px!important;font-size:14px!important;font-weight:bold!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;transition:background-color .2s!important;padding:10px!important;box-shadow:0 2px 4px rgba(0,0,0,.1)!important;user-select:none!important}\n' +
         '.eoz-dropdown-label:hover{background:#0056b3!important}\n' +
         '.eoz-dropdown-label:active{background:#004085!important;transform:translateY(1px)!important}\n' +
-        '.eoz-dropdown-menu{position:absolute!important;top:100%!important;right:0!important;left:auto!important;min-width:220px!important;max-width:300px!important;background:#fff!important;border:1px solid #ddd!important;border-radius:8px!important;box-shadow:0 4px 12px rgba(0,0,0,.15)!important;display:none!important;flex-direction:column!important;overflow:hidden!important;margin-top:4px!important}\n' +
+        '.eoz-dropdown-menu{position:absolute!important;top:100%!important;right:0!important;left:auto!important;min-width:220px!important;max-width:300px!important;background:#fff!important;border:1px solid #ddd!important;border-radius:8px!important;box-shadow:0 4px 12px rgba(0,0,0,.15)!important;z-index:9999!important;display:none!important;flex-direction:column!important;overflow:hidden!important;margin-top:4px!important}\n' +
         '.eoz-dropdown-toggle:checked + .eoz-dropdown-label + .eoz-dropdown-menu{display:flex!important}\n' +
         '.eoz-dropdown-toggle:checked + .eoz-dropdown-label{background:#0056b3!important}\n' +
         '.eoz-dropdown-item{display:flex!important;align-items:center!important;gap:10px!important;padding:14px!important;text-decoration:none!important;color:#333!important;border-bottom:1px solid #eee!important;transition:background-color .2s!important;min-height:44px!important;font-size:14px!important}\n' +
@@ -151,7 +151,7 @@
         // Check if client notes exist by making a lightweight request
         var xhr = new XMLHttpRequest();
         var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
-        console.log('[EOZ Notes Debug] checkClientNotesExists: requesting', { orderId: orderId, url: url });
+        
         xhr.open('GET', url, true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
@@ -161,16 +161,10 @@
                     // Strip HTML to detect plain text content too
                     var textOnly = responseText.replace(/<[^>]*>/g, '').trim();
                     var hasContent = textOnly.length > 0 && !/\bbrak\b/i.test(textOnly);
-                    console.log('[EOZ Notes Debug] checkClientNotesExists: response', {
-                        status: xhr.status,
-                        length: responseText.length,
-                        snippet: responseText.slice(0, 200),
-                        textOnly: textOnly.slice(0, 200),
-                        hasContent: hasContent
-                    });
+                    
                     callback(hasContent);
                 } else {
-                    console.warn('[EOZ Notes Debug] checkClientNotesExists: non-200', { status: xhr.status, orderId: orderId });
+                    
                     callback(false);
                 }
             }
@@ -201,15 +195,15 @@
         // Load content via AJAX
         var xhr = new XMLHttpRequest();
         var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
-        console.log('[EOZ Notes Debug] showUwagiModal: loading', { orderId: orderId, url: url });
+        
         xhr.open('GET', url, true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
-                    console.log('[EOZ Notes Debug] showUwagiModal: loaded OK', { status: xhr.status, length: (xhr.responseText||'').length });
+                    
                     modalBody.innerHTML = xhr.responseText;
                 } else {
-                    console.warn('[EOZ Notes Debug] showUwagiModal: load error', { status: xhr.status });
+                    
                     modalBody.innerHTML = '<div class="alert alert-danger">Błąd ładowania uwag. Spróbuj ponownie.</div>';
                 }
             }
@@ -480,7 +474,7 @@
                 (function(capturedOrderId, capturedLink, presetHasClientNotes){
                     capturedLink.addEventListener('click', function(e){
                         e.preventDefault();
-                        console.log('[EOZ Notes Debug] notes icon click (header-inserted link)', { orderId: capturedOrderId, presetHasClientNotes: presetHasClientNotes });
+                        
                         showUwagiModal(capturedOrderId);
                         return false;
                     }, true);
@@ -490,7 +484,7 @@
                         checkClientNotesExists(capturedOrderId, function(hasNotes) {
                             var icon = capturedLink.querySelector('i');
                             if (icon) {
-                                console.log('[EOZ Notes Debug] async icon update (header-inserted link)', { orderId: capturedOrderId, hasNotes: hasNotes });
+                                
                                 icon.className = hasNotes ? 'tableoptions fa fa-2x fa-comment' : 'tableoptions far fa-2x fa-comment';
                             }
                         });
@@ -718,13 +712,9 @@
         // Debug: initial detection
         var scannerDiv = document.getElementById('scanner_div');
         var scannerInput = (scannerDiv ? scannerDiv.querySelector('input.scanner') : null) || document.querySelector('input.scanner');
-        console.log('[EOZ Machines Panel v' + VERSION + '] Scanner detection:', {
-            hasScannerDiv: !!scannerDiv,
-            hasScannerInputInDiv: !!(scannerDiv && scannerDiv.querySelector && scannerDiv.querySelector('input.scanner')),
-            hasScannerInputGlobal: !!document.querySelector('input.scanner')
-        });
+        
         if (!scannerInput) {
-            console.warn('[EOZ Machines Panel v' + VERSION + '] Scanner input not found. Aborting custom redirect setup.');
+            
             return;
         }
 
@@ -733,7 +723,7 @@
         var oldName = scannerInput.name;
         var newInput = scannerInput.cloneNode(true);
         scannerInput.parentNode.replaceChild(newInput, scannerInput);
-        console.log('[EOZ Machines Panel v' + VERSION + '] Scanner input cloned & replaced', { id: oldId, name: oldName });
+        
 
         function buildSafeUrl(orderCode) {
             // Get operation_date from the actual form field (same as original system)
@@ -777,17 +767,17 @@
 
         // Add new keypress handler
         newInput.addEventListener('keypress', function(e) {
-            console.log('[EOZ Machines Panel v' + VERSION + '] keypress', { key: e.key, code: e.code, value: newInput.value });
+            
             if (e.key === 'Enter') {
                 e.preventDefault();
                 var orderCode = newInput.value.trim();
-                console.log('[EOZ Machines Panel v' + VERSION + '] Enter pressed', { orderCode: orderCode });
+                
                 if (!orderCode) {
-                    console.warn('[EOZ Machines Panel v' + VERSION + '] Empty order code, ignoring');
+                    
                     return;
                 }
                 var built = buildSafeUrl(orderCode);
-                console.log('[EOZ Machines Panel v' + VERSION + '] Redirecting (keypress) to', built);
+                
                 window.location.href = built.url;
             }
         }, true);
@@ -795,40 +785,35 @@
         // Also handle form submission if there's a form - INTERCEPT SUBMIT BUT KEEP FORM VISIBLE
         var form = newInput.closest && newInput.closest('form');
         if (form) {
-            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form detected. Installing submit handler (form stays visible)');
+            
             
             // Intercept form submission but keep form visible
             form.addEventListener('submit', function(e) {
-                console.log('[EOZ Machines Panel v' + VERSION + '] form.submit intercepted', { value: newInput.value });
+                
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 var orderCode = newInput.value.trim();
                 if (!orderCode) {
-                    console.warn('[EOZ Machines Panel v' + VERSION + '] Empty order code on submit, ignoring');
+                    
                     return false;
                 }
                 var built = buildSafeUrl(orderCode);
-                console.log('[EOZ Machines Panel v' + VERSION + '] Redirecting (submit) to', built);
+                
                 window.location.href = built.url;
                 return false;
             }, true);
             
-            console.log('[EOZ Machines Panel v' + VERSION + '] Form submit handler installed');
+            
             
         } else {
-            console.log('[EOZ Machines Panel v' + VERSION + '] Scanner form not found. Relying on keypress Enter handler');
+            
         }
 
         // Global debug listeners to trace native behavior
-        document.addEventListener('keypress', function(e){
-            var tgt = e.target && e.target.id ? ('#' + e.target.id) : (e.target && e.target.name ? ('[name="' + e.target.name + '"]') : (e.target && e.target.tagName));
-            if (e.target === newInput) {
-                console.log('[EOZ Machines Panel v' + VERSION + '] document keypress (from scanner)', { key: e.key, code: e.code, target: tgt });
-            }
-        }, true);
+        document.addEventListener('keypress', function(e){}, true);
 
-        console.log('[EOZ Machines Panel v' + VERSION + '] Custom scanner redirect initialized');
+        
     }
 
     function logDatepickerInfo() {
@@ -1038,14 +1023,9 @@
                 var mm = t.match(/\d+(?:_\d+)?/);
                 orderId = mm ? mm[0] : '';
             }
-            console.log('[EOZ Notes Debug] delegated click', {
-                inferredFromZlecenie: inferred,
-                fromClientHref: linkClient && linkClient.getAttribute('href'),
-                fromInternalHref: linkInternal && linkInternal.getAttribute('href'),
-                finalOrderId: orderId
-            });
+            
             if (!orderId) {
-                console.warn('[EOZ Notes Debug] missing orderId on delegated click');
+                
                 return;
             }
             showUwagiModal(orderId);
