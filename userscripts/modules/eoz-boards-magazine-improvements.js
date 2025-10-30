@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.7.3';
+    var VERSION = '2.8.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -419,6 +419,11 @@
             tagColumnByHeader('Lp', 'lp');
         }
 
+        // If veneers, replace code in "Nazwa okleiny" with full name from commission page
+        if (isVeneers) {
+            try { replaceVeneerCodesWithNames(isVeneersGrouped); } catch(_) {}
+        }
+
         // Build dropdowns first so we can reuse them in mobile grid
         transformActionButtons();
         
@@ -446,6 +451,106 @@
         
         // Watch for dynamically loaded comments tables
         watchForCommentsTable();
+    }
+
+    // Cache for commission -> veneer map { code -> fullName }
+    var veneerMapCache = {};
+
+    function extractCommissionIdFromRow(row){
+        if (!row) return null;
+        // Look for links in this row first (Opcje or Zlecenie)
+        var link = row.querySelector('a[href*="/commission/generate_page/"]') ||
+                   row.querySelector('a[href*="/commission/show_details/"]');
+        if (link && link.href){
+            var m = link.href.match(/\/(generate_page|show_details)\/(\d+)/);
+            if (m) return m[2];
+        }
+        return null;
+    }
+
+    function fetchVeneersMapForCommission(commissionId){
+        return new Promise(function(resolve, reject){
+            if (!commissionId) { reject(new Error('No commissionId')); return; }
+            if (veneerMapCache[commissionId]) { resolve(veneerMapCache[commissionId]); return; }
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/index.php/pl/commission/generate_page/' + commissionId, true);
+            xhr.onload = function(){
+                if (xhr.status !== 200) { reject(new Error('HTTP '+xhr.status)); return; }
+                try {
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(xhr.responseText, 'text/html');
+                    var map = {};
+                    // Find the "Okleiny" table: header text and subsequent table
+                    var h2s = Array.from(doc.querySelectorAll('h2'));
+                    var veneersHeader = h2s.find(function(h){ return (h.textContent||'').trim().toLowerCase() === 'okleiny'; });
+                    var table = veneersHeader ? veneersHeader.nextElementSibling : null;
+                    if (!table || table.tagName !== 'TABLE') {
+                        // fallback: any table with headings containing "Nazwa okleiny"
+                        table = Array.from(doc.querySelectorAll('table')).find(function(t){
+                            var ths = Array.from(t.querySelectorAll('thead th'));
+                            return ths.some(function(th){ return (th.textContent||'').trim().toLowerCase().indexOf('nazwa okleiny') !== -1; });
+                        });
+                    }
+                    if (table){
+                        var rows = Array.from(table.querySelectorAll('tbody tr'));
+                        rows.forEach(function(tr){
+                            var tds = tr.querySelectorAll('td');
+                            if (tds.length >= 2){
+                                var code = (tds[0].textContent||'').trim();
+                                var name = (tds[1].textContent||'').trim();
+                                if (code && name) { map[code] = name; }
+                            }
+                        });
+                    }
+                    veneerMapCache[commissionId] = map;
+                    resolve(map);
+                } catch(e){ reject(e); }
+            };
+            xhr.onerror = function(){ reject(new Error('Network error')); };
+            xhr.send();
+        });
+    }
+
+    function replaceVeneerCodesWithNames(isGrouped){
+        var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
+        if (idxNazwaOkleiny < 0) return;
+        var rows = Array.from(document.querySelectorAll('table tbody tr'));
+        if (rows.length === 0) return;
+
+        var pending = [];
+        var currentCommissionId = null;
+
+        rows.forEach(function(row){
+            var cells = row.querySelectorAll('td');
+            if (!cells || cells.length === 0) return;
+
+            // Grouped sub-rows have fewer cells and no links; keep last main-row commission id
+            var commissionIdInRow = extractCommissionIdFromRow(row);
+            if (commissionIdInRow) currentCommissionId = commissionIdInRow;
+            var commissionId = currentCommissionId || commissionIdInRow;
+
+            // Map header index to actual cell index: in some grouped views table omits first columns
+            var actualIndex = idxNazwaOkleiny;
+            // If table uses first two columns (Data, Klient) hidden via CSS, DOM still has them – index stays the same
+            var targetCell = cells[actualIndex] || null;
+            if (!targetCell) return;
+
+            var code = (targetCell.textContent||'').trim();
+            if (!code || !commissionId) return;
+
+            pending.push(
+                fetchVeneersMapForCommission(commissionId).then(function(map){
+                    var name = map && map[code];
+                    if (!name) return;
+                    // Replace visible text with full name; keep code as title for reference
+                    targetCell.textContent = name;
+                    targetCell.setAttribute('title', code);
+                }).catch(function(){ /* ignore row-level errors */ })
+            );
+        });
+
+        // Best-effort; no need to await in UI thread
+        Promise.allSettled(pending).then(function(){ /* noop */ });
     }
     
     function watchForCommentsTable() {
