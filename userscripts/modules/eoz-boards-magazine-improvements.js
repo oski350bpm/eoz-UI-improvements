@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.4';
+    var VERSION = '2.8.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -120,6 +120,15 @@
         var headers = document.querySelectorAll('table thead th');
         for (var i=0;i<headers.length;i++){
             if ((headers[i].textContent||'').trim() === headerText) return i;
+        }
+        return -1;
+    }
+
+    function findHeaderIndexAny(possibleHeaders){
+        if (!possibleHeaders || !possibleHeaders.length) return -1;
+        for (var i = 0; i < possibleHeaders.length; i++){
+            var idx = findHeaderIndex(possibleHeaders[i]);
+            if (idx >= 0) return idx;
         }
         return -1;
     }
@@ -484,8 +493,8 @@
         var idxNazwa = findHeaderIndex('Nazwa zamówienia');
         var idxIlosc = findHeaderIndex('Ilość');
         var idxPrzygot = findHeaderIndex('Przygotowane');
-        var idxOpis = isVeneers ? findHeaderIndex('Opis') : findHeaderIndex('Uwagi klienta');
-        var idxUwagi = findHeaderIndex('Uwagi');
+        var idxOpis = isVeneers ? findHeaderIndex('Opis') : findHeaderIndexAny(['Uwagi klienta','Opis']);
+        var idxUwagi = findHeaderIndexAny(['Uwagi','Uwagi wewnętrzne']);
         var idxOpcje = findHeaderIndex('Opcje');
 
         var materialIndexes = [];
@@ -767,8 +776,8 @@
         var idxWymiar = findHeaderIndex('Wymiar');
         var idxIlosc = findHeaderIndex('Ilość');
         var idxPrzygot = findHeaderIndex('Przygotowane');
-        var idxOpis = findHeaderIndex('Opis');
-        var idxUwagi = findHeaderIndex('Uwagi');
+        var idxOpis = findHeaderIndexAny(['Opis','Uwagi klienta']);
+        var idxUwagi = findHeaderIndexAny(['Uwagi','Uwagi wewnętrzne']);
         
         var rows = document.querySelectorAll('table tbody tr');
         var orderCount = 0;
