@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.7';
+    var VERSION = '2.8.8';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -428,26 +428,42 @@
         try {
             var table = document.querySelector('table');
             if (!table) { console.warn('[EOZ Mag Debug]', phase, 'no table'); return; }
-            var headers = Array.from(table.querySelectorAll('thead th')).map(function(th){
-                return (th.textContent||'').trim();
-            });
-            var rows = Array.from(table.querySelectorAll('tbody tr')).map(function(tr){
+            var headers = Array.from(table.querySelectorAll('thead th')).map(function(th){ return (th.textContent||'').trim(); });
+
+            var tbodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            var diag = [];
+            tbodyRows.forEach(function(tr, idx){
                 var isInfo = !!tr.querySelector('th[colspan]');
                 var tds = Array.from(tr.querySelectorAll('td'));
-                return {
+                var hasRowspan = tds.some(function(td){ return td.hasAttribute('rowspan'); });
+                var isSubRowCandidate = !isInfo && !hasRowspan && tds.length > 0 && tds.length <= 4; // /3 sub-rows
+                var codeCell = null;
+                // try to infer veneer code cell
+                for (var i=0;i<tds.length;i++){
+                    var td = tds[i];
+                    if (td.getAttribute && td.getAttribute('title')) { codeCell = td; break; }
+                }
+                if (!codeCell && tds.length){ codeCell = tds[0]; }
+                var title = codeCell ? (codeCell.getAttribute('title')||'') : '';
+                var text = codeCell ? (codeCell.textContent||'').trim() : '';
+                var radioCell = tds.find(function(td){ return !!td.querySelector('.switch-field'); });
+                var link = tr.querySelector('a[href*="/commission/show_details/"]') || tr.querySelector('a[href*="/commission/generate_page/"]');
+                diag.push({
+                    idx: idx+1,
                     infoRow: isInfo,
-                    cells: tds.map(function(td){
-                        return {
-                            text: (td.textContent||'').trim(),
-                            title: td.getAttribute ? (td.getAttribute('title')||'') : '',
-                            hasSwitch: !!td.querySelector('.switch-field')
-                        };
-                    })
-                };
+                    mainRow: hasRowspan,
+                    subRow: isSubRowCandidate,
+                    cells: tds.length,
+                    code_title: title,
+                    code_text: text,
+                    hasSwitch: !!radioCell,
+                    link: link ? link.href.split('/').slice(-1)[0] : ''
+                });
             });
+
             console.groupCollapsed('[EOZ Mag Debug]', phase, meta||{});
             console.log('headers:', headers);
-            console.log('rows (first 10):', rows.slice(0,10));
+            console.table(diag.slice(0, 30));
             console.groupEnd();
         } catch (e) {
             console.error('[EOZ Mag Debug] error', e);
