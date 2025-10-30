@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.14';
+    var VERSION = '1.1.16';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -422,14 +422,22 @@
             // Prefer extracting numeric ID from link hrefs when available (most reliable)
             function extractIdFromHref(href) {
                 if (!href) return null;
-                // Match trailing /digits or digits before query/hash
-                var m = href.match(/\/(\d+)(?:$|[?#])/);
+                // Match trailing id with optional underscore part: e.g., 3857 or 3857_1
+                var m = href.match(/\/(\d+(?:_\d+)?)(?:$|[?#])/);
                 return m ? m[1] : null;
             }
             var extractedId = null;
             if (notesClientLink) extractedId = extractIdFromHref(notesClientLink.getAttribute('href'));
             if (!extractedId && notesInternalLink) extractedId = extractIdFromHref(notesInternalLink.getAttribute('href'));
             if (extractedId) orderId = extractedId;
+
+            // Fallback: transform Zlecenie like "3857/1" to "3857_1"
+            if (!extractedId && orderId) {
+                var transformed = orderId.replace(/\s+/g, '').replace('/', '_');
+                // Keep only digits and underscores in ID (defensive)
+                transformed = (transformed.match(/\d+(?:_\d+)?/) || [''])[0];
+                if (transformed) orderId = transformed;
+            }
 
             var tdKl = document.createElement('td');
             var tdWew = document.createElement('td');
@@ -950,6 +958,40 @@
         }
     }
 
+    function installStartOperationGuard() {
+        // One global capture-phase listener to guard start operation across UI (including delegated clicks)
+        if (document.body.getAttribute('data-eoz-start-guard-installed') === '1') return;
+        document.body.setAttribute('data-eoz-start-guard-installed', '1');
+
+        document.addEventListener('click', function(e){
+            var target = e.target;
+            if (!target) return;
+            var link = target.closest && target.closest('a');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            var isStartBtn = link.classList.contains('start') || /start_operation_block\//.test(href);
+            if (!isStartBtn) return;
+
+            // Skip if already confirmed in this interaction
+            if (link.getAttribute('data-eoz-confirmed') === '1') return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            var proceed = window.confirm('Czy na pewno chcesz rozpocząć operację na tej maszynie?');
+            if (proceed) {
+                link.setAttribute('data-eoz-confirmed', '1');
+                try {
+                    // Navigate explicitly to avoid blocked native handlers
+                    window.location.href = href;
+                } catch(_) {
+                    window.location.assign(href);
+                }
+            }
+        }, true);
+    }
+
     function apply() {
         // Add class to body to scope CSS to this page only
         document.body.classList.add('machines-panel');
@@ -963,6 +1005,7 @@
         debugTableStructure();
         modifyScannerBehavior();
         setupDatepickerObserver();
+        installStartOperationGuard();
         console.log('[EOZ Machines Panel Module v' + VERSION + '] Applied');
     }
 
