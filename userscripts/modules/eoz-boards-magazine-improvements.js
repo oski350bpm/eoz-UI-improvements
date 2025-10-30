@@ -619,7 +619,18 @@
                 if (nrHasRowspan) break; // next main row
                 var src = Array.from(nrTds).find(function(td){ return td.querySelector && td.querySelector('.switch-field'); });
                 if (src) {
-                    przygotCell.innerHTML = src.innerHTML; // copy radios to main row
+                    var cloned = src.cloneNode(true);
+                    var radios = cloned.querySelectorAll('input[type="radio"]');
+                    radios.forEach(function(radio){
+                        if (radio.id) {
+                            var oldId = radio.id; radio.id = oldId + '-grp';
+                            var lab = cloned.querySelector('label[for="' + oldId + '"]');
+                            if (lab) lab.setAttribute('for', radio.id);
+                        }
+                        if (radio.name) radio.name = radio.name + '-grp';
+                    });
+                    przygotCell.innerHTML = '';
+                    przygotCell.appendChild(cloned.firstElementChild || cloned);
                     break;
                 }
                 k++;
