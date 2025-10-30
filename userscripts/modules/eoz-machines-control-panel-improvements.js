@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.12';
+    var VERSION = '1.1.13';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -389,10 +389,22 @@
             var notesClientLink = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_send_info"]') : null;
             var notesInternalLink = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_notes"]') : null;
 
+            // Prefer extracting numeric ID from link hrefs when available (most reliable)
+            function extractIdFromHref(href) {
+                if (!href) return null;
+                // Match trailing /digits or digits before query/hash
+                var m = href.match(/\/(\d+)(?:$|[?#])/);
+                return m ? m[1] : null;
+            }
+            var extractedId = null;
+            if (notesClientLink) extractedId = extractIdFromHref(notesClientLink.getAttribute('href'));
+            if (!extractedId && notesInternalLink) extractedId = extractIdFromHref(notesInternalLink.getAttribute('href'));
+            if (extractedId) orderId = extractedId;
+
             var tdKl = document.createElement('td');
             var tdWew = document.createElement('td');
             // Uwagi klienta (send_info)
-            // Check if client notes exist - if link exists in actions, use solid icon, otherwise use outline
+            // Check if client notes exist - if link exists in actions, use solid icon, otherwise async check
             var hasClientNotes = !!notesClientLink;
             var clientIconClass = hasClientNotes ? 'fa fa-2x fa-comment' : 'far fa-2x fa-comment';
             
@@ -401,7 +413,7 @@
                 link1.innerHTML = '<i class="tableoptions ' + clientIconClass + '"></i>';
                 link1.href = '#'; // Prevent default navigation
                 // Capture the current row's orderId and link element to avoid var/closure issues
-                (function(capturedOrderId, capturedLink){
+                (function(capturedOrderId, capturedLink, presetHasClientNotes){
                     capturedLink.addEventListener('click', function(e){
                         e.preventDefault();
                         showUwagiModal(capturedOrderId);
@@ -409,7 +421,7 @@
                     }, true);
 
                     // Asynchronously check if notes actually exist and update icon (only if not already indicated by action link)
-                    if (capturedOrderId && !hasClientNotes) {
+                    if (capturedOrderId && !presetHasClientNotes) {
                         checkClientNotesExists(capturedOrderId, function(hasNotes) {
                             var icon = capturedLink.querySelector('i');
                             if (icon) {
@@ -417,7 +429,7 @@
                             }
                         });
                     }
-                })(orderId, link1);
+                })(orderId, link1, hasClientNotes);
 
                 tdKl.appendChild(link1);
             }
