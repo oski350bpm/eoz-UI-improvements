@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.14';
+    var VERSION = '2.8.15';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -47,6 +47,9 @@
         '.switch-field label:first-of-type{border-radius:4px 0 0 4px!important}\n' +
         '.switch-field label:last-of-type{border-radius:0 4px 4px 0!important}\n' +
         '.switch-field input[type="radio"]:checked+label{background:#f06521!important;color:#fff!important;border:1px solid #f06521!important;box-shadow:none!important;font-weight:600!important}\n' +
+        'td.eoz-has-grouped-switch{vertical-align:top!important}\n' +
+        'td.eoz-has-grouped-switch .eoz-grouped-switch{margin-bottom:6px}\n' +
+        'td.eoz-has-grouped-switch .eoz-grouped-switch:last-child{margin-bottom:0}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
         'body[data-veneer] table thead th[data-column="lp"],body[data-veneer] table tbody td[data-column="lp"]{display:none!important}\n' +
@@ -625,7 +628,7 @@
             var przygotCell = tds[idxPrzygot];
             var hasSwitch = przygotCell && przygotCell.querySelector('.switch-field');
             if (hasSwitch) continue;
-            // Look ahead for first sub-row with switches
+            var clones = [];
             var k = r + 1;
             while (k < rows.length) {
                 var nr = rows[k];
@@ -634,21 +637,32 @@
                 if (nrHasRowspan) break; // next main row
                 var src = Array.from(nrTds).find(function(td){ return td.querySelector && td.querySelector('.switch-field'); });
                 if (src) {
-                    var cloned = src.cloneNode(true);
-                    var radios = cloned.querySelectorAll('input[type="radio"]');
-                    radios.forEach(function(radio){
-                        if (radio.id) {
-                            var oldId = radio.id; radio.id = oldId + '-grp';
-                            var lab = cloned.querySelector('label[for="' + oldId + '"]');
-                            if (lab) lab.setAttribute('for', radio.id);
-                        }
-                        if (radio.name) radio.name = radio.name + '-grp';
-                    });
-                    przygotCell.innerHTML = '';
-                    przygotCell.appendChild(cloned.firstElementChild || cloned);
-                    break;
+                    var clonedTd = src.cloneNode(true);
+                    var field = clonedTd.querySelector('.switch-field');
+                    if (field) {
+                        var radios = field.querySelectorAll('input[type="radio"]');
+                        radios.forEach(function(radio){
+                            if (radio.id) {
+                                var oldId = radio.id; radio.id = oldId + '-grp';
+                                var lab = field.querySelector('label[for="' + oldId + '"]');
+                                if (lab) lab.setAttribute('for', radio.id);
+                            }
+                            if (radio.name) radio.name = radio.name + '-grp';
+                        });
+                        clones.push(field);
+                    }
                 }
                 k++;
+            }
+            if (clones.length) {
+                przygotCell.innerHTML = '';
+                przygotCell.classList.add('eoz-has-grouped-switch');
+                clones.forEach(function(field){
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'eoz-grouped-switch';
+                    wrapper.appendChild(field);
+                    przygotCell.appendChild(wrapper);
+                });
             }
         }
     }
