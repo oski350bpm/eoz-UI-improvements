@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.19';
+    var VERSION = '1.1.20';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -44,7 +44,7 @@
         '.eoz-dropdown-label{width:100%!important;height:48px!important;background:#007bff!important;color:#fff!important;border:none!important;border-radius:8px!important;font-size:14px!important;font-weight:bold!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;transition:background-color .2s!important;padding:10px!important;box-shadow:0 2px 4px rgba(0,0,0,.1)!important;user-select:none!important}\n' +
         '.eoz-dropdown-label:hover{background:#0056b3!important}\n' +
         '.eoz-dropdown-label:active{background:#004085!important;transform:translateY(1px)!important}\n' +
-        '.eoz-dropdown-menu{position:absolute!important;top:100%!important;right:0!important;left:auto!important;min-width:220px!important;max-width:300px!important;background:#fff!important;border:1px solid #ddd!important;border-radius:8px!important;box-shadow:0 4px 12px rgba(0,0,0,.15)!important;z-index:1000!important;display:none!important;flex-direction:column!important;overflow:hidden!important;margin-top:4px!important}\n' +
+        '.eoz-dropdown-menu{position:absolute!important;top:100%!important;right:0!important;left:auto!important;min-width:220px!important;max-width:300px!important;background:#fff!important;border:1px solid #ddd!important;border-radius:8px!important;box-shadow:0 4px 12px rgba(0,0,0,.15)!important;display:none!important;flex-direction:column!important;overflow:hidden!important;margin-top:4px!important}\n' +
         '.eoz-dropdown-toggle:checked + .eoz-dropdown-label + .eoz-dropdown-menu{display:flex!important}\n' +
         '.eoz-dropdown-toggle:checked + .eoz-dropdown-label{background:#0056b3!important}\n' +
         '.eoz-dropdown-item{display:flex!important;align-items:center!important;gap:10px!important;padding:14px!important;text-decoration:none!important;color:#333!important;border-bottom:1px solid #eee!important;transition:background-color .2s!important;min-height:44px!important;font-size:14px!important}\n' +
@@ -296,16 +296,29 @@
             var titleText = labelFromLink(link);
             menuItem.innerHTML = '<i class="' + (icon ? icon.className : '') + '"></i> ' + titleText;
             menuItem.title = titleText;
-            // Delegate to original link to preserve any bound handlers (confirm/popups)
-            menuItem.addEventListener('click', function(e){
-                e.preventDefault();
-                try {
-                    var clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-                    link.dispatchEvent(clickEvent);
-                } catch(_) {
-                    window.location.href = link.href;
-                }
-            });
+            // Special handling for Eksport: call export modal loader
+            var isExport = (titleText.toLowerCase() === 'eksport') || (icon && icon.className && icon.className.indexOf('fa-file-export') !== -1);
+            if (isExport) {
+                menuItem.addEventListener('click', function(e){
+                    e.preventDefault();
+                    var row = actionsCell.closest('tr');
+                    var id = extractNumericOrderIdFromRow(row);
+                    if (!id) { try { var id2 = extractNumericOrderIdFromLinks(actionsCell); id = id2; } catch(_) {} }
+                    if (!id) { console.warn('[EOZ Export] Cannot infer order id for export'); return; }
+                    showExportModal(id);
+                });
+            } else {
+                // Delegate to original link to preserve any bound handlers (confirm/popups)
+                menuItem.addEventListener('click', function(e){
+                    e.preventDefault();
+                    try {
+                        var clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                        link.dispatchEvent(clickEvent);
+                    } catch(_) {
+                        window.location.href = link.href;
+                    }
+                });
+            }
             menu.appendChild(menuItem);
         });
 
@@ -626,6 +639,22 @@
                     if (menu) menu.addEventListener('click', function(e){ e.stopPropagation(); if (input) input.checked = false; });
                     if (label) label.addEventListener('click', function(e){ e.stopPropagation(); });
                     cloned.addEventListener('click', function(e){ e.stopPropagation(); });
+                    // Rebind export action in cloned menu
+                    var exportItem = cloned.querySelector('.eoz-dropdown-item i.fa-file-export');
+                    if (exportItem) {
+                        var exportA = exportItem.closest('a.eoz-dropdown-item');
+                        if (exportA) {
+                            exportA.addEventListener('click', function(e){
+                                e.preventDefault();
+                                e.stopPropagation();
+                                var row = wrapper.closest('tr');
+                                var id = extractNumericOrderIdFromRow(row);
+                                if (!id) { var ac = actionsCell; try { var id2 = extractNumericOrderIdFromLinks(ac); id = id2; } catch(_) {} }
+                                if (!id) { console.warn('[EOZ Export] Cannot infer order id for export (mobile)'); return; }
+                                showExportModal(id);
+                            });
+                        }
+                    }
                 } catch(_) {}
                 wrapper.appendChild(cloned);
             } else if (allActionLinks && allActionLinks.length) {
@@ -1021,6 +1050,93 @@
             }
             showUwagiModal(orderId);
         }, true);
+    }
+
+    function extractNumericOrderIdFromLinks(cell) {
+        if (!cell) return null;
+        var aTags = cell.querySelectorAll('a[href]');
+        for (var i = 0; i < aTags.length; i++) {
+            var href = aTags[i].getAttribute('href') || '';
+            var m = href.match(/\/(\d+)(?:[_/?#]|$)/);
+            if (m) return m[1];
+        }
+        return null;
+    }
+
+    function extractNumericOrderIdFromRow(row) {
+        if (!row) return null;
+        var idxZlec = findHeaderIndex('Zlecenie');
+        var raw = '';
+        if (idxZlec >= 0) {
+            var cells = row.querySelectorAll('td');
+            if (cells[idxZlec]) {
+                var a = cells[idxZlec].querySelector('a');
+                raw = a ? (a.textContent||'').trim() : (cells[idxZlec].textContent||'').trim();
+            }
+        }
+        if (!raw) return null;
+        // Accept formats like 3786, 3786/2, 3786_2 -> take leading digits
+        var m2 = raw.replace(/\s+/g,'').match(/^(\d+)/);
+        return m2 ? m2[1] : null;
+    }
+
+    function ensureExportModal() {
+        var modalId = 'eoz-export-modal';
+        if (document.getElementById(modalId)) return modalId;
+        var html = '' +
+            '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog" aria-hidden="true">' +
+            '  <div class="modal-dialog mw-100 w-75" role="document">' +
+            '    <div class="modal-content">' +
+            '      <div class="modal-header">' +
+            '        <h4 class="modal-title">Eksport plików produkcyjnych</h4>' +
+            '        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+            '      </div>' +
+            '      <div class="modal-body" id="eoz-export-modal-body">' +
+            '        <div class="text-center"><i class="fa fa-spinner fa-spin"></i> Ładowanie...</div>' +
+            '      </div>' +
+            '      <div class="modal-footer">' +
+            '        <button type="button" class="btn btn-info" data-dismiss="modal">Zamknij</button>' +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        // wire close fallback
+        var modal = document.getElementById(modalId);
+        var closeBtns = modal.querySelectorAll('[data-dismiss="modal"], .modal .close');
+        function hide(){
+            if (window.jQuery && window.jQuery.fn.modal) { window.jQuery(modal).modal('hide'); return; }
+            modal.classList.remove('show'); modal.style.display='none'; document.body.classList.remove('modal-open');
+            var bds = document.querySelectorAll('.modal-backdrop'); bds.forEach(function(b){ b.parentNode && b.parentNode.removeChild(b); });
+        }
+        closeBtns.forEach(function(b){ b.addEventListener('click', function(e){ e.preventDefault(); hide(); }, true); });
+        modal.addEventListener('click', function(e){ var dlg = modal.querySelector('.modal-dialog'); if (dlg && !dlg.contains(e.target)) hide(); }, true);
+        return modalId;
+    }
+
+    function showExportModal(numericOrderId) {
+        var modalId = ensureExportModal();
+        var modal = document.getElementById(modalId);
+        var body = document.getElementById('eoz-export-modal-body');
+        if (!modal || !body) return;
+        body.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Ładowanie...</div>';
+        if (window.jQuery && window.jQuery.fn.modal) { window.jQuery(modal).modal('show'); }
+        else { modal.style.display='block'; modal.classList.add('show'); document.body.classList.add('modal-open'); }
+
+        var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/machines/send_order_files_to_saw/' + numericOrderId;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function(){
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    body.innerHTML = xhr.responseText;
+                } else {
+                    body.innerHTML = '<div class="alert alert-danger">Błąd ładowania eksportu. Spróbuj ponownie.</div>';
+                }
+            }
+        };
+        xhr.send();
     }
 
     function installStartOperationGuard() {
