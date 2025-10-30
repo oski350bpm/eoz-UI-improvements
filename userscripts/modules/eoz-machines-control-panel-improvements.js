@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.9';
+    var VERSION = '1.1.10';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -459,6 +459,7 @@
             var playLink = actionsCell ? actionsCell.querySelector('a[href*="/machines/control_panel?"]') : null;
             if (!playLink) playLink = actionsCell ? actionsCell.querySelector('a') : null;
             var notesLink = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_notes"]') : null;
+            var allActionLinks = actionsCell ? Array.from(actionsCell.querySelectorAll('a')) : [];
 
             var mobileCell = document.createElement('td');
             mobileCell.className = 'eoz-mobile-cell';
@@ -488,6 +489,7 @@
                                 '<div><span class="eoz-mp-label">Ostatnia maszyna:</span>' + (ostMasz||'—') + '</div>';
 
             var actions = document.createElement('div'); actions.className = 'eoz-mp-actions';
+            // Primary play button
             if (playLink) {
                 var btn = playLink.cloneNode(true);
                 btn.className = 'eoz-realizacja-btn';
@@ -495,13 +497,20 @@
                 btn.innerHTML = iconHTML;
                 actions.appendChild(btn);
             }
-            if (notesLink) {
-                var nbtn = notesLink.cloneNode(true);
-                var nicon = nbtn.querySelector('i'); var nhtml = nicon ? nicon.outerHTML : '<i class="fas fa-comments"></i>';
-                nbtn.innerHTML = nhtml + '<span>Uwagi</span>';
-                nbtn.classList.add('eoz-realizacja-btn');
-                nbtn.style.background = '#ffc107'; nbtn.style.color = '#000';
-                actions.appendChild(nbtn);
+            // Dropdown with all actions – clone existing dropdown if already transformed
+            var transformedDropdown = actionsCell && actionsCell.querySelector('.eoz-dropdown-container');
+            if (transformedDropdown) {
+                var cloned = transformedDropdown.cloneNode(true);
+                var wrapper = document.createElement('div');
+                wrapper.className = 'eoz-mp-actions-dropdown';
+                wrapper.appendChild(cloned);
+                actions.appendChild(wrapper);
+            } else if (allActionLinks && allActionLinks.length) {
+                var dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'eoz-mp-actions-dropdown';
+                var dropdown = createDropdownFromActionsCell(actionsCell, 'mp-' + rIndex);
+                dropdownContainer.appendChild(dropdown);
+                actions.appendChild(dropdownContainer);
             }
 
             grid.appendChild(header);
