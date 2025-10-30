@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.8';
+    var VERSION = '2.8.9';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1089,6 +1089,11 @@
             if (row.querySelector('td.eoz-mobile-cell')) return; // already built
             var cells = row.querySelectorAll('td');
             if (!cells || cells.length === 0) return;
+            // Veneers: skip sub-rows that only contain veneer lines (usually 4 cells, no details link)
+            if (isVeneers && !isGroupedView) {
+                var looksLikeSubRow = cells.length <= 4 && !row.querySelector('a[href*="/commission/show_details/"]');
+                if (looksLikeSubRow) return;
+            }
             
             // Skip rows that only have a single cell with colspan (empty/separator rows)
             if (cells.length === 1) {
