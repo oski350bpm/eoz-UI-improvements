@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.18';
+    var VERSION = '1.1.19';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -157,15 +157,15 @@
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
                     // Check if response contains actual content (not empty or error message)
-                    var responseText = xhr.responseText.trim();
-                    var hasContent = responseText.length > 0 && 
-                                     responseText.indexOf('Brak') === -1 && 
-                                     responseText.indexOf('brak') === -1 &&
-                                     responseText.indexOf('<div') !== -1;
+                    var responseText = (xhr.responseText || '').trim();
+                    // Strip HTML to detect plain text content too
+                    var textOnly = responseText.replace(/<[^>]*>/g, '').trim();
+                    var hasContent = textOnly.length > 0 && !/\bbrak\b/i.test(textOnly);
                     console.log('[EOZ Notes Debug] checkClientNotesExists: response', {
                         status: xhr.status,
                         length: responseText.length,
                         snippet: responseText.slice(0, 200),
+                        textOnly: textOnly.slice(0, 200),
                         hasContent: hasContent
                     });
                     callback(hasContent);
