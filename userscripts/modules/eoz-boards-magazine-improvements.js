@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.16';
+    var VERSION = '2.8.17';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -94,12 +94,11 @@
         '}\n' +
         '@media (min-width:501px) and (max-width:960px){\n' +
         '  .eoz-m-header{display:none}\n' +
-        '  .eoz-m-details{grid-template-columns:90px 1fr 140px;grid-template-rows:auto auto}\n' +
-        '  .eoz-m-lp-badge{display:block}\n' +
-        '  .eoz-m-col2{grid-column:1;grid-row:1;font-weight:bold;color:#007bff}\n' +
-        '  .eoz-m-col3{grid-column:2;grid-row:1}\n' +
-        '  .eoz-m-col4{grid-column:3;grid-row:1;display:flex;flex-direction:column;gap:8px}\n' +
-        '  .eoz-m-col5{grid-column:1 / 4;grid-row:2;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
+        '  .eoz-m-details{grid-template-columns:1fr 140px;grid-template-rows:auto auto}\n' +
+        '  .eoz-m-col2{grid-column:1;grid-row:1;font-weight:bold;color:#007bff;align-content:center}\n' +
+        '  .eoz-m-col3{grid-column:1;grid-row:2;align-content:center}\n' +
+        '  .eoz-m-col4{grid-column:2;grid-row:1 / 3;display:flex;flex-direction:column;gap:8px}\n' +
+        '  .eoz-m-col5{grid-column:1 / 3;grid-row:3;display:grid;grid-template-columns:repeat(3, 1fr);gap:8px}\n' +
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-m-details{grid-template-columns:1fr;grid-template-rows:auto auto auto}\n' +
@@ -1489,15 +1488,9 @@
             // Prepare col1 and col2 ONLY for tablet view (501–960px). On small mobile, LP should appear only in header.
             grid.appendChild(header);
             if (window.innerWidth >= 501 && window.innerWidth <= 960) {
-                var col1 = document.createElement('div'); 
-                col1.className = 'eoz-m-col1'; 
-                if (!isVeneers) {
-                    col1.innerHTML = '<div class="eoz-m-lp-badge">LP.</div><div>' + col1Lp + '</div>';
-                } else {
-                    col1.textContent = col1Lp;
-                }
                 var col2 = document.createElement('div'); 
                 col2.className = 'eoz-m-col2';
+                // LP removed from separate column; optionally prepend badge inside the same cell as order number if needed
                 if (zlecenieLink) {
                     var link = document.createElement('a');
                     link.href = zlecenieLink;
@@ -1508,7 +1501,6 @@
                 } else {
                     col2.textContent = col2Zlec;
                 }
-                details.appendChild(col1);
                 details.appendChild(col2);
             }
             details.appendChild(col3);
