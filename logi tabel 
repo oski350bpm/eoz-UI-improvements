@@ -1,0 +1,464 @@
+[EOZ Table Debug] FIRST TABLE (before removal): {
+  "label": "FIRST TABLE (before removal)",
+  "hasThead": true,
+  "hasTbody": true,
+  "headers": [
+    {
+      "index": 0,
+      "text": "Kod formatki",
+      "html": "<th>Kod formatki</th>"
+    },
+    {
+      "index": 1,
+      "text": "Nazwa",
+      "html": "<th><a href=\"#\">Nazwa</a></th>"
+    },
+    {
+      "index": 2,
+      "text": "Płyta",
+      "html": "<th>Płyta</th>"
+    },
+    {
+      "index": 3,
+      "text": "Długość",
+      "html": "<th>Długość</th>"
+    },
+    {
+      "index": 4,
+      "text": "Szerokość",
+      "html": "<th>Szerokość</th>"
+    },
+    {
+      "index": 5,
+      "text": "Ilość",
+      "html": "<th>Ilość</th>"
+    },
+    {
+      "index": 6,
+      "text": "Suma płyt",
+      "html": "<th>Suma płyt</th>"
+    }
+  ],
+  "rows": [
+    {
+      "rowIndex": 0,
+      "cells": [
+        {
+          "cellIndex": 0,
+          "text": "3744_1_1",
+          "hasLink": true,
+          "linkHref": "https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_1&count=1&number2=3744_1&block_id=3102",
+          "linkHTML": "<a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_1&amp;count=1&amp;number2=3744_1&amp;block_id=3102\">3744_1_1</a>",
+          "cellHTML": "<td style=\"width:150px;\"><a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code"
+        },
+        {
+          "cellIndex": 1,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td></td>"
+        },
+        {
+          "cellIndex": 2,
+          "text": "ACAPULCO F685 ST10 2800x2070 18",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>ACAPULCO F685 ST10 2800x2070 18</td>"
+        },
+        {
+          "cellIndex": 3,
+          "text": "1000",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>1000</td>"
+        },
+        {
+          "cellIndex": 4,
+          "text": "1000",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>1000</td>"
+        },
+        {
+          "cellIndex": 5,
+          "text": "4",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>4</td>"
+        },
+        {
+          "cellIndex": 6,
+          "text": "2",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>2</td>"
+        }
+      ]
+    },
+    {
+      "rowIndex": 1,
+      "cells": [
+        {
+          "cellIndex": 0,
+          "text": "3744_1_2",
+          "hasLink": true,
+          "linkHref": "https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_2&count=1&number2=3744_1&block_id=3102",
+          "linkHTML": "<a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_2&amp;count=1&amp;number2=3744_1&amp;block_id=3102\">3744_1_2</a>",
+          "cellHTML": "<td style=\"width:150px;\"><a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code"
+        },
+        {
+          "cellIndex": 1,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td></td>"
+        },
+        {
+          "cellIndex": 2,
+          "text": "ACAPULCO F685 ST10 2800x2070 18",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>ACAPULCO F685 ST10 2800x2070 18</td>"
+        },
+        {
+          "cellIndex": 3,
+          "text": "1429",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>1429</td>"
+        },
+        {
+          "cellIndex": 4,
+          "text": "245",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>245</td>"
+        },
+        {
+          "cellIndex": 5,
+          "text": "5",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>5</td>"
+        },
+        {
+          "cellIndex": 6,
+          "text": "2",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>2</td>"
+        }
+      ]
+    },
+    {
+      "rowIndex": 2,
+      "cells": [
+        {
+          "cellIndex": 0,
+          "text": "3744_1_3",
+          "hasLink": true,
+          "linkHref": "https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_3&count=1&number2=3744_1&block_id=3102",
+          "linkHTML": "<a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_3&amp;count=1&amp;number2=3744_1&amp;block_id=3102\">3744_1_3</a>",
+          "cellHTML": "<td style=\"width:150px;\"><a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code"
+        },
+        {
+          "cellIndex": 1,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td></td>"
+        },
+        {
+          "cellIndex": 2,
+          "text": "ACAPULCO F685 ST10 2800x2070 18",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>ACAPULCO F685 ST10 2800x2070 18</td>"
+        },
+        {
+          "cellIndex": 3,
+          "text": "939",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>939</td>"
+        },
+        {
+          "cellIndex": 4,
+          "text": "228",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>228</td>"
+        },
+        {
+          "cellIndex": 5,
+          "text": "6",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>6</td>"
+        },
+        {
+          "cellIndex": 6,
+          "text": "2",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>2</td>"
+        }
+      ]
+    }
+  ]
+} EOZ-All-UI-Improvements.user.js:688:17
+[EOZ Link Debug] Final linkInfo: {
+  "href": "https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_1&count=1&number2=3744_1&block_id=3102",
+  "text": "3744_1_1",
+  "html": "<a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done_by_form?code=3744_1_1&amp;count=1&amp;number2=3744_1&amp;block_id=3102\">3744_1_1</a>",
+  "source": "first-table"
+} EOZ-All-UI-Improvements.user.js:776:21
+[EOZ Table Debug] PANEL 0 (orders-todo) - BEFORE: {
+  "label": "PANEL 0 (orders-todo) - BEFORE",
+  "hasThead": false,
+  "hasTbody": true,
+  "headers": [],
+  "rows": [
+    {
+      "rowIndex": 0,
+      "cells": []
+    },
+    {
+      "rowIndex": 1,
+      "cells": [
+        {
+          "cellIndex": 0,
+          "text": "3744_1_2",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                            3744_1_2                        </td>"
+        },
+        {
+          "cellIndex": 1,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td></td>"
+        },
+        {
+          "cellIndex": 2,
+          "text": "3",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td style=\"text-align:center;\">\n                            3                        </td>"
+        },
+        {
+          "cellIndex": 3,
+          "text": "1429",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td style=\"text-align:center;\">\n                            1429                        </td>"
+        },
+        {
+          "cellIndex": 4,
+          "text": "245",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td style=\"text-align:center;\">\n                            245                        </td>"
+        },
+        {
+          "cellIndex": 5,
+          "text": "1.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                1.00                            </td>"
+        },
+        {
+          "cellIndex": 6,
+          "text": "1.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                1.00                            </td>"
+        },
+        {
+          "cellIndex": 7,
+          "text": "1.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                1.00                            </td>"
+        },
+        {
+          "cellIndex": 8,
+          "text": "1.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                1.00                            </td>"
+        },
+        {
+          "cellIndex": 9,
+          "text": "Nie",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                            Nie                        </td>"
+        },
+        {
+          "cellIndex": 10,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                                    </td>"
+        },
+        {
+          "cellIndex": 11,
+          "text": "",
+          "hasLink": true,
+          "linkHref": "https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done/1328?number2=3744_1&block_id=3102&code=3744_1_2",
+          "linkHTML": "<a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done/1328?number2=3744_1&amp;block_id=3102&amp;code=3744_1_2\">\n                                <i class=\"tableoptions fa fa-2x fa-check\"></i>\n                            </a>",
+          "cellHTML": "<td class=\"opt\">\n                                                         <a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/c"
+        },
+        {
+          "cellIndex": 12,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                                    </td>"
+        }
+      ]
+    },
+    {
+      "rowIndex": 2,
+      "cells": [
+        {
+          "cellIndex": 0,
+          "text": "3744_1_3",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                            3744_1_3                        </td>"
+        },
+        {
+          "cellIndex": 1,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td></td>"
+        },
+        {
+          "cellIndex": 2,
+          "text": "5",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td style=\"text-align:center;\">\n                            5                        </td>"
+        },
+        {
+          "cellIndex": 3,
+          "text": "939",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td style=\"text-align:center;\">\n                            939                        </td>"
+        },
+        {
+          "cellIndex": 4,
+          "text": "228",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td style=\"text-align:center;\">\n                            228                        </td>"
+        },
+        {
+          "cellIndex": 5,
+          "text": "1.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                1.00                            </td>"
+        },
+        {
+          "cellIndex": 6,
+          "text": "0.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                0.00                            </td>"
+        },
+        {
+          "cellIndex": 7,
+          "text": "0.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                0.00                            </td>"
+        },
+        {
+          "cellIndex": 8,
+          "text": "0.00",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                0.00                            </td>"
+        },
+        {
+          "cellIndex": 9,
+          "text": "Nie",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                            Nie                        </td>"
+        },
+        {
+          "cellIndex": 10,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                                    </td>"
+        },
+        {
+          "cellIndex": 11,
+          "text": "",
+          "hasLink": true,
+          "linkHref": "https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done/1329?number2=3744_1&block_id=3102&code=3744_1_3",
+          "linkHTML": "<a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/control_panel_set_element_status_done/1329?number2=3744_1&amp;block_id=3102&amp;code=3744_1_3\">\n                                <i class=\"tableoptions fa fa-2x fa-check\"></i>\n                            </a>",
+          "cellHTML": "<td class=\"opt\">\n                                                         <a class=\"tippy\" href=\"https://eoz.iplyty.erozrys.pl/index.php/pl/machines/c"
+        },
+        {
+          "cellIndex": 12,
+          "text": "",
+          "hasLink": false,
+          "linkHref": null,
+          "linkHTML": null,
+          "cellHTML": "<td>\n                                                    </td>"
+        }
+      ]
+    }
+  ]
+} EOZ-All-UI-Improvements.user.js:688:17
+[EOZ Table Debug] PANEL 1 (orders-done) - BEFORE: 
