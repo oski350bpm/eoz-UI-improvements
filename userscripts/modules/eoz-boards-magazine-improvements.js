@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.2';
+    var VERSION = '2.8.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -431,6 +431,11 @@
             tagColumnByHeader('Lp', 'lp');
         }
 
+        // Desktop: reorder columns to align with Machines Panel layout (non-grouped only)
+        if (!isVeneersGrouped && window.innerWidth > 960) {
+            try { reorderColumnsDesktop(isVeneers); } catch(_) {}
+        }
+
         // If veneers, replace code in "Nazwa okleiny" with full name from commission page
         if (isVeneers) {
             try { replaceVeneerCodesWithNames(isVeneersGrouped); } catch(_) {}
@@ -463,6 +468,59 @@
         
         // Watch for dynamically loaded comments tables
         watchForCommentsTable();
+    }
+
+    function reorderColumnsDesktop(isVeneers){
+        var headerRow = document.querySelector('table thead tr');
+        if (!headerRow) return;
+        var headers = Array.from(headerRow.querySelectorAll('th'));
+        if (headers.length === 0) return;
+
+        // Build desired order similar to Machines Panel
+        // Common
+        var idxLp0 = 0; // after earlier step first column is LP.
+        var idxZlec = findHeaderIndex('Zlecenie');
+        var idxKlient = findHeaderIndex('Klient');
+        var idxNazwa = findHeaderIndex('Nazwa zamówienia');
+        var idxIlosc = findHeaderIndex('Ilość');
+        var idxPrzygot = findHeaderIndex('Przygotowane');
+        var idxOpis = isVeneers ? findHeaderIndex('Opis') : findHeaderIndex('Uwagi klienta');
+        var idxUwagi = findHeaderIndex('Uwagi');
+        var idxOpcje = findHeaderIndex('Opcje');
+
+        var materialIndexes = [];
+        if (isVeneers){
+            materialIndexes = [ findHeaderIndex('Nazwa okleiny'), findHeaderIndex('Wymiar') ];
+        } else {
+            materialIndexes = [ findHeaderIndex('Płyta i wymiar') ];
+        }
+
+        // Compose final order, filter out -1
+        var order = [ idxLp0, idxZlec, idxKlient, idxNazwa ]
+            .concat(materialIndexes)
+            .concat([ idxIlosc, idxPrzygot, idxOpis, idxUwagi, idxOpcje ])
+            .filter(function(i){ return typeof i === 'number' && i >= 0; });
+
+        // If order seems invalid, bail
+        if (order.length < 4) return;
+
+        // Reorder header
+        var ths = Array.from(headerRow.children);
+        var fragH = document.createDocumentFragment();
+        order.forEach(function(i){ if (ths[i]) fragH.appendChild(ths[i]); });
+        headerRow.appendChild(fragH);
+
+        // Reorder every row
+        var rows = document.querySelectorAll('table tbody tr');
+        rows.forEach(function(row){
+            var tds = Array.from(row.children);
+            if (!tds || tds.length === 0) return;
+            // Skip info rows
+            if (tds.length === 1 && tds[0].hasAttribute('colspan')) return;
+            var frag = document.createDocumentFragment();
+            order.forEach(function(i){ if (tds[i]) frag.appendChild(tds[i]); });
+            row.appendChild(frag);
+        });
     }
 
     // Cache for commission -> veneer map { code -> fullName }
