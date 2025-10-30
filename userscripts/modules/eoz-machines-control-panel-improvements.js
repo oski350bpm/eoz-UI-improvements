@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.17';
+    var VERSION = '1.1.18';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -150,7 +150,9 @@
     function checkClientNotesExists(orderId, callback) {
         // Check if client notes exist by making a lightweight request
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId, true);
+        var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
+        console.log('[EOZ Notes Debug] checkClientNotesExists: requesting', { orderId: orderId, url: url });
+        xhr.open('GET', url, true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
@@ -160,8 +162,15 @@
                                      responseText.indexOf('Brak') === -1 && 
                                      responseText.indexOf('brak') === -1 &&
                                      responseText.indexOf('<div') !== -1;
+                    console.log('[EOZ Notes Debug] checkClientNotesExists: response', {
+                        status: xhr.status,
+                        length: responseText.length,
+                        snippet: responseText.slice(0, 200),
+                        hasContent: hasContent
+                    });
                     callback(hasContent);
                 } else {
+                    console.warn('[EOZ Notes Debug] checkClientNotesExists: non-200', { status: xhr.status, orderId: orderId });
                     callback(false);
                 }
             }
@@ -191,12 +200,16 @@
         
         // Load content via AJAX
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId, true);
+        var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
+        console.log('[EOZ Notes Debug] showUwagiModal: loading', { orderId: orderId, url: url });
+        xhr.open('GET', url, true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
+                    console.log('[EOZ Notes Debug] showUwagiModal: loaded OK', { status: xhr.status, length: (xhr.responseText||'').length });
                     modalBody.innerHTML = xhr.responseText;
                 } else {
+                    console.warn('[EOZ Notes Debug] showUwagiModal: load error', { status: xhr.status });
                     modalBody.innerHTML = '<div class="alert alert-danger">Błąd ładowania uwag. Spróbuj ponownie.</div>';
                 }
             }
@@ -454,6 +467,7 @@
                 (function(capturedOrderId, capturedLink, presetHasClientNotes){
                     capturedLink.addEventListener('click', function(e){
                         e.preventDefault();
+                        console.log('[EOZ Notes Debug] notes icon click (header-inserted link)', { orderId: capturedOrderId, presetHasClientNotes: presetHasClientNotes });
                         showUwagiModal(capturedOrderId);
                         return false;
                     }, true);
@@ -463,6 +477,7 @@
                         checkClientNotesExists(capturedOrderId, function(hasNotes) {
                             var icon = capturedLink.querySelector('i');
                             if (icon) {
+                                console.log('[EOZ Notes Debug] async icon update (header-inserted link)', { orderId: capturedOrderId, hasNotes: hasNotes });
                                 icon.className = hasNotes ? 'tableoptions fa fa-2x fa-comment' : 'tableoptions far fa-2x fa-comment';
                             }
                         });
@@ -994,7 +1009,16 @@
                 var mm = t.match(/\d+(?:_\d+)?/);
                 orderId = mm ? mm[0] : '';
             }
-            if (!orderId) return;
+            console.log('[EOZ Notes Debug] delegated click', {
+                inferredFromZlecenie: inferred,
+                fromClientHref: linkClient && linkClient.getAttribute('href'),
+                fromInternalHref: linkInternal && linkInternal.getAttribute('href'),
+                finalOrderId: orderId
+            });
+            if (!orderId) {
+                console.warn('[EOZ Notes Debug] missing orderId on delegated click');
+                return;
+            }
             showUwagiModal(orderId);
         }, true);
     }
