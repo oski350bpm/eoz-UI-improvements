@@ -649,6 +649,25 @@
         });
     }
 
+    function fetchOrderName(commissionId){
+        return new Promise(function(resolve){
+            if (!commissionId) { resolve(''); return; }
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/index.php/pl/commission/show_details/' + commissionId, true);
+            xhr.onload = function(){
+                try {
+                    var txt = xhr.responseText || '';
+                    // Try simple regex near label "Nazwa zamówienia"
+                    var m = txt.match(/Nazwa\s+zam\w*?\s*:<\/[^>]+>\s*([^<\n]+)/i);
+                    if (m && m[1]) { resolve(m[1].trim()); return; }
+                } catch(_) {}
+                resolve('');
+            };
+            xhr.onerror = function(){ resolve(''); };
+            xhr.send();
+        });
+    }
+
     function replaceVeneerCodesWithNames(isGrouped){
         // Support both headers used across views
         var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
@@ -1008,7 +1027,8 @@
 
             var col3 = document.createElement('div'); 
             col3.className = 'eoz-m-col3';
-            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>';
+            col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
+                              '<div><span class="eoz-m-label">Nazwa zamówienia:</span><br>—</div>';
 
             var col4 = document.createElement('div'); 
             col4.className = 'eoz-m-col4';
@@ -1116,6 +1136,28 @@
 
             mobileCell.appendChild(grid);
             row.appendChild(mobileCell);
+
+            // Async enrichments for grouped view: order name and veneer names mapping
+            try {
+                var commissionId = (zlecenieLink && zlecenieLink.match(/(\d+)$/)) ? zlecenieLink.match(/(\d+)$/)[1] : null;
+                if (commissionId) {
+                    fetchOrderName(commissionId).then(function(name){
+                        if (name) {
+                            var nameRow = col3.querySelectorAll('div')[1];
+                            if (nameRow) nameRow.innerHTML = '<span class="eoz-m-label">Nazwa zamówienia:</span><br>' + name;
+                        }
+                    });
+                    fetchVeneersMapForCommission(commissionId).then(function(map){
+                        if (!map) return;
+                        // Replace displayed veneer codes
+                        var bolds = veneersDiv.querySelectorAll('div[style*="font-weight: bold"]');
+                        bolds.forEach(function(b){
+                            var code = (b.textContent||'').trim().split(/\s+/)[0];
+                            if (map[code]) { b.textContent = map[code]; }
+                        });
+                    });
+                }
+            } catch(_) {}
         });
     }
 
