@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.11';
+    var VERSION = '1.1.12';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -107,6 +107,44 @@
         if (!document.getElementById('eoz-uwagi-modal')) {
             document.body.insertAdjacentHTML('beforeend', modalHTML);
         }
+
+        // Ensure close behavior works even without Bootstrap
+        var ensureCloseHandlers = function() {
+            var modal = document.getElementById('eoz-uwagi-modal');
+            if (!modal) return;
+
+            function closeUwagiModal() {
+                if (window.jQuery && window.jQuery.fn.modal) {
+                    window.jQuery(modal).modal('hide');
+                    return;
+                }
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                // Remove any backdrop that might have been added elsewhere
+                var backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(function(b){ if (b && b.parentNode) b.parentNode.removeChild(b); });
+            }
+
+            var closeButtons = modal.querySelectorAll('[data-dismiss="modal"], .modal .close');
+            closeButtons.forEach(function(btn){
+                btn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    closeUwagiModal();
+                }, { capture: true });
+            });
+
+            // Optional: close on backdrop click for fallback
+            modal.addEventListener('click', function(e){
+                if (!modal.classList.contains('show')) return;
+                var dialog = modal.querySelector('.modal-dialog');
+                if (dialog && !dialog.contains(e.target)) {
+                    closeUwagiModal();
+                }
+            }, { capture: true });
+        };
+
+        ensureCloseHandlers();
     }
 
     function checkClientNotesExists(orderId, callback) {
@@ -362,26 +400,26 @@
                 var link1 = notesClientLink ? notesClientLink.cloneNode(true) : document.createElement('a');
                 link1.innerHTML = '<i class="tableoptions ' + clientIconClass + '"></i>';
                 link1.href = '#'; // Prevent default navigation
-                link1.onclick = function(e) {
-                    e.preventDefault();
-                    showUwagiModal(orderId);
-                    return false;
-                };
-                tdKl.appendChild(link1);
-                
-                // Asynchronously check if notes actually exist and update icon
-                if (orderId && !hasClientNotes) {
-                    checkClientNotesExists(orderId, function(hasNotes) {
-                        var icon = link1.querySelector('i');
-                        if (icon) {
-                            if (hasNotes) {
-                                icon.className = 'tableoptions fa fa-2x fa-comment';
-                            } else {
-                                icon.className = 'tableoptions far fa-2x fa-comment';
+                // Capture the current row's orderId and link element to avoid var/closure issues
+                (function(capturedOrderId, capturedLink){
+                    capturedLink.addEventListener('click', function(e){
+                        e.preventDefault();
+                        showUwagiModal(capturedOrderId);
+                        return false;
+                    }, true);
+
+                    // Asynchronously check if notes actually exist and update icon (only if not already indicated by action link)
+                    if (capturedOrderId && !hasClientNotes) {
+                        checkClientNotesExists(capturedOrderId, function(hasNotes) {
+                            var icon = capturedLink.querySelector('i');
+                            if (icon) {
+                                icon.className = hasNotes ? 'tableoptions fa fa-2x fa-comment' : 'tableoptions far fa-2x fa-comment';
                             }
-                        }
-                    });
-                }
+                        });
+                    }
+                })(orderId, link1);
+
+                tdKl.appendChild(link1);
             }
 
             // Uwagi wewnętrzne (notes)
