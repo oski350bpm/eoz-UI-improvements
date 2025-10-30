@@ -529,10 +529,23 @@
             if (commissionIdInRow) currentCommissionId = commissionIdInRow;
             var commissionId = currentCommissionId || commissionIdInRow;
 
-            // Map header index to actual cell index: in some grouped views table omits first columns
-            var actualIndex = idxNazwaOkleiny;
-            // If table uses first two columns (Data, Klient) hidden via CSS, DOM still has them – index stays the same
-            var targetCell = cells[actualIndex] || null;
+            // Pick target cell with veneer code
+            var targetCell = null;
+            if (isGrouped) {
+                // In grouped view, sub-rows contain only veneer columns: Okleina | Wymiar | Ilość | Przygotowane
+                // Main rows keep full structure, so idxNazwaOkleiny applies there; sub-rows use index 0
+                var hasRowspan = false;
+                cells.forEach(function(c){ if (c.hasAttribute('rowspan')) hasRowspan = true; });
+                if (hasRowspan) {
+                    targetCell = cells[idxNazwaOkleiny] || null;
+                } else {
+                    // sub-row
+                    targetCell = cells[0] || null;
+                }
+            } else {
+                // Non-grouped view
+                targetCell = cells[idxNazwaOkleiny] || null;
+            }
             if (!targetCell) return;
 
             var code = (targetCell.textContent||'').trim();
@@ -545,6 +558,29 @@
                     // Replace visible text with full name; keep code as title for reference
                     targetCell.textContent = name;
                     targetCell.setAttribute('title', code);
+
+                    // Also update our custom mobile layouts if already rendered for this row
+                    try {
+                        var mobileCell = row.querySelector('td.eoz-mobile-cell');
+                        if (mobileCell) {
+                            // Replace any element that has exact text equal to the code
+                            var nodes = mobileCell.querySelectorAll('*');
+                            nodes.forEach(function(el){
+                                if (el.childNodes && el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+                                    var t = (el.textContent||'').trim();
+                                    if (t === code) {
+                                        el.textContent = name;
+                                        el.setAttribute('title', code);
+                                    }
+                                }
+                            });
+                            // Additionally, in non-grouped view the okleina is within .eoz-m-col3 after label
+                            var col3 = mobileCell.querySelector('.eoz-m-col3');
+                            if (col3 && col3.innerHTML.indexOf('Okleina:') !== -1) {
+                                col3.innerHTML = col3.innerHTML.replace('>'+code+'<', '>'+name+'<');
+                            }
+                        }
+                    } catch(_) {}
                 }).catch(function(){ /* ignore row-level errors */ })
             );
         });
