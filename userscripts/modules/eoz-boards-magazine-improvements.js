@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.5';
+    var VERSION = '2.8.6';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -359,6 +359,8 @@
         // Fix button text grammar
         fixButtonText();
         
+        debugTablesSnapshot('BEFORE_TRANSFORM', { isVeneers: isVeneers, isGrouped: isVeneersGrouped });
+
         // Header and row modifications
         if (!isVeneersGrouped) {
             // For non-grouped views: Change first header to Lp. and add row numbers
@@ -465,6 +467,7 @@
 
         // Debug radio buttons state AFTER building mobile layout
         debugRadioButtons('AFTER_MOBILE_BUILD');
+        debugTablesSnapshot('AFTER_MOBILE_BUILD', { isVeneers: isVeneers, isGrouped: isVeneersGrouped });
 
         normalizeRadioButtons();
         observeRadioMutations();
@@ -477,6 +480,36 @@
         
         // Watch for dynamically loaded comments tables
         watchForCommentsTable();
+    }
+
+    function debugTablesSnapshot(phase, meta){
+        try {
+            var table = document.querySelector('table');
+            if (!table) { console.warn('[EOZ Mag Debug]', phase, 'no table'); return; }
+            var headers = Array.from(table.querySelectorAll('thead th')).map(function(th){
+                return (th.textContent||'').trim();
+            });
+            var rows = Array.from(table.querySelectorAll('tbody tr')).map(function(tr){
+                var isInfo = !!tr.querySelector('th[colspan]');
+                var tds = Array.from(tr.querySelectorAll('td'));
+                return {
+                    infoRow: isInfo,
+                    cells: tds.map(function(td){
+                        return {
+                            text: (td.textContent||'').trim(),
+                            title: td.getAttribute ? (td.getAttribute('title')||'') : '',
+                            hasSwitch: !!td.querySelector('.switch-field')
+                        };
+                    })
+                };
+            });
+            console.groupCollapsed('[EOZ Mag Debug]', phase, meta||{});
+            console.log('headers:', headers);
+            console.log('rows (first 10):', rows.slice(0,10));
+            console.groupEnd();
+        } catch (e) {
+            console.error('[EOZ Mag Debug] error', e);
+        }
     }
 
     function reorderColumnsDesktop(isVeneers){
