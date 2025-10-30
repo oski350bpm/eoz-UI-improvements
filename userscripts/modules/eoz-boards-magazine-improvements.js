@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.12';
+    var VERSION = '2.8.14';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -387,6 +387,11 @@
         // Desktop snapshot (before any replacements) – clear, value-focused
         debugDesktopSnapshot('DESKTOP_BEFORE', { isVeneers: isVeneers, isGrouped: isVeneersGrouped });
 
+        // Pre-map veneer names early (in case przestawianie kolumn nadpisze teksty)
+        if (isVeneers) {
+            try { replaceVeneerCodesWithNames(isVeneersGrouped); } catch(_) {}
+        }
+
         // Fix grouped view switches: if main row has empty Przygotowane cell, copy from first sub-row
         if (isVeneersGrouped) {
             try { normalizeGroupedSwitches(); } catch(_) {}
@@ -400,6 +405,9 @@
         // If veneers, replace code in "Nazwa okleiny" with full name from commission page
         if (isVeneers) {
             try { replaceVeneerCodesWithNames(isVeneersGrouped); } catch(_) {}
+            // Schedule additional passes to catch async DOM updates
+            setTimeout(function(){ try { replaceVeneerCodesWithNames(isVeneersGrouped); } catch(_) {} }, 0);
+            setTimeout(function(){ try { replaceVeneerCodesWithNames(isVeneersGrouped); } catch(_) {} }, 250);
         }
 
         // Build dropdowns first so we can reuse them in mobile grid
@@ -423,6 +431,13 @@
         normalizeRadioButtons();
         observeRadioMutations();
         installGlobalRadioSync();
+
+        // Post-render ensure switches for grouped view (retry and observe DOM changes)
+        if (isVeneersGrouped) {
+            try { normalizeGroupedSwitches(); } catch(_) {}
+            setTimeout(function(){ try { normalizeGroupedSwitches(); } catch(_) {} }, 150);
+            try { installGroupedObserver(); } catch(_) {}
+        }
 
         // Debug radio buttons state
         debugRadioButtons('AFTER_LOAD');
@@ -636,6 +651,14 @@
                 k++;
             }
         }
+    }
+
+    function installGroupedObserver(){
+        var tbody = document.querySelector('table tbody');
+        if (!tbody) return;
+        var debounced = eozDebounce(function(){ try { normalizeGroupedSwitches(); } catch(_) {} }, 100);
+        var obs = new MutationObserver(function(){ debounced(); });
+        obs.observe(tbody, { childList: true, subtree: true });
     }
 
     // Cache for commission -> veneer map { code -> fullName }
