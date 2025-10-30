@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.11';
+    var VERSION = '2.8.12';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -387,6 +387,11 @@
         // Desktop snapshot (before any replacements) – clear, value-focused
         debugDesktopSnapshot('DESKTOP_BEFORE', { isVeneers: isVeneers, isGrouped: isVeneersGrouped });
 
+        // Fix grouped view switches: if main row has empty Przygotowane cell, copy from first sub-row
+        if (isVeneersGrouped) {
+            try { normalizeGroupedSwitches(); } catch(_) {}
+        }
+
         // Desktop: reorder columns to align with Machines Panel layout (non-grouped only)
         if (!isVeneersGrouped && window.innerWidth > 960) {
             try { reorderColumnsDesktop(isVeneers); } catch(_) {}
@@ -482,6 +487,7 @@
             var idxOkleina = findHeaderIndexAny(['Nazwa okleiny','Okleina']);
             var idxWymiar = findHeaderIndexAny(['Wymiar']);
             var idxIlosc = findHeaderIndexAny(['Ilość']);
+            var idxPrzygot = findHeaderIndexAny(['Przygotowane']);
             var rows = Array.from(document.querySelectorAll('table tbody tr'));
             var out = [];
             rows.forEach(function(tr, i){
@@ -500,7 +506,7 @@
                     okleina_title: (idxOkleina>=0 && tds[idxOkleina] ? (tds[idxOkleina].getAttribute('title')||'') : ''),
                     wymiar: val(idxWymiar),
                     ilosc: val(idxIlosc),
-                    hasSwitch: !!tr.querySelector('.switch-field'),
+                    hasSwitch: !!(idxPrzygot>=0 && tds[idxPrzygot] && tds[idxPrzygot].querySelector && tds[idxPrzygot].querySelector('.switch-field')),
                     link: link ? link.href.split('/').slice(-1)[0] : ''
                 });
             });
@@ -589,6 +595,36 @@
             order.forEach(function(i){ if (tds[i]) frag.appendChild(tds[i]); });
             row.appendChild(frag);
         });
+    }
+
+    function normalizeGroupedSwitches(){
+        var idxPrzygot = findHeaderIndexAny(['Przygotowane']);
+        if (idxPrzygot < 0) return;
+        var rows = Array.from(document.querySelectorAll('table tbody tr'));
+        for (var r = 0; r < rows.length; r++) {
+            var row = rows[r];
+            var tds = row.querySelectorAll('td');
+            if (!tds || !tds.length) continue;
+            var hasRowspan = Array.from(tds).some(function(td){ return td.hasAttribute('rowspan'); });
+            if (!hasRowspan) continue; // main rows only
+            var przygotCell = tds[idxPrzygot];
+            var hasSwitch = przygotCell && przygotCell.querySelector('.switch-field');
+            if (hasSwitch) continue;
+            // Look ahead for first sub-row with switches
+            var k = r + 1;
+            while (k < rows.length) {
+                var nr = rows[k];
+                var nrTds = nr.querySelectorAll('td');
+                var nrHasRowspan = Array.from(nrTds).some(function(td){ return td.hasAttribute('rowspan'); });
+                if (nrHasRowspan) break; // next main row
+                var src = Array.from(nrTds).find(function(td){ return td.querySelector && td.querySelector('.switch-field'); });
+                if (src) {
+                    przygotCell.innerHTML = src.innerHTML; // copy radios to main row
+                    break;
+                }
+                k++;
+            }
+        }
     }
 
     // Cache for commission -> veneer map { code -> fullName }
