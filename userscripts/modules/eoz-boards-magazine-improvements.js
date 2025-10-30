@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.15';
+    var VERSION = '2.8.16';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -47,9 +47,6 @@
         '.switch-field label:first-of-type{border-radius:4px 0 0 4px!important}\n' +
         '.switch-field label:last-of-type{border-radius:0 4px 4px 0!important}\n' +
         '.switch-field input[type="radio"]:checked+label{background:#f06521!important;color:#fff!important;border:1px solid #f06521!important;box-shadow:none!important;font-weight:600!important}\n' +
-        'td.eoz-has-grouped-switch{vertical-align:top!important}\n' +
-        'td.eoz-has-grouped-switch .eoz-grouped-switch{margin-bottom:6px}\n' +
-        'td.eoz-has-grouped-switch .eoz-grouped-switch:last-child{margin-bottom:0}\n' +
         '@media (max-width:1200px){.eoz-hide-1200{display:none!important}}\n' +
         '@media (max-width:1024px){.eoz-hide-1024{display:none!important}}\n' +
         'body[data-veneer] table thead th[data-column="lp"],body[data-veneer] table tbody td[data-column="lp"]{display:none!important}\n' +
@@ -396,9 +393,7 @@
         }
 
         // Fix grouped view switches: if main row has empty Przygotowane cell, copy from first sub-row
-        if (isVeneersGrouped) {
-            try { normalizeGroupedSwitches(); } catch(_) {}
-        }
+        // (Grouped view retains original switches per veneer row)
 
         // Desktop: reorder columns to align with Machines Panel layout (non-grouped only)
         if (!isVeneersGrouped && window.innerWidth > 960) {
@@ -436,11 +431,7 @@
         installGlobalRadioSync();
 
         // Post-render ensure switches for grouped view (retry and observe DOM changes)
-        if (isVeneersGrouped) {
-            try { normalizeGroupedSwitches(); } catch(_) {}
-            setTimeout(function(){ try { normalizeGroupedSwitches(); } catch(_) {} }, 150);
-            try { installGroupedObserver(); } catch(_) {}
-        }
+        // Keep original switch layout for grouped view (sub-rows only)
 
         // Debug radio buttons state
         debugRadioButtons('AFTER_LOAD');
@@ -615,65 +606,7 @@
         });
     }
 
-    function normalizeGroupedSwitches(){
-        var idxPrzygot = findHeaderIndexAny(['Przygotowane']);
-        if (idxPrzygot < 0) return;
-        var rows = Array.from(document.querySelectorAll('table tbody tr'));
-        for (var r = 0; r < rows.length; r++) {
-            var row = rows[r];
-            var tds = row.querySelectorAll('td');
-            if (!tds || !tds.length) continue;
-            var hasRowspan = Array.from(tds).some(function(td){ return td.hasAttribute('rowspan'); });
-            if (!hasRowspan) continue; // main rows only
-            var przygotCell = tds[idxPrzygot];
-            var hasSwitch = przygotCell && przygotCell.querySelector('.switch-field');
-            if (hasSwitch) continue;
-            var clones = [];
-            var k = r + 1;
-            while (k < rows.length) {
-                var nr = rows[k];
-                var nrTds = nr.querySelectorAll('td');
-                var nrHasRowspan = Array.from(nrTds).some(function(td){ return td.hasAttribute('rowspan'); });
-                if (nrHasRowspan) break; // next main row
-                var src = Array.from(nrTds).find(function(td){ return td.querySelector && td.querySelector('.switch-field'); });
-                if (src) {
-                    var clonedTd = src.cloneNode(true);
-                    var field = clonedTd.querySelector('.switch-field');
-                    if (field) {
-                        var radios = field.querySelectorAll('input[type="radio"]');
-                        radios.forEach(function(radio){
-                            if (radio.id) {
-                                var oldId = radio.id; radio.id = oldId + '-grp';
-                                var lab = field.querySelector('label[for="' + oldId + '"]');
-                                if (lab) lab.setAttribute('for', radio.id);
-                            }
-                            if (radio.name) radio.name = radio.name + '-grp';
-                        });
-                        clones.push(field);
-                    }
-                }
-                k++;
-            }
-            if (clones.length) {
-                przygotCell.innerHTML = '';
-                przygotCell.classList.add('eoz-has-grouped-switch');
-                clones.forEach(function(field){
-                    var wrapper = document.createElement('div');
-                    wrapper.className = 'eoz-grouped-switch';
-                    wrapper.appendChild(field);
-                    przygotCell.appendChild(wrapper);
-                });
-            }
-        }
-    }
-
-    function installGroupedObserver(){
-        var tbody = document.querySelector('table tbody');
-        if (!tbody) return;
-        var debounced = eozDebounce(function(){ try { normalizeGroupedSwitches(); } catch(_) {} }, 100);
-        var obs = new MutationObserver(function(){ debounced(); });
-        obs.observe(tbody, { childList: true, subtree: true });
-    }
+    function normalizeGroupedSwitches(){}
 
     // Cache for commission -> veneer map { code -> fullName }
     var veneerMapCache = {};
@@ -790,6 +723,9 @@
             } else {
                 // Non-grouped view
                 targetCell = cells[idxNazwaOkleiny] || null;
+                if (!targetCell && cells.length <= 4) {
+                    targetCell = cells[0] || null;
+                }
             }
             if (!targetCell) return;
 
