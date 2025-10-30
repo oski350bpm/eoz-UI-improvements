@@ -631,7 +631,10 @@
             }
             if (!targetCell) return;
 
-            var code = (targetCell.textContent||'').trim();
+            // Prefer code from title attribute if present; fallback to trimmed text (first token)
+            var titleCode = (targetCell.getAttribute && targetCell.getAttribute('title')) || '';
+            var cellText = (targetCell.textContent||'').trim();
+            var code = titleCode || (cellText.split(/\s+/)[0] || '');
             if (!code || !commissionId) return;
 
             pending.push(
@@ -858,11 +861,15 @@
                 }
                 
                 // This is a sub-row - cells are: Okleina | Wymiar | Ilość | Przygotowane
+                var radioCell = null;
+                for (var rc=0; rc<nextCells.length; rc++){
+                    if (nextCells[rc].querySelector && nextCells[rc].querySelector('.switch-field')) { radioCell = nextCells[rc]; break; }
+                }
                 var veneerSub = {
                     okleina: nextCells[0] ? (nextCells[0].textContent||'').trim() : '',
                     wymiar: nextCells[1] ? (nextCells[1].textContent||'').trim() : '',
                     ilosc: nextCells[2] ? (nextCells[2].textContent||'').trim() : '',
-                    przygotowaneHTML: nextCells[3] ? nextCells[3].innerHTML : ''
+                    przygotowaneHTML: radioCell ? radioCell.innerHTML : (nextCells[3] ? nextCells[3].innerHTML : '')
                 };
                 veneers.push(veneerSub);
                 nextRowIndex++;
