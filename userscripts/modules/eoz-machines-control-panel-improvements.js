@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.16';
+    var VERSION = '1.1.17';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -958,6 +958,47 @@
         }
     }
 
+    function installClientNotesDelegatedClick() {
+        if (document.body.getAttribute('data-eoz-notes-delegated') === '1') return;
+        document.body.setAttribute('data-eoz-notes-delegated', '1');
+
+        var table = document.querySelector('table');
+        if (!table) return;
+
+        table.addEventListener('click', function(e){
+            var icon = e.target && e.target.closest && e.target.closest('i.tableoptions');
+            if (!icon) return;
+            if (icon.className.indexOf('fa-comment') === -1) return;
+            var a = icon.closest('a');
+            if (!a) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            var row = a.closest('tr');
+            if (!row) return;
+            var cells = row.querySelectorAll('td');
+            var idxZlec = findHeaderIndex('Zlecenie');
+            var inferred = '';
+            if (idxZlec >= 0 && cells[idxZlec]) {
+                var zA = cells[idxZlec].querySelector('a');
+                inferred = zA ? (zA.textContent||'').trim() : (cells[idxZlec].textContent||'').trim();
+            }
+            // Prefer href extraction from any notes links in row
+            var actionsCell = row.querySelector('td:last-child');
+            var linkClient = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_send_info"]') : null;
+            var linkInternal = actionsCell ? actionsCell.querySelector('a[href*="get_erozrys_order_notes"]') : null;
+            function extract(h){ var m = h && h.match(/\/(\d+(?:_\d+)?)(?:$|[?#])/); return m?m[1]:null; }
+            var orderId = extract(linkClient && linkClient.getAttribute('href')) || extract(linkInternal && linkInternal.getAttribute('href')) || '';
+            if (!orderId && inferred) {
+                var t = inferred.replace(/\s+/g,'').replace('/', '_');
+                var mm = t.match(/\d+(?:_\d+)?/);
+                orderId = mm ? mm[0] : '';
+            }
+            if (!orderId) return;
+            showUwagiModal(orderId);
+        }, true);
+    }
+
     function installStartOperationGuard() {
         // One global capture-phase listener to guard start operation across UI (including delegated clicks)
         if (document.body.getAttribute('data-eoz-start-guard-installed') === '1') return;
@@ -1005,6 +1046,7 @@
         debugTableStructure();
         modifyScannerBehavior();
         setupDatepickerObserver();
+        installClientNotesDelegatedClick();
         installStartOperationGuard();
         console.log('[EOZ Machines Panel Module v' + VERSION + '] Applied');
     }

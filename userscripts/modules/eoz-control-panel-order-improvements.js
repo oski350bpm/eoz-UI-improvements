@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.2';
+    var VERSION = '1.2.3';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -115,6 +115,47 @@
                 }
             });
         });
+    }
+
+    function installStartStopGuards() {
+        if (document.body.getAttribute('data-eoz-order-guards-installed') === '1') return;
+        document.body.setAttribute('data-eoz-order-guards-installed', '1');
+
+        document.addEventListener('click', function(e){
+            var t = e.target;
+            if (!t) return;
+            var link = t.closest && t.closest('a');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+
+            // Start operation guard
+            var isStart = link.classList.contains('start') || /start_operation_block\//.test(href);
+            if (isStart) {
+                if (link.getAttribute('data-eoz-confirmed') === '1') return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                if (confirm('Czy na pewno chcesz rozpocząć operację?')) {
+                    link.setAttribute('data-eoz-confirmed', '1');
+                    window.location.href = href;
+                }
+                return;
+            }
+
+            // End operation guard (fallback to confirm if our modal didn’t bind)
+            var isEnd = link.classList.contains('end_operation_button') || /\/end_operation_\d{4}\//.test(href) || /\/end_operation_2020\//.test(href);
+            if (isEnd) {
+                // If our specific modal handler is attached, let it run; else confirm
+                // Try to detect by a data-flag
+                if (link.getAttribute('data-eoz-end-bound') === '1') return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                if (confirm('Czy na pewno chcesz zakończyć operację?\n\nUWAGA: Operacji nie można cofnąć!')) {
+                    window.location.href = href;
+                }
+            }
+        }, true);
     }
 
     function showEndOperationConfirmationModal(originalHref) {
@@ -804,6 +845,7 @@
         }
         
         addEndOperationConfirmation();
+        installStartStopGuards();
     }
 
     function waitAndRun() {
