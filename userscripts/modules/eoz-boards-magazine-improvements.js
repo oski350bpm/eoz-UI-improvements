@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.9';
+    var VERSION = '2.8.10';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -384,6 +384,9 @@
             tagColumnByHeader('Lp', 'lp');
         }
 
+        // Desktop snapshot (before any replacements) – clear, value-focused
+        debugDesktopSnapshot('DESKTOP_BEFORE', { isVeneers: isVeneers, isGrouped: isVeneersGrouped });
+
         // Desktop: reorder columns to align with Machines Panel layout (non-grouped only)
         if (!isVeneersGrouped && window.innerWidth > 960) {
             try { reorderColumnsDesktop(isVeneers); } catch(_) {}
@@ -410,6 +413,7 @@
         // Debug radio buttons state AFTER building mobile layout
         debugRadioButtons('AFTER_MOBILE_BUILD');
         debugTablesSnapshot('AFTER_MOBILE_BUILD', { isVeneers: isVeneers, isGrouped: isVeneersGrouped });
+        debugMobileSnapshot('MOBILE_AFTER', { isVeneers: isVeneers, isGrouped: isVeneersGrouped });
 
         normalizeRadioButtons();
         observeRadioMutations();
@@ -468,6 +472,70 @@
         } catch (e) {
             console.error('[EOZ Mag Debug] error', e);
         }
+    }
+
+    function debugDesktopSnapshot(label, meta){
+        try {
+            var idxKlient = findHeaderIndexAny(['Klient']);
+            var idxZlecenie = findHeaderIndexAny(['Zlecenie']);
+            var idxNazwa = findHeaderIndexAny(['Nazwa zamówienia']);
+            var idxOkleina = findHeaderIndexAny(['Nazwa okleiny','Okleina']);
+            var idxWymiar = findHeaderIndexAny(['Wymiar']);
+            var idxIlosc = findHeaderIndexAny(['Ilość']);
+            var rows = Array.from(document.querySelectorAll('table tbody tr'));
+            var out = [];
+            rows.forEach(function(tr, i){
+                var info = !!tr.querySelector('th[colspan]');
+                if (info) return;
+                var tds = tr.querySelectorAll('td');
+                if (!tds || !tds.length) return;
+                function val(idx){ return (idx>=0 && tds[idx]) ? (tds[idx].textContent||'').trim() : ''; }
+                var link = tr.querySelector('a[href*="/commission/show_details/"]');
+                out.push({
+                    row: i+1,
+                    klient: val(idxKlient),
+                    zlecenie: (idxZlecenie>=0 && tds[idxZlecenie] && tds[idxZlecenie].textContent||'').trim(),
+                    nazwa: val(idxNazwa),
+                    okleina_text: val(idxOkleina),
+                    okleina_title: (idxOkleina>=0 && tds[idxOkleina] ? (tds[idxOkleina].getAttribute('title')||'') : ''),
+                    wymiar: val(idxWymiar),
+                    ilosc: val(idxIlosc),
+                    hasSwitch: !!tr.querySelector('.switch-field'),
+                    link: link ? link.href.split('/').slice(-1)[0] : ''
+                });
+            });
+            console.groupCollapsed('[EOZ Mag Desktop]', label, meta||{});
+            console.table(out.slice(0,30));
+            console.groupEnd();
+        } catch(e){ console.error('[EOZ Mag Desktop] error', e); }
+    }
+
+    function debugMobileSnapshot(label, meta){
+        try {
+            var mobiles = Array.from(document.querySelectorAll('td.eoz-mobile-cell'));
+            var out = mobiles.map(function(td, i){
+                function pick(lbl){
+                    var el = Array.from(td.querySelectorAll('.eoz-m-label')).find(function(s){ return (s.textContent||'').toLowerCase().indexOf(lbl) !== -1; });
+                    if (!el) return '';
+                    var container = el.parentElement;
+                    var text = (container.textContent||'').replace(/^[^:]+:\s*/,'').trim();
+                    return text;
+                }
+                var zlec = td.querySelector('.eoz-m-zlecenie a');
+                return {
+                    row: i+1,
+                    zlecenie: zlec ? (zlec.textContent||'').trim() : '',
+                    klient: pick('klient'),
+                    nazwa: pick('nazwa zam'),
+                    okleina: pick('okleina'),
+                    wymiar: pick('wymiar'),
+                    ilosc: pick('ilość')
+                };
+            });
+            console.groupCollapsed('[EOZ Mag Mobile]', label, meta||{});
+            console.table(out.slice(0,30));
+            console.groupEnd();
+        } catch(e){ console.error('[EOZ Mag Mobile] error', e); }
     }
 
     function reorderColumnsDesktop(isVeneers){
