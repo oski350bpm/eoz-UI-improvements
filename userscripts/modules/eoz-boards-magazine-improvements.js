@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.3';
+    var VERSION = '2.8.4';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -926,6 +926,10 @@
             } else {
                 col2.textContent = zlecenie;
             }
+            // Add inline LP to this cell
+            var lpInline = document.createElement('span');
+            lpInline.textContent = 'LP. ' + data + ' ';
+            col2.insertBefore(lpInline, col2.firstChild);
 
             var col3 = document.createElement('div'); 
             col3.className = 'eoz-m-col3';
@@ -989,7 +993,7 @@
             col4.appendChild(veneersDiv);
 
             var col5 = document.createElement('div'); 
-            col5.className = 'eoz-m-col5';
+            col5.className = 'eoz-m-col5 eoz-mp-actions';
             
             // Actions dropdown
             var lastCell = cells[cells.length-1];
@@ -998,7 +1002,7 @@
                 if (originalLinks.length > 0) {
                     var actionsWrapper = document.createElement('div');
                     actionsWrapper.className = 'eoz-m-col5-item';
-                    var actionsBtn = createActionDropdown(originalLinks, 'akcje-veneers-' + orderCount);
+                    var actionsBtn = createActionDropdown(originalLinks, 'mobile-veneers-' + orderCount);
                     actionsWrapper.appendChild(actionsBtn);
                     col5.appendChild(actionsWrapper);
                 }
@@ -1296,7 +1300,7 @@
                 if (originalLinks.length > 0) {
                     var actionsWrapper = document.createElement('div');
                     actionsWrapper.className = 'eoz-m-col5-item';
-                    var actionsBtn = createActionDropdown(originalLinks, 'akcje-' + rIndex);
+                    var actionsBtn = createActionDropdown(originalLinks, 'mobile-mag-' + rIndex);
                     actionsWrapper.appendChild(actionsBtn);
                     col5.appendChild(actionsWrapper);
                 }
@@ -1413,7 +1417,9 @@
         container.appendChild(btn);
         container.appendChild(menu);
         
-        menu.addEventListener('click', function(){ checkbox.checked = false; });
+        menu.addEventListener('click', function(e){ e.stopPropagation(); checkbox.checked = false; });
+        btn.addEventListener('click', function(e){ e.stopPropagation(); });
+        container.addEventListener('click', function(e){ e.stopPropagation(); });
         return container;
     }
 
