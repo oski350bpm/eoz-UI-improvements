@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.10';
+    var VERSION = '1.1.11';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -497,21 +497,40 @@
                 btn.innerHTML = iconHTML;
                 actions.appendChild(btn);
             }
-            // Dropdown with all actions – clone existing dropdown if already transformed
+            // Dropdown with all actions – ensure unique IDs for mobile and stop propagation
             var transformedDropdown = actionsCell && actionsCell.querySelector('.eoz-dropdown-container');
+            var wrapper = document.createElement('div');
+            wrapper.className = 'eoz-mp-actions-dropdown';
             if (transformedDropdown) {
                 var cloned = transformedDropdown.cloneNode(true);
-                var wrapper = document.createElement('div');
-                wrapper.className = 'eoz-mp-actions-dropdown';
+                try {
+                    var input = cloned.querySelector('input.eoz-dropdown-toggle');
+                    var label = cloned.querySelector('label.eoz-dropdown-label');
+                    var newId = 'eoz-dropdown-mp-' + rIndex;
+                    if (input) input.id = newId;
+                    if (label) label.htmlFor = newId;
+                    var menu = cloned.querySelector('.eoz-dropdown-menu');
+                    if (menu) menu.addEventListener('click', function(e){ e.stopPropagation(); if (input) input.checked = false; });
+                    if (label) label.addEventListener('click', function(e){ e.stopPropagation(); });
+                    cloned.addEventListener('click', function(e){ e.stopPropagation(); });
+                } catch(_) {}
                 wrapper.appendChild(cloned);
-                actions.appendChild(wrapper);
             } else if (allActionLinks && allActionLinks.length) {
-                var dropdownContainer = document.createElement('div');
-                dropdownContainer.className = 'eoz-mp-actions-dropdown';
                 var dropdown = createDropdownFromActionsCell(actionsCell, 'mp-' + rIndex);
-                dropdownContainer.appendChild(dropdown);
-                actions.appendChild(dropdownContainer);
+                try {
+                    var input2 = dropdown.querySelector('input.eoz-dropdown-toggle');
+                    var label2 = dropdown.querySelector('label.eoz-dropdown-label');
+                    var newId2 = 'eoz-dropdown-mp-' + rIndex;
+                    if (input2) input2.id = newId2;
+                    if (label2) label2.htmlFor = newId2;
+                    var menu2 = dropdown.querySelector('.eoz-dropdown-menu');
+                    if (menu2) menu2.addEventListener('click', function(e){ e.stopPropagation(); if (input2) input2.checked = false; });
+                    if (label2) label2.addEventListener('click', function(e){ e.stopPropagation(); });
+                    dropdown.addEventListener('click', function(e){ e.stopPropagation(); });
+                } catch(_) {}
+                wrapper.appendChild(dropdown);
             }
+            if (wrapper.childNodes.length) actions.appendChild(wrapper);
 
             grid.appendChild(header);
             details.appendChild(lpCol);
