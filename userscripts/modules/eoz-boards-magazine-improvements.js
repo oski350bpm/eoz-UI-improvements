@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.1';
+    var VERSION = '2.8.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -826,11 +826,11 @@
             mobileCell.colSpan = cells.length;
 
             var grid = document.createElement('div');
-            grid.className = 'eoz-mobile-grid';
+            grid.className = 'eoz-mobile-grid eoz-mp-grid';
 
             // Header: Data + Zlecenie
             var header = document.createElement('div');
-            header.className = 'eoz-m-header';
+            header.className = 'eoz-m-header eoz-mp-header';
             
             var dataDiv = document.createElement('div');
             dataDiv.className = 'eoz-m-lp';
@@ -1132,11 +1132,11 @@
             header.className = 'eoz-m-header';
             
             var lpDiv = document.createElement('div');
-            lpDiv.className = 'eoz-m-lp';
+            lpDiv.className = 'eoz-m-lp eoz-mp-lp';
             lpDiv.textContent = 'Lp. ' + col1Lp;
             
             var zlecenieDiv = document.createElement('div');
-            zlecenieDiv.className = 'eoz-m-zlecenie';
+            zlecenieDiv.className = 'eoz-m-zlecenie eoz-mp-zlec';
             if (zlecenieLink) {
                 var link = document.createElement('a');
                 link.href = zlecenieLink;
@@ -1153,9 +1153,9 @@
             
             // Details grid: col3, col4, col5
             var details = document.createElement('div');
-            details.className = 'eoz-m-details';
+            details.className = 'eoz-m-details eoz-mp-details';
 
-            var col3 = document.createElement('div'); col3.className = 'eoz-m-col3';
+            var col3 = document.createElement('div'); col3.className = 'eoz-m-col3 eoz-mp-info';
             col3.innerHTML = '<div><span class="eoz-m-label">Klient:</span><br>' + (klient||'—') + '</div>' +
                               '<div><span class="eoz-m-label">Nazwa zamówienia:</span><br>' + (nazwa||'—') + '</div>' +
                               '<div><span class="eoz-m-label">' + materialLabel + ':</span><br>' + (plyta||'—') + '</div>' +
@@ -1177,7 +1177,7 @@
             }
             
             var col4 = document.createElement('div'); 
-            col4.className = 'eoz-m-col4';
+            col4.className = 'eoz-m-col4 eoz-mp-info';
             
             // Row 1: Ilość
             var iloscRow = document.createElement('div');
@@ -1229,7 +1229,7 @@
                 col4.appendChild(editRow);
             }
 
-            var col5 = document.createElement('div'); col5.className = 'eoz-m-col5';
+            var col5 = document.createElement('div'); col5.className = 'eoz-m-col5 eoz-mp-actions';
             
             // 1. Actions dropdown (first)
             var lastCell = cells[cells.length-1];
