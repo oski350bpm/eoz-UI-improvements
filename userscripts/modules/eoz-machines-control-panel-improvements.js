@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.13';
+    var VERSION = '1.1.14';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -266,7 +266,7 @@
         return 'Akcja';
     }
 
-    function createDropdownFromActionsCell(actionsCell, uniqueId){
+    function createDropdownFromActionsCell(actionsCell, uniqueId, originalLinks){
         var container = document.createElement('div');
         container.className = 'eoz-dropdown-container';
         var checkboxId = 'eoz-dropdown-mach-' + uniqueId;
@@ -274,8 +274,8 @@
         var label = document.createElement('label'); label.className = 'eoz-dropdown-label'; label.htmlFor = checkboxId; label.innerHTML = '<i class="fas fa-cog"></i> Akcje';
         var menu = document.createElement('div'); menu.className = 'eoz-dropdown-menu';
 
-        var links = actionsCell.querySelectorAll('a');
-        links.forEach(function(link){
+        var links = originalLinks || actionsCell.querySelectorAll('a');
+        Array.prototype.forEach.call(links, function(link){
             var menuItem = document.createElement('a');
             menuItem.className = 'eoz-dropdown-item';
             menuItem.href = link.href; if (link.target) menuItem.target = link.target;
@@ -283,7 +283,16 @@
             var titleText = labelFromLink(link);
             menuItem.innerHTML = '<i class="' + (icon ? icon.className : '') + '"></i> ' + titleText;
             menuItem.title = titleText;
-            if (link.onclick) menuItem.onclick = link.onclick;
+            // Delegate to original link to preserve any bound handlers (confirm/popups)
+            menuItem.addEventListener('click', function(e){
+                e.preventDefault();
+                try {
+                    var clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                    link.dispatchEvent(clickEvent);
+                } catch(_) {
+                    window.location.href = link.href;
+                }
+            });
             menu.appendChild(menuItem);
         });
 
@@ -296,8 +305,18 @@
         var actionCells = document.querySelectorAll('table tbody tr td:last-child');
         actionCells.forEach(function(cell, index){
             if (cell.querySelectorAll('a').length === 0) return;
-            var original = cell.innerHTML; cell.innerHTML = ''; cell.innerHTML = original;
-            var dropdown = createDropdownFromActionsCell(cell, index); cell.innerHTML = ''; cell.appendChild(dropdown);
+            // Preserve original links in a hidden container to retain bound handlers
+            var originalLinks = Array.from(cell.querySelectorAll('a'));
+            var hidden = document.createElement('div');
+            hidden.className = 'eoz-original-actions';
+            hidden.style.display = 'none';
+            originalLinks.forEach(function(a){ hidden.appendChild(a); });
+            // Build dropdown referencing the preserved originals
+            var dropdown = createDropdownFromActionsCell(cell, index, hidden.querySelectorAll('a'));
+            // Replace cell content with dropdown + hidden originals
+            cell.innerHTML = '';
+            cell.appendChild(dropdown);
+            cell.appendChild(hidden);
         });
     }
 
@@ -322,17 +341,28 @@
             var cells = row.querySelectorAll('td');
             if (!cells || cells.length === 0) return;
             var actionsCell = row.querySelector('td:last-child');
-            var playLink = actionsCell ? actionsCell.querySelector('a[href*="/machines/control_panel?"]') : null;
+            // Prefer original preserved link to keep bound handlers
+            var playLink = row.querySelector('.eoz-original-actions a[href*="/machines/control_panel?"]') || (actionsCell ? actionsCell.querySelector('a[href*="/machines/control_panel?"]') : null);
             if (!playLink) {
                 // fallback: first link in actions
-                playLink = actionsCell ? actionsCell.querySelector('a') : null;
+                playLink = row.querySelector('.eoz-original-actions a') || (actionsCell ? actionsCell.querySelector('a') : null);
             }
             var td = document.createElement('td');
             if (playLink) {
-                var btn = playLink.cloneNode(true);
+                var btn = document.createElement('a');
+                btn.href = '#';
                 btn.className = 'eoz-realizacja-btn';
-                var icon = btn.querySelector('i');
+                var icon = playLink.querySelector('i');
                 btn.innerHTML = icon ? icon.outerHTML : '<i class="fas fa-play"></i>';
+                btn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    try {
+                        var clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                        playLink.dispatchEvent(clickEvent);
+                    } catch(_) {
+                        window.location.href = playLink.href;
+                    }
+                });
                 td.appendChild(btn);
             } else {
                 td.textContent = '';
@@ -541,10 +571,20 @@
             var actions = document.createElement('div'); actions.className = 'eoz-mp-actions';
             // Primary play button
             if (playLink) {
-                var btn = playLink.cloneNode(true);
+                var btn = document.createElement('a');
+                btn.href = '#';
                 btn.className = 'eoz-realizacja-btn';
-                var icon = btn.querySelector('i'); var iconHTML = icon ? icon.outerHTML : '<i class="fas fa-play"></i>';
+                var icon = playLink.querySelector('i'); var iconHTML = icon ? icon.outerHTML : '<i class="fas fa-play"></i>';
                 btn.innerHTML = iconHTML;
+                btn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    try {
+                        var clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                        playLink.dispatchEvent(clickEvent);
+                    } catch(_) {
+                        window.location.href = playLink.href;
+                    }
+                });
                 actions.appendChild(btn);
             }
             // Dropdown with all actions – ensure unique IDs for mobile and stop propagation
