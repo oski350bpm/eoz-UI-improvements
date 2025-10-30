@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.6';
+    var VERSION = '2.8.7';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -281,65 +281,7 @@
         // Keeping function for compatibility but making it a no-op
     }
 
-    function debugRadioButtons(phase){
-        var isMobile = window.innerWidth <= 960;
-        var viewType = isMobile ? 'MOBILE' : 'DESKTOP';
-        
-        console.log('[EOZ Radio Debug] ========== ' + phase + ' (' + viewType + ' - ' + window.innerWidth + 'px) ==========');
-        
-        var radioGroups = document.querySelectorAll('.switch-field');
-        console.log('[EOZ Radio Debug] Found', radioGroups.length, 'radio groups');
-        
-        radioGroups.forEach(function(group, groupIndex){
-            var radios = group.querySelectorAll('input[type="radio"]');
-            var checkedRadio = null;
-            
-            radios.forEach(function(radio){
-                var label = group.querySelector('label[for="' + radio.id + '"]');
-                if (!label) return;
-                
-                if (radio.checked) {
-                    checkedRadio = radio;
-                    var computedStyle = window.getComputedStyle(label);
-                    var bgColor = computedStyle.backgroundColor;
-                    var boxShadow = computedStyle.boxShadow;
-                    var color = computedStyle.color;
-                    var display = computedStyle.display;
-                    var visibility = computedStyle.visibility;
-                    var parentDisplay = window.getComputedStyle(group.parentElement).display;
-                    
-                    console.log('[EOZ Radio Debug] Group ' + groupIndex + ' - Radio ' + radio.id + ' (CHECKED):');
-                    console.log('  HTML checked attr:', radio.hasAttribute('checked') ? 'YES' : 'NO');
-                    console.log('  JS checked prop:', radio.checked ? 'YES' : 'NO');
-                    console.log('  Label classes:', label.className);
-                    console.log('  Display:', display, '| Visibility:', visibility, '| Parent display:', parentDisplay);
-                    console.log('  Computed CSS:');
-                    console.log('    background:', bgColor);
-                    console.log('    color:', color);
-                    console.log('    box-shadow:', boxShadow);
-                    
-                    // Check which CSS rules match
-                    var matchingRules = [];
-                    if (isMobile) {
-                        if (group.closest('.eoz-mobile-cell')) matchingRules.push('.eoz-mobile-cell .switch-field input:checked+label');
-                        if (group.closest('td')) matchingRules.push('table tbody td .switch-field input:checked+label');
-                        matchingRules.push('.switch-field input:checked+label (mobile @media)');
-                    } else {
-                        if (group.closest('td')) matchingRules.push('table tbody td .switch-field input:checked+label (desktop @media)');
-                        matchingRules.push('.switch-field input:checked+label (desktop @media)');
-                        matchingRules.push('.switch-field input:checked+label (global)');
-                    }
-                    console.log('  Expected CSS selectors:', matchingRules.join(', '));
-                }
-            });
-            
-            if (!checkedRadio) {
-                console.log('[EOZ Radio Debug] Group ' + groupIndex + ' - NO CHECKED RADIO!');
-            }
-        });
-        
-        console.log('[EOZ Radio Debug] ========================================');
-    }
+    function debugRadioButtons(){ /* disabled */ }
 
     function apply() {
         // Debug radio buttons state BEFORE any modifications
