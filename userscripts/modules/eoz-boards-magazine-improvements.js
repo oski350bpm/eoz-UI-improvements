@@ -512,7 +512,11 @@
     }
 
     function replaceVeneerCodesWithNames(isGrouped){
+        // Support both headers used across views
         var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
+        if (idxNazwaOkleiny < 0) {
+            idxNazwaOkleiny = findHeaderIndex('Okleina');
+        }
         if (idxNazwaOkleiny < 0) return;
         var rows = Array.from(document.querySelectorAll('table tbody tr'));
         if (rows.length === 0) return;
