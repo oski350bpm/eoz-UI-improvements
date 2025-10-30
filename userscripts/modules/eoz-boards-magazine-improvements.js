@@ -373,9 +373,21 @@
                 rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
             }
 
-            // Row numbers
+            // Row numbers — skip empty/info rows (single cell with colspan)
             var bodyRows = document.querySelectorAll('table tbody tr');
-            bodyRows.forEach(function(row, index){ var firstCell = row.querySelector('td:first-child'); if (firstCell) { firstCell.textContent = (index + 1).toString(); firstCell.style.fontWeight = 'bold'; firstCell.style.textAlign = 'center'; } });
+            var lpCounter = 0;
+            bodyRows.forEach(function(row){
+                var tds = row.querySelectorAll('td');
+                if (!tds || tds.length === 0) return;
+                if (tds.length === 1 && tds[0].hasAttribute('colspan')) return; // skip info row
+                lpCounter++;
+                var firstCell = row.querySelector('td:first-child');
+                if (firstCell) {
+                    firstCell.textContent = lpCounter.toString();
+                    firstCell.style.fontWeight = 'bold';
+                    firstCell.style.textAlign = 'center';
+                }
+            });
         } else {
             // For veneers grouped view (/3): Change first header to Lp. and add custom LP numbers
             var headerRow = document.querySelector('table thead tr');
@@ -1270,31 +1282,31 @@
                 col5.appendChild(uwagiWrapper);
             }
 
-            // Prepare col1 and col2 for tablet view
-            var col1 = document.createElement('div'); 
-            col1.className = 'eoz-m-col1'; 
-            if (!isVeneers) {
-                col1.innerHTML = '<div class="eoz-m-lp-badge">LP.</div><div>' + col1Lp + '</div>';
-            } else {
-                col1.textContent = col1Lp;
-            }
-            
-            var col2 = document.createElement('div'); 
-            col2.className = 'eoz-m-col2';
-            if (zlecenieLink) {
-                var link = document.createElement('a');
-                link.href = zlecenieLink;
-                link.textContent = col2Zlec;
-                link.style.color = '#007bff';
-                link.style.textDecoration = 'none';
-                col2.appendChild(link);
-            } else {
-                col2.textContent = col2Zlec;
-            }
-
+            // Prepare col1 and col2 ONLY for tablet view (501–960px). On small mobile, LP should appear only in header.
             grid.appendChild(header);
-            details.appendChild(col1);
-            details.appendChild(col2);
+            if (window.innerWidth >= 501 && window.innerWidth <= 960) {
+                var col1 = document.createElement('div'); 
+                col1.className = 'eoz-m-col1'; 
+                if (!isVeneers) {
+                    col1.innerHTML = '<div class="eoz-m-lp-badge">LP.</div><div>' + col1Lp + '</div>';
+                } else {
+                    col1.textContent = col1Lp;
+                }
+                var col2 = document.createElement('div'); 
+                col2.className = 'eoz-m-col2';
+                if (zlecenieLink) {
+                    var link = document.createElement('a');
+                    link.href = zlecenieLink;
+                    link.textContent = col2Zlec;
+                    link.style.color = '#007bff';
+                    link.style.textDecoration = 'none';
+                    col2.appendChild(link);
+                } else {
+                    col2.textContent = col2Zlec;
+                }
+                details.appendChild(col1);
+                details.appendChild(col2);
+            }
             details.appendChild(col3);
             details.appendChild(col4);
             details.appendChild(col5);
