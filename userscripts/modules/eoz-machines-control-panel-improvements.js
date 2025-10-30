@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.1.8';
+    var VERSION = '1.1.9';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -516,6 +516,33 @@
         });
     }
 
+    function debugTableStructure(){
+        try {
+            var table = document.querySelector('table');
+            if (!table) { console.warn('[EOZ Machines Panel Debug] No table found'); return; }
+            var headers = Array.from(table.querySelectorAll('thead th')).map(function(th){ return (th.textContent||'').trim(); });
+            var bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            var rows = bodyRows.map(function(tr, idx){
+                var cells = Array.from(tr.querySelectorAll('td'));
+                var data = cells.map(function(td){ return (td.textContent||'').trim(); });
+                return {
+                    index: idx+1,
+                    cellsCount: cells.length,
+                    hasMobileCell: !!tr.querySelector('td.eoz-mobile-cell'),
+                    data: data
+                };
+            });
+            var mobileBlocks = Array.from(table.querySelectorAll('td.eoz-mobile-cell .eoz-mp-grid')).slice(0, 10).map(function(g){ return g.outerHTML; });
+            console.groupCollapsed('[EOZ Machines Panel Debug] Table snapshot');
+            console.log('headers:', headers);
+            console.log('rows:', rows);
+            console.log('mobileBlocks(<=10):', mobileBlocks);
+            console.groupEnd();
+        } catch (e) {
+            console.error('[EOZ Machines Panel Debug] Error while logging structure', e);
+        }
+    }
+
 
     function modifyScannerBehavior() {
         // Debug: initial detection
@@ -815,6 +842,7 @@
         insertRealizationColumn();
         transformActionButtons();
         buildMobileLayout();
+        debugTableStructure();
         modifyScannerBehavior();
         setupDatepickerObserver();
         console.log('[EOZ Machines Panel Module v' + VERSION + '] Applied');
