@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.8.17';
+    var VERSION = '2.9.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -105,9 +105,399 @@
         '  .eoz-m-col3{order:1}\n' +
         '  .eoz-m-col4{order:2;display:flex;flex-direction:column;gap:8px}\n' +
         '  .eoz-m-col5{order:3}\n' +
-        '}\n';
+        '}\n' +
+        '.eoz-search-filter-container{width:100%!important;margin-bottom:16px!important;padding:12px!important;background:#f8f9fa!important;border-radius:8px!important;box-shadow:0 2px 4px rgba(0,0,0,.1)!important}\n' +
+        '.eoz-search-input{width:100%!important;padding:12px 16px!important;font-size:16px!important;border:2px solid #ddd!important;border-radius:8px!important;box-sizing:border-box!important;transition:border-color .2s!important}\n' +
+        '.eoz-search-input:focus{outline:none!important;border-color:#007bff!important}\n' +
+        '.eoz-filter-row{display:flex!important;gap:12px!important;margin-top:12px!important;flex-wrap:wrap!important}\n' +
+        '.eoz-filter-group{flex:1!important;min-width:150px!important}\n' +
+        '.eoz-filter-label{display:block!important;margin-bottom:6px!important;font-size:13px!important;font-weight:600!important;color:#333!important}\n' +
+        '.eoz-filter-select{width:100%!important;padding:10px 12px!important;font-size:14px!important;border:2px solid #ddd!important;border-radius:6px!important;box-sizing:border-box!important;background:#fff!important;cursor:pointer!important;transition:border-color .2s!important}\n' +
+        '.eoz-filter-select:focus{outline:none!important;border-color:#007bff!important}\n' +
+        '.eoz-highlight{background-color:#fff3cd!important;padding:2px 4px!important;border-radius:3px!important;font-weight:600!important}\n' +
+        '.eoz-filter-reset-btn{padding:10px 20px!important;font-size:14px!important;background:#6c757d!important;color:#fff!important;border:none!important;border-radius:6px!important;cursor:pointer!important;transition:background-color .2s!important;margin-top:auto!important;align-self:flex-end!important}\n' +
+        '.eoz-filter-reset-btn:hover{background:#5a6268!important}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-boards-magazine-module-css' });
+
+    // Search and filter functionality
+    var searchFilterState = {
+        searchText: '',
+        preparedFilter: '',
+        clientFilter: '',
+        materialFilter: ''
+    };
+
+    function extractRowData(row) {
+        var parts = {};
+        
+        // Try to extract from desktop view (separate cells)
+        var cells = row.querySelectorAll('td');
+        if (cells.length >= 6) {
+            // Desktop view - data in separate cells
+            // Find cells by their content patterns
+            for (var i = 0; i < cells.length; i++) {
+                var cell = cells[i];
+                var cellText = (cell.textContent || '').trim();
+                
+                // Check for client name (usually in cell with text like "J & J Dawid Janowski")
+                if (!parts.client && cellText && !cellText.match(/^\d+$/) && !cellText.match(/szt/) && 
+                    !cell.querySelector('.switch-field') && !cell.querySelector('a[href*="show_details"]') &&
+                    cellText.length > 5 && cellText.indexOf('_') === -1 && cellText.indexOf('/') === -1) {
+                    // This might be client - check if it's not a link cell
+                    if (!cell.querySelector('a[href*="commission"]')) {
+                        parts.client = cellText;
+                    }
+                }
+                
+                // Check for order name (usually contains underscores)
+                if (!parts.orderName && cellText && (cellText.indexOf('_') !== -1 || cellText.match(/^[A-Z]+/))) {
+                    var orderLink = cell.querySelector('a[href*="show_details"]');
+                    if (orderLink && cellText.length > 5) {
+                        parts.orderName = cellText.replace(/\s+/g, ' ').trim();
+                    }
+                }
+                
+                // Check for plate/material (contains material codes like D4033, W1100, U141, etc.)
+                if (!parts.plate && cellText && (cellText.match(/^[A-Z]\d+/) || cellText.match(/^\d+\s+[A-Z]/))) {
+                    // Extract just the plate name, not dimensions
+                    var plateMatch = cellText.match(/([A-Z]\d+[^0-9]*|[A-Z]+[^x]*|[A-Z][A-Z0-9\s]+)/);
+                    if (plateMatch) {
+                        parts.plate = plateMatch[1].trim();
+                    }
+                }
+            }
+        }
+        
+        // Fallback: extract from mobile cell or full row text
+        if (!parts.client || !parts.orderName || !parts.plate) {
+            var text = row.textContent || '';
+            var lines = text.split(/\s*(?=Klient:|Nazwa zamówienia:|Płyta:|Wymiar:|Ilość:|Przygotowane:|Wprowadź)/);
+            
+            lines.forEach(function(line) {
+                if (line.indexOf('Klient:') === 0) {
+                    parts.client = line.replace(/^Klient:\s*/, '').trim().split(/\s*(?=Nazwa zamówienia:|Płyta:)/)[0];
+                } else if (line.indexOf('Nazwa zamówienia:') === 0) {
+                    parts.orderName = line.replace(/^Nazwa zamówienia:\s*/, '').trim().split(/\s*(?=Płyta:)/)[0];
+                } else if (line.indexOf('Płyta:') === 0) {
+                    var plateText = line.replace(/^Płyta:\s*/, '').trim();
+                    // Extract just the plate name (before Wymiar:)
+                    var plateMatch = plateText.match(/^([^0-9]*\d+[^x]*|[A-Z]+[^x]*)/);
+                    if (plateMatch) {
+                        parts.plate = plateMatch[1].trim();
+                    } else {
+                        parts.plate = plateText.split(/\s*(?=Wymiar:)/)[0].trim();
+                    }
+                }
+            });
+        }
+        
+        // Extract order code from links
+        var link = row.querySelector('a[href*="/commission/show_details/"]');
+        var orderCode = '';
+        if (link) {
+            var match = link.href.match(/show_details\/(\d+)/);
+            if (match) orderCode = match[1];
+        }
+        
+        // Check prepared status
+        var preparedRadio = row.querySelector('input[type="radio"][value="1"]');
+        var notPreparedRadio = row.querySelector('input[type="radio"][value="0"]');
+        var prepared = null;
+        if (preparedRadio && preparedRadio.checked) {
+            prepared = 'Tak';
+        } else if (notPreparedRadio && notPreparedRadio.checked) {
+            prepared = 'Nie';
+        }
+        
+        return {
+            row: row,
+            client: parts.client || '',
+            orderName: parts.orderName || '',
+            plate: parts.plate || '',
+            orderCode: orderCode || '',
+            prepared: prepared,
+            fullText: (row.textContent || '').toLowerCase(),
+            originalText: row.textContent || ''
+        };
+    }
+
+    function normalizeSearchText(text) {
+        // Remove accents and convert to lowercase for fuzzy matching
+        return (text || '').toLowerCase()
+            .replace(/[ąćęłńóśźż]/g, function(char) {
+                var map = {
+                    'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n',
+                    'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z'
+                };
+                return map[char] || char;
+            });
+    }
+
+    function fuzzyMatch(searchText, targetText) {
+        if (!searchText) return true;
+        searchText = normalizeSearchText(searchText);
+        targetText = normalizeSearchText(targetText);
+        
+        // Simple substring match (allows partial matches like "160" matching "u160")
+        return targetText.indexOf(searchText) !== -1;
+    }
+
+    function highlightText(text, searchText) {
+        if (!searchText || !text) return text;
+        
+        var normalizedSearch = normalizeSearchText(searchText);
+        var normalizedText = normalizeSearchText(text);
+        var index = normalizedText.indexOf(normalizedSearch);
+        
+        if (index === -1) return text;
+        
+        // Find the actual match in original text (accounting for case differences)
+        var regex = new RegExp('(' + searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+        return text.replace(regex, '<span class="eoz-highlight">$1</span>');
+    }
+
+    function applySearchAndFilter() {
+        var tbody = document.querySelector('table tbody');
+        if (!tbody) return;
+        
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var visibleCount = 0;
+        
+        rows.forEach(function(row) {
+            var rowData = extractRowData(row);
+            var matches = true;
+            
+            // Apply search filter
+            if (searchFilterState.searchText) {
+                var searchMatches = 
+                    fuzzyMatch(searchFilterState.searchText, rowData.client) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.orderName) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.plate) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.orderCode);
+                
+                if (!searchMatches) {
+                    matches = false;
+                } else if (searchFilterState.searchText) {
+                    // Highlight matching text
+                    highlightRowData(row, rowData, searchFilterState.searchText);
+                }
+            }
+            
+            // Apply prepared filter
+            if (matches && searchFilterState.preparedFilter) {
+                if (rowData.prepared !== searchFilterState.preparedFilter) {
+                    matches = false;
+                }
+            }
+            
+            // Apply client filter
+            if (matches && searchFilterState.clientFilter) {
+                if (normalizeSearchText(rowData.client) !== normalizeSearchText(searchFilterState.clientFilter)) {
+                    matches = false;
+                }
+            }
+            
+            // Apply material filter
+            if (matches && searchFilterState.materialFilter) {
+                if (normalizeSearchText(rowData.plate) !== normalizeSearchText(searchFilterState.materialFilter)) {
+                    matches = false;
+                }
+            }
+            
+            // Show/hide row
+            if (matches) {
+                row.style.display = '';
+                visibleCount++;
+                // Remove highlights if no search text
+                if (!searchFilterState.searchText) {
+                    removeHighlights(row);
+                }
+            } else {
+                row.style.display = 'none';
+                removeHighlights(row);
+            }
+        });
+    }
+
+    function highlightRowData(row, rowData, searchText) {
+        // Highlight text in the row - we'll search for text nodes and highlight them
+        var walker = document.createTreeWalker(
+            row,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        var nodesToReplace = [];
+        var node;
+        while (node = walker.nextNode()) {
+            var text = node.textContent;
+            var normalizedText = normalizeSearchText(text);
+            var normalizedSearch = normalizeSearchText(searchText);
+            
+            if (normalizedText.indexOf(normalizedSearch) !== -1) {
+                nodesToReplace.push(node);
+            }
+        }
+        
+        nodesToReplace.forEach(function(node) {
+            var parent = node.parentNode;
+            if (parent && parent.tagName !== 'SCRIPT' && parent.tagName !== 'STYLE') {
+                var text = node.textContent;
+                var highlighted = highlightText(text, searchText);
+                if (highlighted !== text) {
+                    var span = document.createElement('span');
+                    span.innerHTML = highlighted;
+                    parent.replaceChild(span, node);
+                }
+            }
+        });
+    }
+
+    function removeHighlights(row) {
+        var highlights = row.querySelectorAll('.eoz-highlight');
+        highlights.forEach(function(highlight) {
+            var parent = highlight.parentNode;
+            if (parent) {
+                parent.replaceChild(document.createTextNode(highlight.textContent), highlight);
+                parent.normalize();
+            }
+        });
+    }
+
+    function createSearchAndFilterUI() {
+        var table = document.querySelector('table');
+        if (!table) return null;
+        
+        var container = document.createElement('div');
+        container.className = 'eoz-search-filter-container';
+        
+        // Search input
+        var searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'eoz-search-input';
+        searchInput.placeholder = 'Szukaj: Klient, nazwa zamówienia, płyta, numer zlecenia...';
+        searchInput.addEventListener('input', eozDebounce(function() {
+            searchFilterState.searchText = this.value;
+            applySearchAndFilter();
+        }, 300));
+        
+        // Filter row
+        var filterRow = document.createElement('div');
+        filterRow.className = 'eoz-filter-row';
+        
+        // Prepared filter
+        var preparedGroup = document.createElement('div');
+        preparedGroup.className = 'eoz-filter-group';
+        var preparedLabel = document.createElement('label');
+        preparedLabel.className = 'eoz-filter-label';
+        preparedLabel.textContent = 'Przygotowane:';
+        var preparedSelect = document.createElement('select');
+        preparedSelect.className = 'eoz-filter-select';
+        preparedSelect.innerHTML = '<option value="">Wszystkie</option><option value="Tak">Tak</option><option value="Nie">Nie</option>';
+        preparedSelect.addEventListener('change', function() {
+            searchFilterState.preparedFilter = this.value;
+            applySearchAndFilter();
+        });
+        preparedGroup.appendChild(preparedLabel);
+        preparedGroup.appendChild(preparedSelect);
+        
+        // Client filter
+        var clientGroup = document.createElement('div');
+        clientGroup.className = 'eoz-filter-group';
+        var clientLabel = document.createElement('label');
+        clientLabel.className = 'eoz-filter-label';
+        clientLabel.textContent = 'Klient:';
+        var clientSelect = document.createElement('select');
+        clientSelect.className = 'eoz-filter-select';
+        clientSelect.innerHTML = '<option value="">Wszyscy</option>';
+        clientSelect.addEventListener('change', function() {
+            searchFilterState.clientFilter = this.value;
+            applySearchAndFilter();
+        });
+        clientGroup.appendChild(clientLabel);
+        clientGroup.appendChild(clientSelect);
+        
+        // Material filter
+        var materialGroup = document.createElement('div');
+        materialGroup.className = 'eoz-filter-group';
+        var materialLabel = document.createElement('label');
+        materialLabel.className = 'eoz-filter-label';
+        materialLabel.textContent = 'Materiał:';
+        var materialSelect = document.createElement('select');
+        materialSelect.className = 'eoz-filter-select';
+        materialSelect.innerHTML = '<option value="">Wszystkie</option>';
+        materialSelect.addEventListener('change', function() {
+            searchFilterState.materialFilter = this.value;
+            applySearchAndFilter();
+        });
+        materialGroup.appendChild(materialLabel);
+        materialGroup.appendChild(materialSelect);
+        
+        // Reset button
+        var resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'eoz-filter-reset-btn';
+        resetBtn.textContent = 'Wyczyść filtry';
+        resetBtn.addEventListener('click', function() {
+            searchFilterState.searchText = '';
+            searchFilterState.preparedFilter = '';
+            searchFilterState.clientFilter = '';
+            searchFilterState.materialFilter = '';
+            searchInput.value = '';
+            preparedSelect.value = '';
+            clientSelect.value = '';
+            materialSelect.value = '';
+            applySearchAndFilter();
+        });
+        
+        filterRow.appendChild(preparedGroup);
+        filterRow.appendChild(clientGroup);
+        filterRow.appendChild(materialGroup);
+        filterRow.appendChild(resetBtn);
+        
+        container.appendChild(searchInput);
+        container.appendChild(filterRow);
+        
+        // Populate filter options
+        setTimeout(function() {
+            populateFilterOptions(clientSelect, materialSelect);
+        }, 500);
+        
+        return container;
+    }
+
+    function populateFilterOptions(clientSelect, materialSelect) {
+        var tbody = document.querySelector('table tbody');
+        if (!tbody) return;
+        
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var clients = new Set();
+        var materials = new Set();
+        
+        rows.forEach(function(row) {
+            var rowData = extractRowData(row);
+            if (rowData.client) clients.add(rowData.client);
+            if (rowData.plate) materials.add(rowData.plate);
+        });
+        
+        // Populate client filter
+        Array.from(clients).sort().forEach(function(client) {
+            var option = document.createElement('option');
+            option.value = client;
+            option.textContent = client;
+            clientSelect.appendChild(option);
+        });
+        
+        // Populate material filter
+        Array.from(materials).sort().forEach(function(material) {
+            var option = document.createElement('option');
+            option.value = material;
+            option.textContent = material;
+            materialSelect.appendChild(option);
+        });
+    }
 
     function run() {
         window.EOZ.waitFor('table tbody tr', { timeout: 10000 })
@@ -436,6 +826,19 @@
         debugRadioButtons('AFTER_LOAD');
 
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
+        
+        // Add search and filter UI
+        try {
+            var searchFilterUI = createSearchAndFilterUI();
+            if (searchFilterUI) {
+                var table = document.querySelector('table');
+                if (table && table.parentNode) {
+                    table.parentNode.insertBefore(searchFilterUI, table);
+                }
+            }
+        } catch (e) {
+            console.error('[EOZ Boards Magazine Module] Error creating search/filter UI:', e);
+        }
         
         // Watch for dynamically loaded comments tables
         watchForCommentsTable();
