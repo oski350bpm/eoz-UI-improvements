@@ -210,11 +210,9 @@
             '<span>Status: <strong>Not configured</strong></span>' +
             '</div>' +
             '</div>' +
-            '<div style="display: flex; gap: 8px;">' +
+            '<div style="display: flex; gap: 8px; flex-shrink: 0;">' +
             '<button id="eoz-cdp-test" style="flex: 1; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Test Connection</button>' +
             '<button id="eoz-cdp-save" style="flex: 1; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Save</button>' +
-            '</div>' +
-            '</div>' +
             '</div>';
 
         document.body.appendChild(panel);
