@@ -529,18 +529,92 @@
         var tbody = document.querySelector('table tbody');
         if (!tbody) return;
         
-        // Get visible rows (after applying current filters except the one being updated)
         var rows = Array.from(tbody.querySelectorAll('tr'));
         var clients = new Set();
         var materials = new Set();
         
+        // Get all rows and filter them based on current filters (except the filter being updated)
         rows.forEach(function(row) {
-            // Skip hidden rows (filtered out)
-            if (row.style.display === 'none') return;
-            
             var rowData = extractRowData(row);
-            if (rowData.client) clients.add(rowData.client);
-            if (rowData.plate) materials.add(rowData.plate);
+            var matches = true;
+            
+            // Apply search filter
+            if (matches && searchFilterState.searchText) {
+                var searchMatches = 
+                    fuzzyMatch(searchFilterState.searchText, rowData.client) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.orderName) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.plate) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.orderCode);
+                if (!searchMatches) matches = false;
+            }
+            
+            // Apply prepared filter (for both client and material lists)
+            if (matches && searchFilterState.preparedFilter && searchFilterState.preparedFilter.length > 0) {
+                if (searchFilterState.preparedFilter.indexOf(rowData.prepared) === -1) {
+                    matches = false;
+                }
+            }
+            
+            // For client list: apply material filter (so we show only clients that have selected materials)
+            if (matches && searchFilterState.materialFilter && searchFilterState.materialFilter.length > 0) {
+                var materialMatches = false;
+                for (var j = 0; j < searchFilterState.materialFilter.length; j++) {
+                    if (normalizeSearchText(rowData.plate) === normalizeSearchText(searchFilterState.materialFilter[j])) {
+                        materialMatches = true;
+                        break;
+                    }
+                }
+                if (!materialMatches) matches = false;
+            }
+            
+            // For material list: apply client filter (so we show only materials for selected clients)
+            // We'll build two separate sets: one for clients (with material filter applied) and one for materials (with client filter applied)
+            // For now, let's just use visible rows after applying current filters
+            
+            if (matches) {
+                if (rowData.client) clients.add(rowData.client);
+            }
+        });
+        
+        // Now build materials set with client filter applied (but not material filter)
+        rows.forEach(function(row) {
+            var rowData = extractRowData(row);
+            var matches = true;
+            
+            // Apply search filter
+            if (matches && searchFilterState.searchText) {
+                var searchMatches = 
+                    fuzzyMatch(searchFilterState.searchText, rowData.client) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.orderName) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.plate) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.orderCode);
+                if (!searchMatches) matches = false;
+            }
+            
+            // Apply prepared filter
+            if (matches && searchFilterState.preparedFilter && searchFilterState.preparedFilter.length > 0) {
+                if (searchFilterState.preparedFilter.indexOf(rowData.prepared) === -1) {
+                    matches = false;
+                }
+            }
+            
+            // Apply client filter (for material list)
+            if (matches && searchFilterState.clientFilter && searchFilterState.clientFilter.length > 0) {
+                var clientMatches = false;
+                for (var i = 0; i < searchFilterState.clientFilter.length; i++) {
+                    if (normalizeSearchText(rowData.client) === normalizeSearchText(searchFilterState.clientFilter[i])) {
+                        clientMatches = true;
+                        break;
+                    }
+                }
+                if (!clientMatches) matches = false;
+            }
+            
+            // Don't apply material filter when building material list
+            
+            if (matches) {
+                if (rowData.plate) materials.add(rowData.plate);
+            }
         });
         
         // Get currently selected values before updating
