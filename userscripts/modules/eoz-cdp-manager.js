@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.0';
+    var VERSION = '1.0.1';
     
     if (typeof window === 'undefined' || !window.EOZ) {
         console.warn('[EOZ CDP Manager v' + VERSION + '] EOZ core not found');
@@ -157,14 +157,24 @@
 
     // Create CDP configuration panel
     function createCDPPanel() {
+        if (document.getElementById('eoz-cdp-panel')) {
+            return; // Already exists
+        }
+
+        if (!document.body) {
+            setTimeout(createCDPPanel, 100);
+            return;
+        }
+
         var panel = document.createElement('div');
         panel.id = 'eoz-cdp-panel';
-        panel.innerHTML = '<div style="position: fixed; top: 60px; right: 10px; width: 350px; max-height: calc(100vh - 80px); background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 10001; display: none; flex-direction: column; overflow: hidden;">' +
-            '<div style="background: #007bff; color: white; padding: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">' +
+        panel.style.cssText = 'position: fixed !important; top: 60px !important; right: 10px !important; width: 350px !important; max-height: calc(100vh - 80px) !important; min-height: 300px !important; background: white !important; border-radius: 8px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important; z-index: 99997 !important; display: none !important; flex-direction: column !important; overflow: hidden !important;';
+        panel.innerHTML =
+            '<div style="background: #007bff; color: white; padding: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">' +
             '<span>🔧 CDP Connection</span>' +
             '<button id="eoz-cdp-close" style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">&times;</button>' +
             '</div>' +
-            '<div style="padding: 16px; overflow-y: auto; flex: 1;">' +
+            '<div style="padding: 16px; overflow-y: auto; flex: 1; min-height: 0;">' +
             '<div style="background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 12px; color: #004085;">' +
             '<strong>📋 Instrukcja:</strong><br>' +
             '1. Uruchom przeglądarkę z flagą:<br>' +
@@ -235,12 +245,7 @@
             panelEl.style.display = 'none';
         });
 
-        // Click outside to close
-        panelEl.addEventListener('click', function(e) {
-            if (e.target === panelEl) {
-                panelEl.style.display = 'none';
-            }
-        });
+        // Click outside to close - removed, we'll use overlay instead if needed
 
         // Auto-detect CDP URL
         detectBtn.addEventListener('click', function() {

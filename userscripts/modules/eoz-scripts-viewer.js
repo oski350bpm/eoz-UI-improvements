@@ -131,20 +131,20 @@
 
         var panel = document.createElement('div');
         panel.id = 'eoz-scripts-viewer';
-        panel.innerHTML = '<div style="position: fixed !important; top: 60px !important; right: 10px !important; width: 400px !important; max-height: calc(100vh - 80px) !important; background: white !important; border-radius: 8px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important; z-index: 99998 !important; display: none !important; flex-direction: column !important; overflow: hidden !important;">' +
-            '<div style="background: #007bff; color: white; padding: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">' +
+        panel.style.cssText = 'position: fixed !important; top: 60px !important; right: 10px !important; width: 400px !important; max-height: calc(100vh - 80px) !important; min-height: 300px !important; background: white !important; border-radius: 8px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important; z-index: 99998 !important; display: none !important; flex-direction: column !important; overflow: hidden !important;';
+        panel.innerHTML = 
+            '<div style="background: #007bff; color: white; padding: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">' +
             '<span>📜 Scripts & Modules</span>' +
             '<button id="eoz-scripts-close" style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">&times;</button>' +
             '</div>' +
-            '<div style="padding: 16px; overflow-y: auto; flex: 1;">' +
+            '<div style="padding: 16px; overflow-y: auto; flex: 1; min-height: 0;">' +
             '<div id="eoz-scripts-content">' +
             '<div style="text-align: center; padding: 20px; color: #6c757d;">Loading...</div>' +
             '</div>' +
             '</div>' +
-            '<div style="padding: 12px; background: #f8f9fa; border-top: 1px solid #ddd; display: flex; gap: 8px;">' +
+            '<div style="padding: 12px; background: #f8f9fa; border-top: 1px solid #ddd; display: flex; gap: 8px; flex-shrink: 0;">' +
             '<button id="eoz-scripts-refresh" style="flex: 1; padding: 8px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Refresh</button>' +
             '<button id="eoz-scripts-cdp" style="flex: 1; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">CDP Settings</button>' +
-            '</div>' +
             '</div>';
 
         document.body.appendChild(panel);
@@ -162,13 +162,7 @@
             ScriptsViewer.isVisible = false;
         });
 
-        // Click outside to close
-        panelEl.addEventListener('click', function(e) {
-            if (e.target === panelEl) {
-                panelEl.style.display = 'none';
-                ScriptsViewer.isVisible = false;
-            }
-        });
+        // Click outside to close - removed, we'll use overlay instead if needed
 
         // Refresh scripts list
         refreshBtn.addEventListener('click', function() {
