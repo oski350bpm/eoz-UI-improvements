@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.3';
+    var VERSION = '2.0.4';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -156,7 +156,40 @@
                 if (originalLink.target) menuItem.target = originalLink.target;
                 menuItem.setAttribute('data-action', a.action);
                 menuItem.innerHTML = '<i class="fas ' + a.icon + '"></i> ' + a.text;
-                if (originalLink.onclick) menuItem.onclick = originalLink.onclick;
+                
+                // Handle clicks properly - avoid event conflicts that could cause logout
+                menuItem.addEventListener('click', function(e){
+                    // Close dropdown first
+                    checkbox.checked = false;
+                    
+                    // For navigation links (generate_page, show_details), allow normal navigation
+                    var isNavigationLink = a.action === 'print' || a.action === 'details';
+                    
+                    if (isNavigationLink) {
+                        // Allow normal navigation - don't prevent default
+                        // The href will handle navigation naturally
+                        return true;
+                    }
+                    
+                    // For action links (delete, archive, etc.) that may have confirm dialogs
+                    // Try to preserve original onclick if exists, otherwise navigate
+                    if (originalLink.onclick) {
+                        try {
+                            var result = originalLink.onclick.call(menuItem, e);
+                            if (result === false) {
+                                e.preventDefault();
+                                return false;
+                            }
+                        } catch(err) {
+                            console.warn('[EOZ Commission List Module] Error executing original onclick:', err);
+                            // Fallback to normal navigation
+                        }
+                    }
+                    
+                    // If no onclick or it didn't prevent default, navigate normally
+                    return true;
+                });
+                
                 menu.appendChild(menuItem);
             }
         });
@@ -164,9 +197,6 @@
         container.appendChild(checkbox);
         container.appendChild(label);
         container.appendChild(menu);
-        
-        // Close when clicking a menu item
-        menu.addEventListener('click', function(){ checkbox.checked = false; });
         
         // Ensure only a single dropdown is open at a time
         label.addEventListener('click', function(){

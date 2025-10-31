@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.2';
+    var VERSION = '1.0.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -27,7 +27,11 @@
     var styles = '' +
         '.eoz-generate-page-hidden-column{display:none!important}\n' +
         '.eoz-generate-page-lp-column{font-weight:bold!important;text-align:center!important;width:50px!important}\n' +
-        '.eoz-generate-page-barcode-img{height:60px!important;width:250px!important;object-fit:fill!important}\n';
+        '.eoz-generate-page-barcode-img{height:60px!important;width:250px!important;object-fit:fill!important}\n' +
+        // Ukryj specyficzne obrazki kodów kreskowych
+        'img.heading-img[src*="dynamic_barcode/code128/304"]{display:none!important}\n' +
+        'img.smallsmall-img[src*="dynamic_barcode/code128/3823_1_312"]{display:none!important}\n' +
+        'img.sub-image[src*="dynamic_barcode/code128/U638PCV1"]{display:none!important}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-commission-generate-page-module-css' });
 
@@ -254,6 +258,75 @@
     }
 
     /**
+     * Usuwa określone obrazki kodów kreskowych z widoku
+     */
+    function removeSpecificBarcodeImages() {
+        var removedCount = 0;
+        
+        // Usuń obrazek heading-img z /304
+        var headingImg = document.querySelector('img.heading-img[src*="dynamic_barcode/code128/304"]');
+        if (headingImg) {
+            headingImg.style.display = 'none';
+            headingImg.remove();
+            removedCount++;
+            console.log('[EOZ Commission Generate Page Module] Removed heading-img barcode');
+        }
+        
+        // Usuń obrazek smallsmall-img z /3823_1_312
+        var smallImg = document.querySelector('img.smallsmall-img[src*="dynamic_barcode/code128/3823_1_312"]');
+        if (smallImg) {
+            smallImg.style.display = 'none';
+            smallImg.remove();
+            removedCount++;
+            console.log('[EOZ Commission Generate Page Module] Removed smallsmall-img barcode');
+        }
+        
+        // Usuń obrazek sub-image z /U638PCV1
+        var subImg = document.querySelector('img.sub-image[src*="dynamic_barcode/code128/U638PCV1"]');
+        if (subImg) {
+            subImg.style.display = 'none';
+            subImg.remove();
+            removedCount++;
+            console.log('[EOZ Commission Generate Page Module] Removed sub-image barcode');
+        }
+        
+        if (removedCount > 0) {
+            console.log('[EOZ Commission Generate Page Module] Removed ' + removedCount + ' barcode image(s)');
+        }
+    }
+
+    /**
+     * Dodaje podział strony A4 - lista formatek na drugiej stronie
+     */
+    function addPageBreakForFormatsList() {
+        // Znajdź nagłówek "Lista formatek"
+        var listaFormatHeading = Array.from(document.querySelectorAll('h2')).find(function(h2) {
+            return (h2.textContent || '').trim() === 'Lista formatek';
+        });
+        
+        if (!listaFormatHeading) {
+            console.warn('[EOZ Commission Generate Page Module] "Lista formatek" heading not found');
+            return;
+        }
+        
+        // Dodaj klasę do nagłówka i jego kontenera dla podziału strony
+        listaFormatHeading.classList.add('eoz-generate-page-format-list-heading');
+        
+        // Dodaj style CSS dla podziału strony (działa w trybie drukowania)
+        var pageBreakStyles = '' +
+            '@media print {\n' +
+            '  .eoz-generate-page-format-list-heading {\n' +
+            '    page-break-before: always !important;\n' +
+            '    break-before: page !important;\n' +
+            '  }\n' +
+            '}\n';
+        
+        window.EOZ.injectStyles(pageBreakStyles, { id: 'eoz-generate-page-format-list-pagebreak-css' });
+        
+        console.log('[EOZ Commission Generate Page Module] Added page break for "Lista formatek"');
+    }
+
+    /**
      * Główna funkcja aplikująca modyfikacje
      */
     function apply() {
@@ -270,8 +343,14 @@
         // Zmodyfikuj tabelę procesu produkcyjnego
         modifyProductionProcessTable();
         
-        // Ustaw jednakowe rozmiary kodów kreskowych
+        // Usuń określone obrazki kodów kreskowych
+        removeSpecificBarcodeImages();
+        
+        // Ustaw jednakowe rozmiary kodów kreskowych (po usunięciu niektórych)
         normalizeBarcodeImages();
+        
+        // Dodaj podział strony A4 dla listy formatek
+        addPageBreakForFormatsList();
         
         console.log('[EOZ Commission Generate Page Module v' + VERSION + '] Applied');
     }
