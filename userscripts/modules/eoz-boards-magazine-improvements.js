@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.4';
+    var VERSION = '2.9.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -300,57 +300,105 @@
     function extractRowData(row) {
         var parts = {};
         
-        // Try to extract from desktop view (separate cells)
-        var cells = row.querySelectorAll('td');
-        if (cells.length >= 6) {
-            // Desktop view - data in separate cells
-            // Find cells by their content patterns
-            for (var i = 0; i < cells.length; i++) {
-                var cell = cells[i];
-                var cellText = (cell.textContent || '').trim();
-                
-                // Check for client name (usually in cell with text like "J & J Dawid Janowski")
-                if (!parts.client && cellText && !cellText.match(/^\d+$/) && !cellText.match(/szt/) && 
-                    !cell.querySelector('.switch-field') && !cell.querySelector('a[href*="show_details"]') &&
-                    cellText.length > 5 && cellText.indexOf('_') === -1 && cellText.indexOf('/') === -1) {
-                    // This might be client - check if it's not a link cell
-                    if (!cell.querySelector('a[href*="commission"]')) {
-                        parts.client = cellText;
-                    }
-                }
-                
-                // Check for order name (usually contains underscores)
-                if (!parts.orderName && cellText && (cellText.indexOf('_') !== -1 || cellText.match(/^[A-Z]+/))) {
-                    var orderLink = cell.querySelector('a[href*="show_details"]');
-                    if (orderLink && cellText.length > 5) {
-                        parts.orderName = cellText.replace(/\s+/g, ' ').trim();
-                    }
-                }
-                
-                // Check for plate/material (contains material codes like D4033, W1100, U141, etc.)
-                if (!parts.plate && cellText && (cellText.match(/^[A-Z]\d+/) || cellText.match(/^\d+\s+[A-Z]/))) {
-                    // Extract just the plate name, not dimensions
-                    var plateMatch = cellText.match(/([A-Z]\d+[^0-9]*|[A-Z]+[^x]*|[A-Z][A-Z0-9\s]+)/);
+        // Check if we have mobile cell (for veneers grouped view or mobile layout)
+        var mobileCell = row.querySelector('.eoz-mobile-cell');
+        if (mobileCell) {
+            // Extract from mobile cell - it has all the data
+            var text = mobileCell.textContent || '';
+            var lines = text.split(/\s*(?=Klient:|Nazwa zamówienia:|Płyta:|Okleina:|Wymiar:|Ilość:|Przygotowane:|Wprowadź)/);
+            
+            lines.forEach(function(line) {
+                if (line.indexOf('Klient:') === 0) {
+                    parts.client = line.replace(/^Klient:\s*/, '').trim().split(/\s*(?=Nazwa zamówienia:|Płyta:|Okleina:)/)[0];
+                } else if (line.indexOf('Nazwa zamówienia:') === 0) {
+                    parts.orderName = line.replace(/^Nazwa zamówienia:\s*/, '').trim().split(/\s*(?=Płyta:|Okleina:)/)[0];
+                } else if (line.indexOf('Płyta:') === 0) {
+                    var plateText = line.replace(/^Płyta:\s*/, '').trim();
+                    var plateMatch = plateText.match(/^([^0-9]*\d+[^x]*|[A-Z]+[^x]*)/);
                     if (plateMatch) {
                         parts.plate = plateMatch[1].trim();
+                    } else {
+                        parts.plate = plateText.split(/\s*(?=Wymiar:)/)[0].trim();
+                    }
+                } else if (line.indexOf('Okleina:') === 0) {
+                    var plateText = line.replace(/^Okleina:\s*/, '').trim();
+                    var plateMatch = plateText.match(/^([^0-9]*\d+[^x]*|[A-Z]+[^x]*)/);
+                    if (plateMatch) {
+                        parts.plate = plateMatch[1].trim();
+                    } else {
+                        parts.plate = plateText.split(/\s*(?=Wymiar:)/)[0].trim();
+                    }
+                }
+            });
+        } else {
+            // Try to extract from desktop view (separate cells)
+            var cells = row.querySelectorAll('td');
+            if (cells.length >= 6) {
+                // Desktop view - data in separate cells
+                // Find cells by their content patterns
+                for (var i = 0; i < cells.length; i++) {
+                    var cell = cells[i];
+                    var cellText = (cell.textContent || '').trim();
+                    
+                    // Skip cells with rowspan in grouped view (they're in previous row)
+                    if (cell.hasAttribute('rowspan') && parseInt(cell.getAttribute('rowspan')) > 1) {
+                        continue;
+                    }
+                    
+                    // Check for client name (usually in cell with text like "J & J Dawid Janowski")
+                    if (!parts.client && cellText && !cellText.match(/^\d+$/) && !cellText.match(/szt/) && 
+                        !cell.querySelector('.switch-field') && !cell.querySelector('a[href*="show_details"]') &&
+                        cellText.length > 5 && cellText.indexOf('_') === -1 && cellText.indexOf('/') === -1) {
+                        // This might be client - check if it's not a link cell
+                        if (!cell.querySelector('a[href*="commission"]')) {
+                            parts.client = cellText;
+                        }
+                    }
+                    
+                    // Check for order name (usually contains underscores)
+                    if (!parts.orderName && cellText && (cellText.indexOf('_') !== -1 || cellText.match(/^[A-Z]+/))) {
+                        var orderLink = cell.querySelector('a[href*="show_details"]');
+                        if (orderLink && cellText.length > 5) {
+                            parts.orderName = cellText.replace(/\s+/g, ' ').trim();
+                        }
+                    }
+                    
+                    // Check for plate/material/veneer (contains material codes like D4033, W1100, U141, H3395, etc.)
+                    if (!parts.plate && cellText && (cellText.match(/^[A-Z]\d+/) || cellText.match(/^\d+\s+[A-Z]/))) {
+                        // Extract just the plate/veneer name, not dimensions
+                        var plateMatch = cellText.match(/([A-Z]\d+[^0-9]*|[A-Z]+[^x]*|[A-Z][A-Z0-9\s]+)/);
+                        if (plateMatch) {
+                            parts.plate = plateMatch[1].trim();
+                        }
                     }
                 }
             }
         }
         
-        // Fallback: extract from mobile cell or full row text
+        // Fallback: extract from full row text if still missing data
         if (!parts.client || !parts.orderName || !parts.plate) {
             var text = row.textContent || '';
-            var lines = text.split(/\s*(?=Klient:|Nazwa zamówienia:|Płyta:|Wymiar:|Ilość:|Przygotowane:|Wprowadź)/);
+            
+            // Support both "Płyta:" (boards) and "Okleina:" (veneers)
+            var lines = text.split(/\s*(?=Klient:|Nazwa zamówienia:|Płyta:|Okleina:|Wymiar:|Ilość:|Przygotowane:|Wprowadź)/);
             
             lines.forEach(function(line) {
                 if (line.indexOf('Klient:') === 0) {
-                    parts.client = line.replace(/^Klient:\s*/, '').trim().split(/\s*(?=Nazwa zamówienia:|Płyta:)/)[0];
+                    parts.client = line.replace(/^Klient:\s*/, '').trim().split(/\s*(?=Nazwa zamówienia:|Płyta:|Okleina:)/)[0];
                 } else if (line.indexOf('Nazwa zamówienia:') === 0) {
-                    parts.orderName = line.replace(/^Nazwa zamówienia:\s*/, '').trim().split(/\s*(?=Płyta:)/)[0];
-                } else if (line.indexOf('Płyta:') === 0) {
+                    parts.orderName = line.replace(/^Nazwa zamówienia:\s*/, '').trim().split(/\s*(?=Płyta:|Okleina:)/)[0];
+                } else if (line.indexOf('Płyta:') === 0 && !parts.plate) {
                     var plateText = line.replace(/^Płyta:\s*/, '').trim();
                     // Extract just the plate name (before Wymiar:)
+                    var plateMatch = plateText.match(/^([^0-9]*\d+[^x]*|[A-Z]+[^x]*)/);
+                    if (plateMatch) {
+                        parts.plate = plateMatch[1].trim();
+                    } else {
+                        parts.plate = plateText.split(/\s*(?=Wymiar:)/)[0].trim();
+                    }
+                } else if (line.indexOf('Okleina:') === 0 && !parts.plate) {
+                    var plateText = line.replace(/^Okleina:\s*/, '').trim();
+                    // Extract just the veneer name (before Wymiar:)
                     var plateMatch = plateText.match(/^([^0-9]*\d+[^x]*|[A-Z]+[^x]*)/);
                     if (plateMatch) {
                         parts.plate = plateMatch[1].trim();
@@ -463,7 +511,29 @@
         var rows = Array.from(tbody.querySelectorAll('tr'));
         var visibleCount = 0;
         
+        // Check if we're in veneers grouped view
+        var isVeneersGrouped = document.body.hasAttribute('data-veneer') && 
+                              rows.length > 0 && 
+                              rows[0].querySelector('.eoz-mobile-cell');
+        
         rows.forEach(function(row) {
+            // Skip sub-rows in veneers grouped view (they don't have mobile cell)
+            if (isVeneersGrouped) {
+                var hasMobileCell = row.querySelector('.eoz-mobile-cell');
+                if (!hasMobileCell) {
+                    // Check if this is a sub-row (no rowspan cells)
+                    var hasRowspan = false;
+                    row.querySelectorAll('td').forEach(function(td) {
+                        if (td.hasAttribute('rowspan')) hasRowspan = true;
+                    });
+                    // Skip sub-rows without rowspan (they're additional veneers)
+                    if (!hasRowspan) {
+                        row.style.display = 'none';
+                        return;
+                    }
+                }
+            }
+            
             var rowData = extractRowData(row);
             var matches = true;
             
