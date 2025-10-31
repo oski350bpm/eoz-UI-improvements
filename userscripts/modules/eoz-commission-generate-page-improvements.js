@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.3';
+    var VERSION = '1.0.4';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -28,10 +28,10 @@
         '.eoz-generate-page-hidden-column{display:none!important}\n' +
         '.eoz-generate-page-lp-column{font-weight:bold!important;text-align:center!important;width:50px!important}\n' +
         '.eoz-generate-page-barcode-img{height:60px!important;width:250px!important;object-fit:fill!important}\n' +
-        // Ukryj specyficzne obrazki kodów kreskowych
-        'img.heading-img[src*="dynamic_barcode/code128/304"]{display:none!important}\n' +
-        'img.smallsmall-img[src*="dynamic_barcode/code128/3823_1_312"]{display:none!important}\n' +
-        'img.sub-image[src*="dynamic_barcode/code128/U638PCV1"]{display:none!important}\n';
+        // Ukryj wszystkie obrazki kodów kreskowych (uniwersalne selektory)
+        'img.heading-img[src*="dynamic_barcode"]{display:none!important}\n' +
+        'img.smallsmall-img[src*="dynamic_barcode"]{display:none!important}\n' +
+        'img.sub-image[src*="dynamic_barcode"]{display:none!important}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-commission-generate-page-module-css' });
 
@@ -263,35 +263,41 @@
     function removeSpecificBarcodeImages() {
         var removedCount = 0;
         
-        // Usuń obrazek heading-img z /304
-        var headingImg = document.querySelector('img.heading-img[src*="dynamic_barcode/code128/304"]');
-        if (headingImg) {
+        // Usuń wszystkie obrazki heading-img z kodami kreskowymi (uniwersalne)
+        var headingImgs = document.querySelectorAll('img.heading-img[src*="dynamic_barcode"]');
+        headingImgs.forEach(function(headingImg) {
             headingImg.style.display = 'none';
             headingImg.remove();
             removedCount++;
-            console.log('[EOZ Commission Generate Page Module] Removed heading-img barcode');
+        });
+        if (headingImgs.length > 0) {
+            console.log('[EOZ Commission Generate Page Module] Removed ' + headingImgs.length + ' heading-img barcode(s)');
         }
         
-        // Usuń obrazek smallsmall-img z /3823_1_312
-        var smallImg = document.querySelector('img.smallsmall-img[src*="dynamic_barcode/code128/3823_1_312"]');
-        if (smallImg) {
+        // Usuń wszystkie obrazki smallsmall-img z kodami kreskowymi (uniwersalne)
+        var smallImgs = document.querySelectorAll('img.smallsmall-img[src*="dynamic_barcode"]');
+        smallImgs.forEach(function(smallImg) {
             smallImg.style.display = 'none';
             smallImg.remove();
             removedCount++;
-            console.log('[EOZ Commission Generate Page Module] Removed smallsmall-img barcode');
+        });
+        if (smallImgs.length > 0) {
+            console.log('[EOZ Commission Generate Page Module] Removed ' + smallImgs.length + ' smallsmall-img barcode(s)');
         }
         
-        // Usuń obrazek sub-image z /U638PCV1
-        var subImg = document.querySelector('img.sub-image[src*="dynamic_barcode/code128/U638PCV1"]');
-        if (subImg) {
+        // Usuń wszystkie obrazki sub-image z kodami kreskowymi (uniwersalne)
+        var subImgs = document.querySelectorAll('img.sub-image[src*="dynamic_barcode"]');
+        subImgs.forEach(function(subImg) {
             subImg.style.display = 'none';
             subImg.remove();
             removedCount++;
-            console.log('[EOZ Commission Generate Page Module] Removed sub-image barcode');
+        });
+        if (subImgs.length > 0) {
+            console.log('[EOZ Commission Generate Page Module] Removed ' + subImgs.length + ' sub-image barcode(s)');
         }
         
         if (removedCount > 0) {
-            console.log('[EOZ Commission Generate Page Module] Removed ' + removedCount + ' barcode image(s)');
+            console.log('[EOZ Commission Generate Page Module] Removed ' + removedCount + ' barcode image(s) total');
         }
     }
 
