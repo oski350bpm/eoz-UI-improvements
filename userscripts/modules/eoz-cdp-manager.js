@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.3';
+    var VERSION = '1.0.4';
     
     if (typeof window === 'undefined' || !window.EOZ) {
         console.warn('[EOZ CDP Manager v' + VERSION + '] EOZ core not found');
@@ -49,45 +49,54 @@
     // Auto-detect CDP WebSocket URL from port
     function detectCDPUrl(port) {
         port = port || 9222;
-        return fetch('http://127.0.0.1:' + port + '/json')
+        
+        // First, try to get browser target from /json/version
+        return fetch('http://127.0.0.1:' + port + '/json/version')
             .then(function(response) {
                 if (!response.ok) {
                     throw new Error('CDP endpoint not available on port ' + port);
                 }
                 return response.json();
             })
-            .then(function(targets) {
-                if (!targets || targets.length === 0) {
-                    throw new Error('No targets available. Open at least one tab in Chrome.');
+            .then(function(versionData) {
+                // If /json/version has webSocketDebuggerUrl, use it (this is the browser target)
+                if (versionData && versionData.webSocketDebuggerUrl) {
+                    console.log('[EOZ CDP Manager] Using browser target from /json/version:', versionData.webSocketDebuggerUrl);
+                    return versionData.webSocketDebuggerUrl;
                 }
                 
-                // For Cursor, we can use the first available page target
-                // Prefer targets that are actual web pages (not chrome:// or extensions)
-                var preferredTarget = targets.find(function(t) {
-                    return t.type === 'page' && 
-                           t.webSocketDebuggerUrl && 
-                           !t.url.startsWith('chrome://') && 
-                           !t.url.startsWith('chrome-extension://');
-                });
-                
-                // If no preferred target, use first available page target
-                var pageTarget = preferredTarget || targets.find(function(t) {
-                    return t.type === 'page' && t.webSocketDebuggerUrl;
-                });
-                
-                // If still no page target, try browser target
-                var browserTarget = targets.find(function(t) {
-                    return t.type === 'browser' && t.webSocketDebuggerUrl;
-                });
-                
-                var selectedTarget = pageTarget || browserTarget || targets[0];
-                
-                if (selectedTarget && selectedTarget.webSocketDebuggerUrl) {
-                    console.log('[EOZ CDP Manager] Selected target:', selectedTarget.title || selectedTarget.type, selectedTarget.webSocketDebuggerUrl);
-                    return selectedTarget.webSocketDebuggerUrl;
-                }
-                
-                throw new Error('No valid WebSocket URL found in targets');
+                // Otherwise, try /json for page targets
+                return fetch('http://127.0.0.1:' + port + '/json')
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Cannot fetch targets list');
+                        }
+                        return response.json();
+                    })
+                    .then(function(targets) {
+                        if (!targets || targets.length === 0) {
+                            throw new Error('No targets available. Open at least one tab in Chrome.');
+                        }
+                        
+                        // For Cursor, prefer page targets from actual web pages
+                        var preferredTarget = targets.find(function(t) {
+                            return t.type === 'page' && 
+                                   t.webSocketDebuggerUrl && 
+                                   !t.url.startsWith('chrome://') && 
+                                   !t.url.startsWith('chrome-extension://');
+                        });
+                        
+                        var pageTarget = preferredTarget || targets.find(function(t) {
+                            return t.type === 'page' && t.webSocketDebuggerUrl;
+                        });
+                        
+                        if (pageTarget && pageTarget.webSocketDebuggerUrl) {
+                            console.log('[EOZ CDP Manager] Selected page target:', pageTarget.title || pageTarget.type, pageTarget.webSocketDebuggerUrl);
+                            return pageTarget.webSocketDebuggerUrl;
+                        }
+                        
+                        throw new Error('No valid WebSocket URL found in targets');
+                    });
             })
             .catch(function(err) {
                 console.error('[EOZ CDP Manager] Auto-detect failed:', err);
