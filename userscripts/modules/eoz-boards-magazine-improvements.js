@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.3';
+    var VERSION = '2.9.4';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -287,6 +287,11 @@
             filterDropdowns.client = { group: group, dropdown: dropdown, btn: btn, menu: menu, populate: populateOptions, update: updateButtonText };
         } else if (id === 'material') {
             filterDropdowns.material = { group: group, dropdown: dropdown, btn: btn, menu: menu, populate: populateOptions, update: updateButtonText };
+        }
+        
+        // Populate initial options if provided
+        if (options && options.length > 0) {
+            populateOptions(options);
         }
         
         return group;
