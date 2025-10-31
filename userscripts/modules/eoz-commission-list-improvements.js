@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.4';
+    var VERSION = '2.0.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -157,38 +157,17 @@
                 menuItem.setAttribute('data-action', a.action);
                 menuItem.innerHTML = '<i class="fas ' + a.icon + '"></i> ' + a.text;
                 
-                // Handle clicks properly - avoid event conflicts that could cause logout
-                menuItem.addEventListener('click', function(e){
-                    // Close dropdown first
-                    checkbox.checked = false;
-                    
-                    // For navigation links (generate_page, show_details), allow normal navigation
-                    var isNavigationLink = a.action === 'print' || a.action === 'details';
-                    
-                    if (isNavigationLink) {
-                        // Allow normal navigation - don't prevent default
-                        // The href will handle navigation naturally
-                        return true;
-                    }
-                    
+                // For navigation links (generate_page, show_details), don't add click handler
+                // Let the browser handle navigation naturally - prevents logout issues
+                var isNavigationLink = a.action === 'print' || a.action === 'details';
+                
+                if (!isNavigationLink) {
                     // For action links (delete, archive, etc.) that may have confirm dialogs
-                    // Try to preserve original onclick if exists, otherwise navigate
+                    // Preserve original onclick handler if exists
                     if (originalLink.onclick) {
-                        try {
-                            var result = originalLink.onclick.call(menuItem, e);
-                            if (result === false) {
-                                e.preventDefault();
-                                return false;
-                            }
-                        } catch(err) {
-                            console.warn('[EOZ Commission List Module] Error executing original onclick:', err);
-                            // Fallback to normal navigation
-                        }
+                        menuItem.onclick = originalLink.onclick;
                     }
-                    
-                    // If no onclick or it didn't prevent default, navigate normally
-                    return true;
-                });
+                }
                 
                 menu.appendChild(menuItem);
             }
@@ -197,6 +176,13 @@
         container.appendChild(checkbox);
         container.appendChild(label);
         container.appendChild(menu);
+        
+        // Close dropdown when clicking a menu item (but don't interfere with link navigation)
+        menu.addEventListener('click', function(e){
+            // Only close dropdown if clicking on the menu itself, not on links
+            // This allows links to navigate normally
+            checkbox.checked = false;
+        });
         
         // Ensure only a single dropdown is open at a time
         label.addEventListener('click', function(){
