@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.1';
+    var VERSION = '1.0.2';
     
     if (typeof window === 'undefined' || !window.EOZ) {
         console.warn('[EOZ CDP Manager v' + VERSION + '] EOZ core not found');
@@ -328,12 +328,32 @@
 
     // Toggle panel visibility
     function toggleCDPPanel() {
+        console.log('[EOZ CDP Manager] togglePanel called');
         var panel = document.getElementById('eoz-cdp-panel');
         if (!panel) {
+            console.log('[EOZ CDP Manager] Panel not found, creating...');
             createCDPPanel();
             panel = document.getElementById('eoz-cdp-panel');
         }
-        panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+        if (!panel) {
+            console.error('[EOZ CDP Manager] Failed to create panel');
+            return;
+        }
+        
+        // Get current display value, accounting for !important styles
+        var currentDisplay = window.getComputedStyle(panel).display;
+        var isVisible = currentDisplay !== 'none' && currentDisplay !== '';
+        
+        console.log('[EOZ CDP Manager] Current display:', currentDisplay, 'isVisible:', isVisible);
+        
+        // Toggle visibility
+        if (isVisible) {
+            panel.style.setProperty('display', 'none', 'important');
+            console.log('[EOZ CDP Manager] Panel hidden');
+        } else {
+            panel.style.setProperty('display', 'flex', 'important');
+            console.log('[EOZ CDP Manager] Panel shown');
+        }
     }
 
     // Initialize

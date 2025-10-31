@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.1';
+    var VERSION = '1.0.2';
     
     if (typeof window === 'undefined' || !window.EOZ) {
         console.warn('[EOZ Scripts Viewer v' + VERSION + '] EOZ core not found');
@@ -170,11 +170,22 @@
         });
 
         // Open CDP settings
-        cdpBtn.addEventListener('click', function() {
+        cdpBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[EOZ Scripts Viewer] CDP Settings button clicked');
+            console.log('[EOZ Scripts Viewer] EOZ.CDPManager:', EOZ.CDPManager);
+            
             if (EOZ.CDPManager && EOZ.CDPManager.togglePanel) {
+                console.log('[EOZ Scripts Viewer] Calling CDPManager.togglePanel()');
                 EOZ.CDPManager.togglePanel();
+                
+                // Also close scripts viewer panel
+                panelEl.style.display = 'none';
+                ScriptsViewer.isVisible = false;
             } else {
-                alert('CDP Manager module not loaded');
+                console.error('[EOZ Scripts Viewer] CDP Manager not available');
+                alert('CDP Manager module not loaded. Check console for details.');
             }
         });
 
