@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.2';
+    var VERSION = '1.0.3';
     
     if (typeof window === 'undefined' || !window.EOZ) {
         console.warn('[EOZ Scripts Viewer v' + VERSION + '] EOZ core not found');
@@ -156,6 +156,11 @@
         var cdpBtn = document.getElementById('eoz-scripts-cdp');
         var contentDiv = document.getElementById('eoz-scripts-content');
 
+        if (!cdpBtn) {
+            console.error('[EOZ Scripts Viewer] CDP Settings button not found!');
+            return;
+        }
+
         // Close panel
         closeBtn.addEventListener('click', function() {
             panelEl.style.display = 'none';
@@ -170,24 +175,36 @@
         });
 
         // Open CDP settings
-        cdpBtn.addEventListener('click', function(e) {
+        cdpBtn.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
             console.log('[EOZ Scripts Viewer] CDP Settings button clicked');
-            console.log('[EOZ Scripts Viewer] EOZ.CDPManager:', EOZ.CDPManager);
             
-            if (EOZ.CDPManager && EOZ.CDPManager.togglePanel) {
+            // Check for EOZ in window
+            var EOZObj = window.EOZ || (typeof EOZ !== 'undefined' ? EOZ : null);
+            console.log('[EOZ Scripts Viewer] window.EOZ:', window.EOZ);
+            console.log('[EOZ Scripts Viewer] EOZObj:', EOZObj);
+            
+            if (EOZObj && EOZObj.CDPManager && EOZObj.CDPManager.togglePanel) {
                 console.log('[EOZ Scripts Viewer] Calling CDPManager.togglePanel()');
-                EOZ.CDPManager.togglePanel();
-                
-                // Also close scripts viewer panel
-                panelEl.style.display = 'none';
-                ScriptsViewer.isVisible = false;
+                try {
+                    EOZObj.CDPManager.togglePanel();
+                    
+                    // Also close scripts viewer panel
+                    panelEl.style.setProperty('display', 'none', 'important');
+                    ScriptsViewer.isVisible = false;
+                    console.log('[EOZ Scripts Viewer] Panel closed');
+                } catch (err) {
+                    console.error('[EOZ Scripts Viewer] Error calling togglePanel:', err);
+                    alert('Error opening CDP Settings: ' + err.message);
+                }
             } else {
                 console.error('[EOZ Scripts Viewer] CDP Manager not available');
+                console.error('[EOZ Scripts Viewer] EOZObj:', EOZObj);
+                console.error('[EOZ Scripts Viewer] EOZObj.CDPManager:', EOZObj ? EOZObj.CDPManager : 'EOZObj is null');
                 alert('CDP Manager module not loaded. Check console for details.');
             }
-        });
+        };
 
         // Update scripts list
         function updateScriptsList() {
