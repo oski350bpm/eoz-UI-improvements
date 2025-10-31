@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.5';
+    var VERSION = '2.9.6';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -331,9 +331,65 @@
                 }
             });
         } else {
-            // Try to extract from desktop view (separate cells)
+            // For sub-rows (veneers grouped view), try to get data from previous row
             var cells = row.querySelectorAll('td');
-            if (cells.length >= 6) {
+            var isSubRow = cells.length < 6;
+            
+            // If this looks like a sub-row (few cells), check previous row for data
+            var prevRowData = null;
+            if (isSubRow) {
+                var prevRow = row.previousElementSibling;
+                if (prevRow && prevRow.tagName === 'TR') {
+                    var prevMobileCell = prevRow.querySelector('.eoz-mobile-cell');
+                    if (prevMobileCell) {
+                        // Extract basic data from previous row's mobile cell
+                        var prevText = prevMobileCell.textContent || '';
+                        var prevLines = prevText.split(/\s*(?=Klient:|Nazwa zamówienia:|Płyta:|Okleina:|Wymiar:|Ilość:|Przygotowane:|Wprowadź)/);
+                        prevLines.forEach(function(line) {
+                            if (line.indexOf('Klient:') === 0 && !parts.client) {
+                                parts.client = line.replace(/^Klient:\s*/, '').trim().split(/\s*(?=Nazwa zamówienia:|Płyta:|Okleina:)/)[0];
+                            } else if (line.indexOf('Nazwa zamówienia:') === 0 && !parts.orderName) {
+                                parts.orderName = line.replace(/^Nazwa zamówienia:\s*/, '').trim().split(/\s*(?=Płyta:|Okleina:)/)[0];
+                            }
+                        });
+                        
+                        // Also try to get order code from previous row
+                        var prevLink = prevRow.querySelector('a[href*="/commission/show_details/"]');
+                        if (prevLink && !parts.orderCode) {
+                            var match = prevLink.href.match(/show_details\/(\d+)/);
+                            if (match) parts.orderCode = match[1];
+                        }
+                    } else {
+                        // Try to get from desktop cells with rowspan
+                        var prevCells = prevRow.querySelectorAll('td');
+                        prevCells.forEach(function(cell) {
+                            var rowspan = cell.getAttribute('rowspan');
+                            if (rowspan && parseInt(rowspan) > 1) {
+                                var cellText = (cell.textContent || '').trim();
+                                // Check if this is client (long text, no special chars)
+                                if (!parts.client && cellText && cellText.length > 5 && 
+                                    cellText.indexOf('_') === -1 && cellText.indexOf('/') === -1 &&
+                                    !cell.querySelector('a[href*="show_details"]') &&
+                                    !cell.querySelector('.switch-field')) {
+                                    parts.client = cellText;
+                                }
+                                // Check if this is order name (contains link to show_details)
+                                if (!parts.orderName) {
+                                    var orderLink = cell.querySelector('a[href*="show_details"]');
+                                    if (orderLink) {
+                                        parts.orderName = cellText.replace(/\s+/g, ' ').trim();
+                                        var match = orderLink.href.match(/show_details\/(\d+)/);
+                                        if (match) parts.orderCode = match[1];
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // Try to extract from desktop view (separate cells)
+            if (cells.length >= 6 || (!isSubRow && cells.length > 0)) {
                 // Desktop view - data in separate cells
                 // Find cells by their content patterns
                 for (var i = 0; i < cells.length; i++) {
@@ -364,11 +420,15 @@
                     }
                     
                     // Check for plate/material/veneer (contains material codes like D4033, W1100, U141, H3395, etc.)
-                    if (!parts.plate && cellText && (cellText.match(/^[A-Z]\d+/) || cellText.match(/^\d+\s+[A-Z]/))) {
-                        // Extract just the plate/veneer name, not dimensions
-                        var plateMatch = cellText.match(/([A-Z]\d+[^0-9]*|[A-Z]+[^x]*|[A-Z][A-Z0-9\s]+)/);
+                    if (!parts.plate && cellText && (cellText.match(/^[A-Z]\d+/) || cellText.match(/^\d+\s+[A-Z]/) || cellText.match(/^[A-Z][A-Z0-9\s]+\d+/))) {
+                        // For veneers, extract full name including thickness (e.g., "H3395 ST12 DĄB CORBRIDGE NATURALNY 1mm")
+                        // Try to extract up to "Wymiar:" or dimensions pattern
+                        var plateMatch = cellText.match(/^([A-Z]\d+[^x]*|[A-Z]+[^x]*|[A-Z][A-Z0-9\s]+(?:\s+\d+mm)?)/);
                         if (plateMatch) {
                             parts.plate = plateMatch[1].trim();
+                        } else {
+                            // Fallback: take everything before dimension pattern
+                            parts.plate = cellText.split(/\s*(?=\d+x\d+)/)[0].trim();
                         }
                     }
                 }
@@ -409,13 +469,15 @@
             });
         }
         
-        // Extract order code from links
-        var link = row.querySelector('a[href*="/commission/show_details/"]');
-        var orderCode = '';
-        if (link) {
-            var match = link.href.match(/show_details\/(\d+)/);
-            if (match) orderCode = match[1];
+        // Extract order code from links (if not already extracted from previous row)
+        if (!parts.orderCode) {
+            var link = row.querySelector('a[href*="/commission/show_details/"]');
+            if (link) {
+                var match = link.href.match(/show_details\/(\d+)/);
+                if (match) parts.orderCode = match[1];
+            }
         }
+        var orderCode = parts.orderCode || '';
         
         // Check prepared status
         var preparedRadio = row.querySelector('input[type="radio"][value="1"]');
