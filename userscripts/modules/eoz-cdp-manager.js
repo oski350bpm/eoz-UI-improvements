@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.4';
+    var VERSION = '1.0.5';
     
     if (typeof window === 'undefined' || !window.EOZ) {
         console.warn('[EOZ CDP Manager v' + VERSION + '] EOZ core not found');
@@ -46,18 +46,51 @@
         }
     }
 
+    // Fetch with CORS bypass using Tampermonkey API
+    function fetchCDP(url) {
+        return new Promise(function(resolve, reject) {
+            // Try to use GM_xmlhttpRequest if available (Tampermonkey API)
+            if (typeof GM_xmlhttpRequest !== 'undefined') {
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: url,
+                    onload: function(response) {
+                        if (response.status === 200) {
+                            try {
+                                var data = JSON.parse(response.responseText);
+                                resolve(data);
+                            } catch (e) {
+                                reject(new Error('Failed to parse JSON: ' + e.message));
+                            }
+                        } else {
+                            reject(new Error('HTTP ' + response.status + ': ' + response.statusText));
+                        }
+                    },
+                    onerror: function(err) {
+                        reject(new Error('Request failed: ' + (err.message || 'Unknown error')));
+                    }
+                });
+            } else {
+                // Fallback to regular fetch (may fail due to CORS)
+                fetch(url)
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('HTTP ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(resolve)
+                    .catch(reject);
+            }
+        });
+    }
+
     // Auto-detect CDP WebSocket URL from port
     function detectCDPUrl(port) {
         port = port || 9222;
         
         // First, try to get browser target from /json/version
-        return fetch('http://127.0.0.1:' + port + '/json/version')
-            .then(function(response) {
-                if (!response.ok) {
-                    throw new Error('CDP endpoint not available on port ' + port);
-                }
-                return response.json();
-            })
+        return fetchCDP('http://127.0.0.1:' + port + '/json/version')
             .then(function(versionData) {
                 // If /json/version has webSocketDebuggerUrl, use it (this is the browser target)
                 if (versionData && versionData.webSocketDebuggerUrl) {
@@ -66,13 +99,7 @@
                 }
                 
                 // Otherwise, try /json for page targets
-                return fetch('http://127.0.0.1:' + port + '/json')
-                    .then(function(response) {
-                        if (!response.ok) {
-                            throw new Error('Cannot fetch targets list');
-                        }
-                        return response.json();
-                    })
+                return fetchCDP('http://127.0.0.1:' + port + '/json')
                     .then(function(targets) {
                         if (!targets || targets.length === 0) {
                             throw new Error('No targets available. Open at least one tab in Chrome.');
