@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.0';
+    var VERSION = '1.0.1';
     
     if (typeof window === 'undefined' || !window.EOZ) {
         console.warn('[EOZ Scripts Viewer v' + VERSION + '] EOZ core not found');
@@ -120,9 +120,18 @@
 
     // Create scripts viewer panel
     function createScriptsViewer() {
+        if (document.getElementById('eoz-scripts-viewer')) {
+            return; // Already exists
+        }
+
+        if (!document.body) {
+            setTimeout(createScriptsViewer, 100);
+            return;
+        }
+
         var panel = document.createElement('div');
         panel.id = 'eoz-scripts-viewer';
-        panel.innerHTML = '<div style="position: fixed; top: 60px; right: 10px; width: 400px; max-height: calc(100vh - 80px); background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 10001; display: none; flex-direction: column; overflow: hidden;">' +
+        panel.innerHTML = '<div style="position: fixed !important; top: 60px !important; right: 10px !important; width: 400px !important; max-height: calc(100vh - 80px) !important; background: white !important; border-radius: 8px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important; z-index: 99998 !important; display: none !important; flex-direction: column !important; overflow: hidden !important;">' +
             '<div style="background: #007bff; color: white; padding: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">' +
             '<span>📜 Scripts & Modules</span>' +
             '<button id="eoz-scripts-close" style="background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">&times;</button>' +
@@ -270,14 +279,22 @@
 
     // Toggle panel visibility
     function toggleScriptsViewer() {
+        console.log('[EOZ Scripts Viewer] toggleScriptsViewer called');
         var panel = document.getElementById('eoz-scripts-viewer');
         if (!panel) {
+            console.log('[EOZ Scripts Viewer] Panel not found, creating...');
             createScriptsViewer();
             panel = document.getElementById('eoz-scripts-viewer');
         }
-        ScriptsViewer.isVisible = panel.style.display !== 'none';
-        panel.style.display = ScriptsViewer.isVisible ? 'none' : 'flex';
-        ScriptsViewer.isVisible = !ScriptsViewer.isVisible;
+        if (!panel) {
+            console.error('[EOZ Scripts Viewer] Failed to create panel');
+            return;
+        }
+        
+        var wasVisible = panel.style.display !== 'none' && panel.style.display !== '';
+        ScriptsViewer.isVisible = !wasVisible;
+        panel.style.display = ScriptsViewer.isVisible ? 'flex' : 'none';
+        console.log('[EOZ Scripts Viewer] Panel visibility:', ScriptsViewer.isVisible);
     }
 
     // Create toggle button
@@ -286,11 +303,17 @@
             return; // Already exists
         }
 
+        // Wait for body to be ready
+        if (!document.body) {
+            setTimeout(createToggleButton, 100);
+            return;
+        }
+
         var btn = document.createElement('button');
         btn.id = 'eoz-scripts-toggle-btn';
         btn.innerHTML = '📜';
         btn.title = 'View Scripts & Modules';
-        btn.style.cssText = 'position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #007bff; color: white; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 10000; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;';
+        btn.style.cssText = 'position: fixed !important; bottom: 20px !important; right: 20px !important; width: 50px !important; height: 50px !important; border-radius: 50% !important; background: #007bff !important; color: white !important; border: none !important; font-size: 20px !important; cursor: pointer !important; box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important; z-index: 99999 !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: transform 0.2s !important;';
         
         btn.addEventListener('mouseenter', function() {
             btn.style.transform = 'scale(1.1)';
@@ -298,19 +321,39 @@
         btn.addEventListener('mouseleave', function() {
             btn.style.transform = 'scale(1)';
         });
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[EOZ Scripts Viewer] Button clicked');
             toggleScriptsViewer();
         });
 
-        document.body.appendChild(btn);
+        try {
+            document.body.appendChild(btn);
+            console.log('[EOZ Scripts Viewer] Toggle button created');
+        } catch (e) {
+            console.error('[EOZ Scripts Viewer] Failed to create button:', e);
+            setTimeout(createToggleButton, 500);
+        }
     }
 
     // Initialize
     function init() {
-        EOZ.whenReady(function() {
-            createToggleButton();
-            createScriptsViewer();
-        });
+        // Try multiple initialization strategies
+        function tryInit() {
+            if (document.body) {
+                createToggleButton();
+                createScriptsViewer();
+            } else {
+                setTimeout(tryInit, 100);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', tryInit);
+        } else {
+            EOZ.whenReady(tryInit);
+        }
     }
 
     // Export API
