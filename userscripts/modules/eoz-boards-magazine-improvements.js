@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.2';
+    var VERSION = '2.9.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -113,8 +113,19 @@
         '.eoz-filter-group{flex:1!important;min-width:150px!important}\n' +
         '.eoz-filter-label{display:block!important;margin-bottom:6px!important;font-size:13px!important;font-weight:600!important;color:#333!important}\n' +
         '.eoz-filter-select{width:100%!important;padding:10px 12px!important;font-size:14px!important;border:2px solid #ddd!important;border-radius:6px!important;box-sizing:border-box!important;background:#fff!important;cursor:pointer!important;transition:border-color .2s!important}\n' +
-        '.eoz-filter-select[multiple]{min-height:120px!important;padding:8px!important}\n' +
         '.eoz-filter-select:focus{outline:none!important;border-color:#007bff!important}\n' +
+        '.eoz-filter-dropdown{position:relative!important;width:100%!important}\n' +
+        '.eoz-filter-dropdown-btn{width:100%!important;padding:12px 16px!important;font-size:14px!important;border:2px solid #ddd!important;border-radius:6px!important;box-sizing:border-box!important;background:#fff!important;cursor:pointer!important;transition:border-color .2s!important;text-align:left!important;min-height:48px!important;display:flex!important;align-items:center!important;justify-content:space-between!important}\n' +
+        '.eoz-filter-dropdown-btn:focus,.eoz-filter-dropdown-btn.open{outline:none!important;border-color:#007bff!important}\n' +
+        '.eoz-filter-dropdown-btn::after{content:"▼"!important;font-size:12px!important;margin-left:8px!important}\n' +
+        '.eoz-filter-dropdown-menu{display:none!important;position:absolute!important;top:100%!important;left:0!important;right:0!important;background:#fff!important;border:2px solid #007bff!important;border-radius:6px!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important;z-index:1000!important;max-height:300px!important;overflow-y:auto!important;margin-top:4px!important}\n' +
+        '.eoz-filter-dropdown-menu.open{display:block!important}\n' +
+        '.eoz-filter-dropdown-item{display:flex!important;align-items:center!important;padding:14px 16px!important;cursor:pointer!important;transition:background-color .2s!important;min-height:48px!important;gap:12px!important;border-bottom:1px solid #f0f0f0!important}\n' +
+        '.eoz-filter-dropdown-item:last-child{border-bottom:none!important}\n' +
+        '.eoz-filter-dropdown-item:hover{background-color:#f8f9fa!important}\n' +
+        '.eoz-filter-dropdown-item input[type="checkbox"]{width:20px!important;height:20px!important;margin:0!important;cursor:pointer!important;flex-shrink:0!important}\n' +
+        '.eoz-filter-dropdown-item label{margin:0!important;cursor:pointer!important;flex:1!important;font-size:14px!important;user-select:none!important}\n' +
+        '.eoz-filter-dropdown-counter{background:#007bff!important;color:#fff!important;border-radius:12px!important;padding:2px 8px!important;font-size:11px!important;font-weight:600!important;margin-left:auto!important;min-width:20px!important;text-align:center!important}\n' +
         '.eoz-highlight{background-color:#fff3cd!important;padding:2px 4px!important;border-radius:3px!important;font-weight:600!important}\n' +
         '.eoz-filter-reset-btn{padding:10px 20px!important;font-size:14px!important;background:#6c757d!important;color:#fff!important;border:none!important;border-radius:6px!important;cursor:pointer!important;transition:background-color .2s!important;margin-top:auto!important;align-self:flex-end!important}\n' +
         '.eoz-filter-reset-btn:hover{background:#5a6268!important}\n';
@@ -134,6 +145,152 @@
         clientSelect: null,
         materialSelect: null
     };
+    
+    var filterDropdowns = {
+        prepared: null,
+        client: null,
+        material: null
+    };
+    
+    function createFilterDropdown(labelText, id, options, onChange) {
+        var group = document.createElement('div');
+        group.className = 'eoz-filter-group';
+        
+        var label = document.createElement('label');
+        label.className = 'eoz-filter-label';
+        label.textContent = labelText;
+        
+        var dropdown = document.createElement('div');
+        dropdown.className = 'eoz-filter-dropdown';
+        
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'eoz-filter-dropdown-btn';
+        btn.setAttribute('data-filter-id', id);
+        
+        var btnText = document.createElement('span');
+        btnText.textContent = 'Wybierz...';
+        btn.appendChild(btnText);
+        
+        var counter = document.createElement('span');
+        counter.className = 'eoz-filter-dropdown-counter';
+        counter.style.display = 'none';
+        btn.appendChild(counter);
+        
+        var menu = document.createElement('div');
+        menu.className = 'eoz-filter-dropdown-menu';
+        
+        function updateButtonText() {
+            var selected = [];
+            var checkboxes = menu.querySelectorAll('input[type="checkbox"]:checked');
+            checkboxes.forEach(function(cb) {
+                selected.push(cb.value);
+            });
+            
+            if (selected.length === 0) {
+                btnText.textContent = 'Wybierz...';
+                counter.style.display = 'none';
+            } else if (selected.length === 1) {
+                var option = menu.querySelector('input[value="' + selected[0] + '"]');
+                if (option) {
+                    var labelEl = option.parentElement.querySelector('label');
+                    btnText.textContent = labelEl ? labelEl.textContent : selected[0];
+                }
+                counter.style.display = 'none';
+            } else {
+                btnText.textContent = 'Wybrano ' + selected.length;
+                counter.textContent = selected.length;
+                counter.style.display = 'inline-block';
+            }
+        }
+        
+        function populateOptions(newOptions) {
+            menu.innerHTML = '';
+            newOptions.forEach(function(option) {
+                var item = document.createElement('div');
+                item.className = 'eoz-filter-dropdown-item';
+                
+                var checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = option.value;
+                checkbox.id = id + '-' + option.value.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                
+                var labelEl = document.createElement('label');
+                labelEl.htmlFor = checkbox.id;
+                labelEl.textContent = option.text;
+                
+                item.appendChild(checkbox);
+                item.appendChild(labelEl);
+                
+                // Make entire item clickable
+                item.addEventListener('click', function(e) {
+                    if (e.target !== checkbox && e.target !== labelEl) {
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+                
+                checkbox.addEventListener('change', function() {
+                    updateButtonText();
+                    if (onChange) {
+                        var selected = [];
+                        menu.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
+                            selected.push(cb.value);
+                        });
+                        onChange(selected);
+                    }
+                });
+                
+                menu.appendChild(item);
+            });
+            updateButtonText();
+        }
+        
+        // Toggle dropdown
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isOpen = menu.classList.contains('open');
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.eoz-filter-dropdown-menu.open').forEach(function(m) {
+                if (m !== menu) m.classList.remove('open');
+                m.parentElement.querySelector('.eoz-filter-dropdown-btn').classList.remove('open');
+            });
+            
+            if (isOpen) {
+                menu.classList.remove('open');
+                btn.classList.remove('open');
+            } else {
+                menu.classList.add('open');
+                btn.classList.add('open');
+            }
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) {
+                menu.classList.remove('open');
+                btn.classList.remove('open');
+            }
+        });
+        
+        dropdown.appendChild(btn);
+        dropdown.appendChild(menu);
+        
+        group.appendChild(label);
+        group.appendChild(dropdown);
+        
+        // Store reference for updates
+        if (id === 'prepared') {
+            filterDropdowns.prepared = { group: group, dropdown: dropdown, btn: btn, menu: menu, populate: populateOptions, update: updateButtonText };
+        } else if (id === 'client') {
+            filterDropdowns.client = { group: group, dropdown: dropdown, btn: btn, menu: menu, populate: populateOptions, update: updateButtonText };
+        } else if (id === 'material') {
+            filterDropdowns.material = { group: group, dropdown: dropdown, btn: btn, menu: menu, populate: populateOptions, update: updateButtonText };
+        }
+        
+        return group;
+    }
 
     function extractRowData(row) {
         var parts = {};
@@ -255,13 +412,43 @@
         
         var normalizedSearch = normalizeSearchText(searchText);
         var normalizedText = normalizeSearchText(text);
-        var index = normalizedText.indexOf(normalizedSearch);
         
-        if (index === -1) return text;
+        if (normalizedText.indexOf(normalizedSearch) === -1) return text;
         
-        // Find the actual match in original text (accounting for case differences)
-        var regex = new RegExp('(' + searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-        return text.replace(regex, '<span class="eoz-highlight">$1</span>');
+        // Find all matches in the normalized text and map them back to original text
+        // Use character-by-character matching to handle case-insensitive matching properly
+        var result = '';
+        var textChars = text.split('');
+        var normalizedChars = normalizedText.split('');
+        var searchChars = normalizedSearch.split('');
+        
+        var i = 0;
+        while (i < textChars.length) {
+            // Check if we can match the search text starting at position i
+            var canMatch = true;
+            for (var j = 0; j < searchChars.length; j++) {
+                if (i + j >= normalizedChars.length || normalizedChars[i + j] !== searchChars[j]) {
+                    canMatch = false;
+                    break;
+                }
+            }
+            
+            if (canMatch) {
+                // Add highlighted match
+                var matchText = '';
+                for (var k = 0; k < searchChars.length; k++) {
+                    matchText += textChars[i + k];
+                }
+                result += '<span class="eoz-highlight">' + matchText + '</span>';
+                i += searchChars.length;
+            } else {
+                // Add regular character
+                result += textChars[i];
+                i++;
+            }
+        }
+        
+        return result;
     }
 
     function applySearchAndFilter() {
@@ -341,8 +528,8 @@
         });
         
         // Update filter options after filtering (delayed to avoid recursion)
-        // Only update if filter select elements are initialized
-        if (filterSelects.clientSelect && filterSelects.materialSelect) {
+        // Only update if filter dropdown elements are initialized
+        if (filterDropdowns.client && filterDropdowns.material) {
             setTimeout(function() {
                 updateFilterOptions();
             }, 100);
@@ -350,11 +537,25 @@
     }
 
     function highlightRowData(row, rowData, searchText) {
+        if (!searchText) return;
+        
+        // Remove existing highlights first
+        removeHighlights(row);
+        
         // Highlight text in the row - we'll search for text nodes and highlight them
         var walker = document.createTreeWalker(
             row,
             NodeFilter.SHOW_TEXT,
-            null,
+            {
+                acceptNode: function(node) {
+                    // Skip if parent is script, style, or already has highlight
+                    var parent = node.parentNode;
+                    if (!parent) return NodeFilter.FILTER_REJECT;
+                    if (parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+                    if (parent.classList && parent.classList.contains('eoz-highlight')) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            },
             false
         );
         
@@ -362,23 +563,36 @@
         var node;
         while (node = walker.nextNode()) {
             var text = node.textContent;
+            if (!text || text.trim().length === 0) continue;
+            
             var normalizedText = normalizeSearchText(text);
             var normalizedSearch = normalizeSearchText(searchText);
             
             if (normalizedText.indexOf(normalizedSearch) !== -1) {
-                nodesToReplace.push(node);
+                nodesToReplace.push({
+                    node: node,
+                    text: text
+                });
             }
         }
         
-        nodesToReplace.forEach(function(node) {
+        nodesToReplace.forEach(function(item) {
+            var node = item.node;
+            var text = item.text;
             var parent = node.parentNode;
+            
             if (parent && parent.tagName !== 'SCRIPT' && parent.tagName !== 'STYLE') {
-                var text = node.textContent;
                 var highlighted = highlightText(text, searchText);
-                if (highlighted !== text) {
-                    var span = document.createElement('span');
-                    span.innerHTML = highlighted;
-                    parent.replaceChild(span, node);
+                if (highlighted !== text && highlighted.indexOf('<span') !== -1) {
+                    // Create document fragment to replace
+                    var temp = document.createElement('div');
+                    temp.innerHTML = highlighted;
+                    
+                    // Replace node with fragment contents
+                    while (temp.firstChild) {
+                        parent.insertBefore(temp.firstChild, node);
+                    }
+                    parent.removeChild(node);
                 }
             }
         });
@@ -416,74 +630,35 @@
         var filterRow = document.createElement('div');
         filterRow.className = 'eoz-filter-row';
         
-        // Prepared filter (multiselect)
-        var preparedGroup = document.createElement('div');
-        preparedGroup.className = 'eoz-filter-group';
-        var preparedLabel = document.createElement('label');
-        preparedLabel.className = 'eoz-filter-label';
-        preparedLabel.textContent = 'Przygotowane:';
-        var preparedSelect = document.createElement('select');
-        preparedSelect.className = 'eoz-filter-select';
-        preparedSelect.multiple = true;
-        preparedSelect.innerHTML = '<option value="Tak">Tak</option><option value="Nie">Nie</option>';
-        preparedSelect.addEventListener('change', function() {
-            var selected = Array.from(this.selectedOptions).map(function(opt) { return opt.value; });
+        // Prepared filter (dropdown with checkboxes)
+        var preparedGroup = createFilterDropdown('Przygotowane:', 'prepared', [
+            { value: 'Tak', text: 'Tak' },
+            { value: 'Nie', text: 'Nie' }
+        ], function(selected) {
             searchFilterState.preparedFilter = selected;
             applySearchAndFilter();
-            // Update filter options after a delay
             setTimeout(function() {
                 updateFilterOptions();
             }, 50);
         });
-        filterSelects.preparedSelect = preparedSelect;
-        preparedGroup.appendChild(preparedLabel);
-        preparedGroup.appendChild(preparedSelect);
         
-        // Client filter (multiselect)
-        var clientGroup = document.createElement('div');
-        clientGroup.className = 'eoz-filter-group';
-        var clientLabel = document.createElement('label');
-        clientLabel.className = 'eoz-filter-label';
-        clientLabel.textContent = 'Klient:';
-        var clientSelect = document.createElement('select');
-        clientSelect.className = 'eoz-filter-select';
-        clientSelect.multiple = true;
-        clientSelect.innerHTML = '';
-        clientSelect.addEventListener('change', function() {
-            var selected = Array.from(this.selectedOptions).map(function(opt) { return opt.value; });
+        // Client filter (dropdown with checkboxes)
+        var clientGroup = createFilterDropdown('Klient:', 'client', [], function(selected) {
             searchFilterState.clientFilter = selected;
             applySearchAndFilter();
-            // Update filter options after a delay
             setTimeout(function() {
                 updateFilterOptions();
             }, 50);
         });
-        filterSelects.clientSelect = clientSelect;
-        clientGroup.appendChild(clientLabel);
-        clientGroup.appendChild(clientSelect);
         
-        // Material filter (multiselect)
-        var materialGroup = document.createElement('div');
-        materialGroup.className = 'eoz-filter-group';
-        var materialLabel = document.createElement('label');
-        materialLabel.className = 'eoz-filter-label';
-        materialLabel.textContent = 'Materiał:';
-        var materialSelect = document.createElement('select');
-        materialSelect.className = 'eoz-filter-select';
-        materialSelect.multiple = true;
-        materialSelect.innerHTML = '';
-        materialSelect.addEventListener('change', function() {
-            var selected = Array.from(this.selectedOptions).map(function(opt) { return opt.value; });
+        // Material filter (dropdown with checkboxes)
+        var materialGroup = createFilterDropdown('Materiał:', 'material', [], function(selected) {
             searchFilterState.materialFilter = selected;
             applySearchAndFilter();
-            // Update filter options after a delay
             setTimeout(function() {
                 updateFilterOptions();
             }, 50);
         });
-        filterSelects.materialSelect = materialSelect;
-        materialGroup.appendChild(materialLabel);
-        materialGroup.appendChild(materialSelect);
         
         // Reset button
         var resetBtn = document.createElement('button');
@@ -496,10 +671,25 @@
             searchFilterState.clientFilter = [];
             searchFilterState.materialFilter = [];
             searchInput.value = '';
-            // Clear all selected options
-            Array.from(preparedSelect.options).forEach(function(opt) { opt.selected = false; });
-            Array.from(clientSelect.options).forEach(function(opt) { opt.selected = false; });
-            Array.from(materialSelect.options).forEach(function(opt) { opt.selected = false; });
+            // Clear all checkboxes
+            if (filterDropdowns.prepared) {
+                filterDropdowns.prepared.menu.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                    cb.checked = false;
+                });
+                filterDropdowns.prepared.update();
+            }
+            if (filterDropdowns.client) {
+                filterDropdowns.client.menu.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                    cb.checked = false;
+                });
+                filterDropdowns.client.update();
+            }
+            if (filterDropdowns.material) {
+                filterDropdowns.material.menu.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                    cb.checked = false;
+                });
+                filterDropdowns.material.update();
+            }
             applySearchAndFilter();
             // Update filter options after a delay
             setTimeout(function() {
@@ -524,7 +714,7 @@
     }
 
     function updateFilterOptions() {
-        if (!filterSelects.clientSelect || !filterSelects.materialSelect) return;
+        if (!filterDropdowns.client || !filterDropdowns.material) return;
         
         var tbody = document.querySelector('table tbody');
         if (!tbody) return;
@@ -567,10 +757,6 @@
                 if (!materialMatches) matches = false;
             }
             
-            // For material list: apply client filter (so we show only materials for selected clients)
-            // We'll build two separate sets: one for clients (with material filter applied) and one for materials (with client filter applied)
-            // For now, let's just use visible rows after applying current filters
-            
             if (matches) {
                 if (rowData.client) clients.add(rowData.client);
             }
@@ -610,44 +796,57 @@
                 if (!clientMatches) matches = false;
             }
             
-            // Don't apply material filter when building material list
-            
             if (matches) {
                 if (rowData.plate) materials.add(rowData.plate);
             }
         });
         
         // Get currently selected values before updating
-        var selectedClients = Array.from(filterSelects.clientSelect.selectedOptions).map(function(opt) { return opt.value; });
-        var selectedMaterials = Array.from(filterSelects.materialSelect.selectedOptions).map(function(opt) { return opt.value; });
+        var selectedClients = [];
+        if (filterDropdowns.client) {
+            filterDropdowns.client.menu.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
+                selectedClients.push(cb.value);
+            });
+        }
+        
+        var selectedMaterials = [];
+        if (filterDropdowns.material) {
+            filterDropdowns.material.menu.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
+                selectedMaterials.push(cb.value);
+            });
+        }
         
         // Update client filter options
-        filterSelects.clientSelect.innerHTML = '';
-        Array.from(clients).sort().forEach(function(client) {
-            var option = document.createElement('option');
-            option.value = client;
-            option.textContent = client;
-            if (selectedClients.indexOf(client) !== -1) {
-                option.selected = true;
-            }
-            filterSelects.clientSelect.appendChild(option);
-        });
+        if (filterDropdowns.client) {
+            var clientOptions = Array.from(clients).sort().map(function(client) {
+                return { value: client, text: client };
+            });
+            filterDropdowns.client.populate(clientOptions);
+            // Restore selected values
+            selectedClients.forEach(function(value) {
+                var checkbox = filterDropdowns.client.menu.querySelector('input[value="' + value.replace(/"/g, '&quot;') + '"]');
+                if (checkbox) checkbox.checked = true;
+            });
+            filterDropdowns.client.update();
+        }
         
         // Update material filter options
-        filterSelects.materialSelect.innerHTML = '';
-        Array.from(materials).sort().forEach(function(material) {
-            var option = document.createElement('option');
-            option.value = material;
-            option.textContent = material;
-            if (selectedMaterials.indexOf(material) !== -1) {
-                option.selected = true;
-            }
-            filterSelects.materialSelect.appendChild(option);
-        });
+        if (filterDropdowns.material) {
+            var materialOptions = Array.from(materials).sort().map(function(material) {
+                return { value: material, text: material };
+            });
+            filterDropdowns.material.populate(materialOptions);
+            // Restore selected values
+            selectedMaterials.forEach(function(value) {
+                var checkbox = filterDropdowns.material.menu.querySelector('input[value="' + value.replace(/"/g, '&quot;') + '"]');
+                if (checkbox) checkbox.checked = true;
+            });
+            filterDropdowns.material.update();
+        }
     }
 
     function populateFilterOptions() {
-        if (!filterSelects.clientSelect || !filterSelects.materialSelect) return;
+        if (!filterDropdowns.client || !filterDropdowns.material) return;
         
         var tbody = document.querySelector('table tbody');
         if (!tbody) return;
@@ -663,22 +862,16 @@
         });
         
         // Populate client filter
-        filterSelects.clientSelect.innerHTML = '';
-        Array.from(clients).sort().forEach(function(client) {
-            var option = document.createElement('option');
-            option.value = client;
-            option.textContent = client;
-            filterSelects.clientSelect.appendChild(option);
+        var clientOptions = Array.from(clients).sort().map(function(client) {
+            return { value: client, text: client };
         });
+        filterDropdowns.client.populate(clientOptions);
         
         // Populate material filter
-        filterSelects.materialSelect.innerHTML = '';
-        Array.from(materials).sort().forEach(function(material) {
-            var option = document.createElement('option');
-            option.value = material;
-            option.textContent = material;
-            filterSelects.materialSelect.appendChild(option);
+        var materialOptions = Array.from(materials).sort().map(function(material) {
+            return { value: material, text: material };
         });
+        filterDropdowns.material.populate(materialOptions);
     }
 
     function run() {
