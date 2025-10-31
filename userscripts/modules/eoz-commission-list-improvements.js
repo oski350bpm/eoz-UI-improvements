@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.5';
+    var VERSION = '2.0.6';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -179,8 +179,14 @@
         
         // Close dropdown when clicking a menu item (but don't interfere with link navigation)
         menu.addEventListener('click', function(e){
-            // Only close dropdown if clicking on the menu itself, not on links
-            // This allows links to navigate normally
+            // Check if click was on a link - if so, don't prevent default, just close dropdown
+            var clickedLink = e.target.closest && e.target.closest('a');
+            if (clickedLink) {
+                // Let the link navigate normally - just close dropdown
+                checkbox.checked = false;
+                return; // Don't prevent default - allow navigation
+            }
+            // If clicking on menu background, close dropdown
             checkbox.checked = false;
         });
         

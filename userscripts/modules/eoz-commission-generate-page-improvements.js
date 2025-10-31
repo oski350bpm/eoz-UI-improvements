@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.4';
+    var VERSION = '1.0.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -302,7 +302,7 @@
     }
 
     /**
-     * Dodaje podział strony A4 - lista formatek na drugiej stronie
+     * Dodaje podział strony A4 - lista formatek na drugiej stronie jeśli nie zmieści się na pierwszej
      */
     function addPageBreakForFormatsList() {
         // Znajdź nagłówek "Lista formatek"
@@ -315,21 +315,90 @@
             return;
         }
         
-        // Dodaj klasę do nagłówka i jego kontenera dla podziału strony
+        // Znajdź tabelę listy formatek
+        var table = listaFormatHeading.nextElementSibling;
+        while (table && table.tagName !== 'TABLE') {
+            table = table.nextElementSibling;
+        }
+        
+        if (!table) {
+            console.warn('[EOZ Commission Generate Page Module] Formats list table not found');
+            return;
+        }
+        
+        // Dodaj klasę do nagłówka
         listaFormatHeading.classList.add('eoz-generate-page-format-list-heading');
+        table.classList.add('eoz-generate-page-format-list-table');
+        
+        // Funkcja sprawdzająca czy tabela zmieści się na pierwszej stronie
+        function checkTableHeight() {
+            // W trybie drukowania A4: wysokość strony ~29.7cm (około 1120px przy 96dpi)
+            // Marginesy: około 2cm góra/dół = 4cm razem
+            // Dostępna wysokość: ~25.7cm = około 970px
+            // Sprawdzamy przybliżoną wysokość sekcji przed "Lista formatek"
+            var estimatedAvailableHeight = 970; // px w trybie drukowania
+            
+            // Znajdź wszystkie sekcje przed "Lista formatek"
+            var allHeadings = Array.from(document.querySelectorAll('h1, h2'));
+            var listaIndex = allHeadings.findIndex(function(h) { return h === listaFormatHeading; });
+            var sectionsBefore = allHeadings.slice(0, listaIndex);
+            
+            // Szacunkowa wysokość sekcji przed (bardzo przybliżona)
+            var estimatedBeforeHeight = sectionsBefore.length * 150; // każda sekcja ~150px
+            
+            // Sprawdź wysokość tabeli
+            var tableHeight = table.offsetHeight || table.scrollHeight;
+            
+            // Jeśli tabela + sekcje przed > dostępna wysokość, użyj page-break
+            var needsPageBreak = (estimatedBeforeHeight + tableHeight) > estimatedAvailableHeight;
+            
+            return needsPageBreak;
+        }
+        
+        // Sprawdź wysokość przy załadowaniu strony
+        var needsBreak = checkTableHeight();
         
         // Dodaj style CSS dla podziału strony (działa w trybie drukowania)
         var pageBreakStyles = '' +
             '@media print {\n' +
-            '  .eoz-generate-page-format-list-heading {\n' +
+            '  /* Jeśli tabela nie zmieści się, użyj page-break-before */\n' +
+            '  .eoz-generate-page-format-list-heading.eoz-needs-pagebreak {\n' +
             '    page-break-before: always !important;\n' +
             '    break-before: page !important;\n' +
+            '  }\n' +
+            '  /* Jeśli tabela się zmieści, pozwól na naturalny flow */\n' +
+            '  .eoz-generate-page-format-list-heading:not(.eoz-needs-pagebreak) {\n' +
+            '    page-break-before: auto !important;\n' +
+            '    break-before: auto !important;\n' +
+            '  }\n' +
+            '  /* Unikaj łamania tabeli */\n' +
+            '  .eoz-generate-page-format-list-table {\n' +
+            '    page-break-inside: avoid !important;\n' +
+            '    break-inside: avoid !important;\n' +
             '  }\n' +
             '}\n';
         
         window.EOZ.injectStyles(pageBreakStyles, { id: 'eoz-generate-page-format-list-pagebreak-css' });
         
-        console.log('[EOZ Commission Generate Page Module] Added page break for "Lista formatek"');
+        // Jeśli potrzebny page-break, dodaj klasę
+        if (needsBreak) {
+            listaFormatHeading.classList.add('eoz-needs-pagebreak');
+            console.log('[EOZ Commission Generate Page Module] Formats list will start on new page (table too large)');
+        } else {
+            console.log('[EOZ Commission Generate Page Module] Formats list will print on first page (table fits)');
+        }
+        
+        // Sprawdź ponownie po załadowaniu obrazów (które mogą zmienić wysokość)
+        window.addEventListener('load', function() {
+            var needsBreakAfterLoad = checkTableHeight();
+            if (needsBreakAfterLoad && !listaFormatHeading.classList.contains('eoz-needs-pagebreak')) {
+                listaFormatHeading.classList.add('eoz-needs-pagebreak');
+                console.log('[EOZ Commission Generate Page Module] Updated: Formats list needs new page after images loaded');
+            } else if (!needsBreakAfterLoad && listaFormatHeading.classList.contains('eoz-needs-pagebreak')) {
+                listaFormatHeading.classList.remove('eoz-needs-pagebreak');
+                console.log('[EOZ Commission Generate Page Module] Updated: Formats list fits on first page after images loaded');
+            }
+        });
     }
 
     /**
