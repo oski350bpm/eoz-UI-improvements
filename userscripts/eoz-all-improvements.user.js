@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         EOZ All UI Improvements
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      3.5.85
-// @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów (Boards + Veneers)
+// @version      3.5.87
+// @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów (Boards + Veneers + CDP Manager + Scripts Viewer)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js
 // @downloadURL  https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js
@@ -13,12 +13,14 @@
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-boards-magazine-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-machines-control-panel-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-commission-generate-page-improvements.js
+// @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-cdp-manager.js
+// @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-scripts-viewer.js
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    var VERSION = '3.5.85';
+    var VERSION = '3.5.87';
     
     if (!window.EOZ) {
         console.error('[EOZ All UI v' + VERSION + '] Core not loaded!');
@@ -46,5 +48,11 @@
     }
     if (window.EOZ.ControlPanelOrder && window.EOZ.ControlPanelOrder.VERSION) {
         console.log('[EOZ All UI v' + VERSION + '] Control Panel Order Module v' + window.EOZ.ControlPanelOrder.VERSION);
+    }
+    if (window.EOZ.CDPManager && window.EOZ.CDPManager.VERSION) {
+        console.log('[EOZ All UI v' + VERSION + '] CDP Manager Module v' + window.EOZ.CDPManager.VERSION);
+    }
+    if (window.EOZ.ScriptsViewer && window.EOZ.ScriptsViewer.VERSION) {
+        console.log('[EOZ All UI v' + VERSION + '] Scripts Viewer Module v' + window.EOZ.ScriptsViewer.VERSION);
     }
 })();
