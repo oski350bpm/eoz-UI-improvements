@@ -483,7 +483,12 @@
         var doc = parser.parseFromString(html, 'text/html');
         var table = doc.querySelector('.dynamic-table-container table');
         if (!table) {
-            return [];
+            console.warn(MODULE_NAME, 'Table not found in HTML response for', meta.operationDate, 'Trying alternative selectors...');
+            table = doc.querySelector('table');
+            if (!table) {
+                console.warn(MODULE_NAME, 'No table found at all in HTML response for', meta.operationDate);
+                return [];
+            }
         }
 
         var thead = table.querySelector('thead');
@@ -506,7 +511,7 @@
 
             if (cells.length === 1) {
                 var text = (cells[0].textContent || '').trim().toLowerCase();
-                if (text.indexOf('brak rekord') !== -1) {
+                if (text.indexOf('brak rekord') !== -1 || text.indexOf('brak zleceń') !== -1) {
                     return;
                 }
             }
@@ -541,16 +546,19 @@
             });
         });
 
+        console.info(MODULE_NAME, 'Parsed', results.length, 'rows from HTML for date', meta.operationDate);
         return results;
     }
 
     function fetchDayOrders(date) {
         var iso = typeof date === 'string' ? date : formatIsoDate(date);
+        var targetColumns = state.tables.todo ? getColumnCount(state.tables.todo) : 13;
+        
         if (htmlCache[iso]) {
             return Promise.resolve(parseOrderRowsFromHtml(htmlCache[iso], {
                 operationDate: iso,
                 source: 'week',
-                targetColumns: getColumnCount(state.tables.todo)
+                targetColumns: targetColumns
             }));
         }
 
@@ -560,29 +568,36 @@
             return Promise.resolve(parseOrderRowsFromHtml(sessionHtml, {
                 operationDate: iso,
                 source: 'week',
-                targetColumns: getColumnCount(state.tables.todo)
+                targetColumns: targetColumns
             }));
         }
 
         var url = buildControlPanelUrl(iso);
+        console.info(MODULE_NAME, 'Fetching orders for date:', iso, 'URL:', url);
         return fetchHtmlWithRetry(url, 1).then(function(html) {
+            console.info(MODULE_NAME, 'Received HTML response for', iso, 'length:', html.length);
             htmlCache[iso] = html;
             writeSessionCache(iso, html);
             return parseOrderRowsFromHtml(html, {
                 operationDate: iso,
                 source: 'week',
-                targetColumns: getColumnCount(state.tables.todo)
+                targetColumns: targetColumns
             });
+        }).catch(function(error) {
+            console.error(MODULE_NAME, 'Error fetching orders for', iso, error);
+            throw error;
         });
     }
 
     function fetchUnfinishedOrders() {
         var url = buildNotFinishedUrl();
+        var targetColumns = state.tables.todo ? getColumnCount(state.tables.todo) : 13;
+        
         if (notFinishedHtmlCache) {
             return Promise.resolve(parseOrderRowsFromHtml(notFinishedHtmlCache, {
                 operationDate: 'unfinished',
                 source: 'unfinished',
-                targetColumns: getColumnCount(state.tables.todo)
+                targetColumns: targetColumns
             }));
         }
 
@@ -592,23 +607,34 @@
             return Promise.resolve(parseOrderRowsFromHtml(sessionHtml, {
                 operationDate: 'unfinished',
                 source: 'unfinished',
-                targetColumns: getColumnCount(state.tables.todo)
+                targetColumns: targetColumns
             }));
         }
 
+        console.info(MODULE_NAME, 'Fetching unfinished orders, URL:', url);
         return fetchHtmlWithRetry(url, 1).then(function(html) {
+            console.info(MODULE_NAME, 'Received HTML response for unfinished orders, length:', html.length);
             notFinishedHtmlCache = html;
             writeSessionCache('unfinished', html);
             return parseOrderRowsFromHtml(html, {
                 operationDate: 'unfinished',
                 source: 'unfinished',
-                targetColumns: getColumnCount(state.tables.todo)
+                targetColumns: targetColumns
             });
+        }).catch(function(error) {
+            console.error(MODULE_NAME, 'Error fetching unfinished orders', error);
+            throw error;
         });
     }
 
     function loadTodoDataset(weekDates) {
+        var todayIso = formatIsoDate(new Date());
         var weekPromises = weekDates.map(function(date) {
+            var dateIso = formatIsoDate(date);
+            if (dateIso === todayIso && state.initialTodayRows && state.initialTodayRows.length > 0) {
+                console.info(MODULE_NAME, 'Using initial rows for today', dateIso, state.initialTodayRows.length);
+                return Promise.resolve(state.initialTodayRows);
+            }
             return fetchDayOrders(date).catch(function(error) {
                 console.warn(MODULE_NAME, 'Failed to fetch orders for date', date, error);
                 return [];
@@ -617,17 +643,24 @@
 
         return Promise.all([
             Promise.all(weekPromises).then(function(results) {
-                return [].concat.apply([], results);
+                var allWeekRows = [].concat.apply([], results);
+                console.info(MODULE_NAME, 'Aggregated week rows:', allWeekRows.length);
+                return allWeekRows;
             }),
             fetchUnfinishedOrders().catch(function(error) {
                 console.warn(MODULE_NAME, 'Failed to fetch unfinished orders', error);
                 return [];
             })
         ]).then(function(tuple) {
-            return {
+            var result = {
                 weekRows: tuple[0],
                 unfinishedRows: tuple[1]
             };
+            console.info(MODULE_NAME, 'Todo dataset loaded:', {
+                weekRows: result.weekRows.length,
+                unfinishedRows: result.unfinishedRows.length
+            });
+            return result;
         });
     }
 
@@ -784,6 +817,7 @@
         updateWeekNavButtons();
         showLoadingState();
 
+        console.info(MODULE_NAME, 'Loading data for week dates:', state.week.dates.map(formatIsoDate));
         Promise.all([
             loadTodoDataset(state.week.dates),
             loadDoneDataset(state.week.dates)
@@ -792,13 +826,21 @@
                 var todoData = results[0];
                 var doneRows = results[1];
 
+                console.info(MODULE_NAME, 'Data loaded - Todo:', {
+                    weekRows: (todoData.weekRows || []).length,
+                    unfinishedRows: (todoData.unfinishedRows || []).length
+                }, 'Done:', doneRows.length);
+
                 state.data.todo = todoData;
                 state.data.done = doneRows;
 
                 renderTodoTab(todoData);
                 renderDoneTab(doneRows);
             })
-            .catch(showErrorState);
+            .catch(function(error) {
+                console.error(MODULE_NAME, 'Error in loadAndRenderData', error);
+                showErrorState(error);
+            });
     }
 
     function updateWeekNavButtons() {
@@ -928,7 +970,62 @@
             state.tables.todo = legacyTable;
             state.tables.todoBody = legacyBody || null;
 
+            console.info(MODULE_NAME, 'Found legacy table, columns:', getColumnCount(legacyTable), 'existing rows:', legacyBody ? legacyBody.querySelectorAll('tr').length : 0);
+
             if (legacyBody) {
+                var existingRows = legacyBody.querySelectorAll('tr');
+                console.info(MODULE_NAME, 'Found', existingRows.length, 'existing rows in legacy table');
+                
+                var initialTodayRows = [];
+                if (existingRows.length > 0) {
+                    var todayIso = formatIsoDate(new Date());
+                    var headers = legacyTable.querySelector('thead');
+                    var headerCells = headers ? headers.querySelectorAll('th') : [];
+                    var statusIndex = -1;
+                    var numberIndex = 1;
+                    for (var hi = 0; hi < headerCells.length; hi++) {
+                        var headerText = (headerCells[hi].textContent || '').trim().toLowerCase();
+                        if (headerText.indexOf('status') !== -1) {
+                            statusIndex = hi;
+                        }
+                        if (headerText.indexOf('zlecen') !== -1) {
+                            numberIndex = hi;
+                        }
+                    }
+                    
+                    Array.from(existingRows).forEach(function(row) {
+                        var cells = row.querySelectorAll('td');
+                        if (!cells.length || cells.length === 1) {
+                            var text = (cells[0].textContent || '').trim().toLowerCase();
+                            if (text.indexOf('brak') !== -1 || text.indexOf('filtruj') !== -1 || text.indexOf('wyczyść') !== -1) {
+                                return;
+                            }
+                        }
+                        
+                        var statusText = statusIndex !== -1 && cells[statusIndex] ? (cells[statusIndex].textContent || '').trim() : '';
+                        var orderNumber = cells[numberIndex] ? (cells[numberIndex].textContent || '').trim() : '';
+                        
+                        var imported = document.importNode(row, true);
+                        imported.dataset.operationDate = todayIso;
+                        imported.dataset.source = 'initial';
+                        if (statusText) imported.dataset.statusRaw = statusText;
+                        if (orderNumber) imported.dataset.orderNumber = orderNumber;
+                        
+                        initialTodayRows.push({
+                            node: imported,
+                            status: statusText,
+                            orderNumber: orderNumber,
+                            operationDate: todayIso,
+                            source: 'initial'
+                        });
+                    });
+                    
+                    if (initialTodayRows.length > 0) {
+                        console.info(MODULE_NAME, 'Preserved', initialTodayRows.length, 'existing data rows for today', todayIso);
+                        state.initialTodayRows = initialTodayRows;
+                    }
+                }
+                
                 legacyBody.innerHTML = '';
             }
 
@@ -942,7 +1039,15 @@
             state.contentContainers[TABS.DONE.key].appendChild(doneTable);
             state.tables.done = doneTable;
             state.tables.doneBody = doneBody || null;
+            
+            console.info(MODULE_NAME, 'Tables initialized:', {
+                todo: !!state.tables.todo,
+                todoBody: !!state.tables.todoBody,
+                done: !!state.tables.done,
+                doneBody: !!state.tables.doneBody
+            });
         } else {
+            console.warn(MODULE_NAME, 'Legacy table not found in container');
             ensureTabContentPlaceholders();
         }
 
@@ -963,16 +1068,27 @@
         state.activeTab = state.activeTab || getInitialTab();
 
         injectStyles();
-        buildUnifiedPanel();
+        var panelBuilt = buildUnifiedPanel();
+        if (!panelBuilt) {
+            console.error(MODULE_NAME, 'Failed to build unified panel');
+            return;
+        }
         setActiveTab(state.activeTab, false);
         updateWeekInfoDisplay(weekRange);
-        loadAndRenderData();
-
-        console.info(MODULE_NAME, 'Unified view activation placeholder', {
+        
+        console.info(MODULE_NAME, 'Unified view activated', {
             referenceDate: referenceDate,
             weekRange: weekRange,
-            weekDates: weekDates
+            weekDates: weekDates.map(formatIsoDate),
+            hasTables: {
+                todo: !!state.tables.todo,
+                todoBody: !!state.tables.todoBody,
+                done: !!state.tables.done,
+                doneBody: !!state.tables.doneBody
+            }
         });
+        
+        loadAndRenderData();
         // Implementation will be added in subsequent tasks.
     }
 
