@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.2';
+    var VERSION = '2.1.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -597,6 +597,13 @@
                             }
                         }
                         result.row.setAttribute('data-current-machine', originalName ? (originalName.name || result.data.currentMachine) : result.data.currentMachine);
+                        
+                        // Re-apply filter if machine filter is active
+                        if (searchFilterState.machineFilter && searchFilterState.machineFilter.length > 0) {
+                            setTimeout(function() {
+                                applySearchAndFilter();
+                            }, 100);
+                        }
                     });
                 }).catch(function(error) {
                     // Silently handle errors - don't break the UI
@@ -752,14 +759,36 @@
         var headerNames = [];
         headers.forEach(function(th) { headerNames.push((th.textContent || '').trim()); });
 
-        var idxKod = headerNames.indexOf('Kod');
-        var idxNazwa = headerNames.indexOf('Nazwa zlecenia');
-        var idxStatus = headerNames.indexOf('Status');
-        var idxKlient = headerNames.indexOf('Kod klienta');
+        // Use findColumnIndex to get proper indices (handles partial matches)
+        var idxKod = findColumnIndex('Kod');
+        var idxNazwa = findColumnIndex('Nazwa zlecenia');
+        var idxStatus = findColumnIndex('Status');
+        var idxKlient = findColumnIndex('Kod klienta');
 
         var kod = idxKod >= 0 && cells[idxKod] ? (cells[idxKod].textContent || '').trim() : '';
         var nazwa = idxNazwa >= 0 && cells[idxNazwa] ? (cells[idxNazwa].textContent || '').trim() : '';
-        var status = idxStatus >= 0 && cells[idxStatus] ? (cells[idxStatus].textContent || '').trim() : '';
+        
+        // For status - try to get original status first (before enhancement)
+        var status = '';
+        if (idxStatus >= 0 && cells[idxStatus]) {
+            var statusCell = cells[idxStatus];
+            // Check if status was enhanced - get original
+            var originalStatus = statusCell.getAttribute('data-original-status');
+            if (originalStatus) {
+                status = originalStatus;
+            } else {
+                // Get current text, but remove badge if exists
+                var statusText = statusCell.textContent || '';
+                // If badge exists, status is first line before badge
+                var badge = statusCell.querySelector('.eoz-machine-badge');
+                if (badge) {
+                    status = statusText.split(badge.textContent)[0].trim();
+                } else {
+                    status = statusText.trim();
+                }
+            }
+        }
+        
         var klient = idxKlient >= 0 && cells[idxKlient] ? (cells[idxKlient].textContent || '').trim() : '';
         var machine = row.getAttribute('data-current-machine') || '';
 
@@ -1250,10 +1279,17 @@
                 enhanceStatusColumn();
                 applyRowColoring();
                 
-                // Add production process bars
+                // Add production process bars (with delay to ensure machine data is fetched)
                 setTimeout(function() {
                     addProductionProcessBars();
-                }, 1000);
+                }, 1500);
+                
+                // Re-run filtering after machine data is loaded (for machine filter)
+                setTimeout(function() {
+                    if (searchFilterState.machineFilter && searchFilterState.machineFilter.length > 0) {
+                        applySearchAndFilter();
+                    }
+                }, 2000);
                 
                 console.log('[EOZ Commission List Module v' + VERSION + '] Applied');
             })
