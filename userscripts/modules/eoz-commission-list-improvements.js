@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.3';
+    var VERSION = '2.2.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -185,7 +185,9 @@
 
         return new Promise(function(resolve, reject) {
             var xhr = new XMLHttpRequest();
-            var url = '/index.php/pl/commission/show_details/' + commissionId;
+            // Try different URL patterns
+            var baseUrl = window.location.origin;
+            var url = baseUrl + '/index.php/pl/commission/show_details/' + commissionId;
             xhr.open('GET', url, true);
             xhr.onload = function() {
                 if (xhr.status === 200) {
@@ -193,18 +195,27 @@
                         var parser = new DOMParser();
                         var doc = parser.parseFromString(xhr.responseText, 'text/html');
                         
-                        // Find "Proces produkcyjny" heading
+                        // Debug: log if parsing fails
+                        var parseError = doc.querySelector('parsererror');
+                        if (parseError) {
+                            console.warn('[EOZ Commission List] XML parse error for commission', commissionId);
+                            resolve(null);
+                            return;
+                        }
+                        
+                        // Find "Ścieżka produkcyjna zlecenia" heading (actual heading on page)
                         var headings = doc.querySelectorAll('h2, h3');
                         var processHeading = null;
                         for (var i = 0; i < headings.length; i++) {
                             var text = (headings[i].textContent || '').trim();
-                            if (text.indexOf('Proces produkcyjny') !== -1) {
+                            if (text.indexOf('Ścieżka produkcyjna') !== -1 || text.indexOf('Proces produkcyjny') !== -1) {
                                 processHeading = headings[i];
                                 break;
                             }
                         }
                         
                         if (!processHeading) {
+                            console.debug('[EOZ Commission List] Process heading not found for commission', commissionId);
                             resolve(null);
                             return;
                         }
@@ -216,6 +227,7 @@
                         }
                         
                         if (!table) {
+                            console.debug('[EOZ Commission List] Process table not found for commission', commissionId);
                             resolve(null);
                             return;
                         }
@@ -226,23 +238,51 @@
                         var currentMachine = null;
                         var allMachines = [];
                         
-                        // Find column indices once before loop (performance optimization)
-                        var headers = table.querySelectorAll('thead th, thead td');
+                        // Find column indices - actual structure: Gniazdo, Maszyna, Pracownik, Data rozpoczęcia, Data zakończenia, Status na maszynie, Liczba braków
+                        var headers = table.querySelectorAll('thead tr th, thead tr td');
+                        if (headers.length === 0) {
+                            // Try first row of tbody as headers
+                            var firstRow = table.querySelector('tbody tr');
+                            if (firstRow) {
+                                headers = firstRow.querySelectorAll('td, th');
+                            }
+                        }
+                        
                         var machineIndex = -1;
                         var workerIndex = -1;
+                        var statusIndex = -1;
                         for (var k = 0; k < headers.length; k++) {
                             var headerText = (headers[k].textContent || '').trim();
                             if (headerText.indexOf('Maszyna') !== -1 && machineIndex === -1) {
                                 machineIndex = k;
                             }
-                            if (headerText.indexOf('Pracownik') !== -1 && workerIndex === -1) {
+                            if ((headerText.indexOf('Pracownik') !== -1 || headerText.indexOf('Operator') !== -1) && workerIndex === -1) {
                                 workerIndex = k;
                             }
-                            // Early exit if both found
-                            if (machineIndex !== -1 && workerIndex !== -1) break;
+                            if ((headerText.indexOf('Status na maszynie') !== -1 || headerText.indexOf('Status') !== -1) && statusIndex === -1) {
+                                statusIndex = k;
+                            }
+                            // Early exit if all found
+                            if (machineIndex !== -1 && workerIndex !== -1 && statusIndex !== -1) break;
                         }
                         
-                        for (var j = 0; j < rows.length; j++) {
+                        // Debug: log if machine column not found
+                        if (machineIndex === -1) {
+                            console.debug('[EOZ Commission List] Machine column not found for commission', commissionId, 'Headers:', Array.from(headers).map(function(h) { return h.textContent; }));
+                        }
+                        
+                        // Skip header row if first row looks like headers
+                        var startRow = 0;
+                        if (rows.length > 0) {
+                            var firstRowCells = rows[0].querySelectorAll('td, th');
+                            var firstCellText = firstRowCells[0] ? (firstRowCells[0].textContent || '').trim() : '';
+                            // If first cell is "Gniazdo" or header-like, skip it
+                            if (firstCellText === 'Gniazdo' || firstRowCells.length === headers.length) {
+                                startRow = 1;
+                            }
+                        }
+                        
+                        for (var j = startRow; j < rows.length; j++) {
                             var row = rows[j];
                             var cells = row.querySelectorAll('td');
                             
@@ -255,11 +295,16 @@
                                         normalized: normalized
                                     });
                                     
-                                    // Check if this stage is completed (has worker)
+                                    // Check if this stage is completed (has worker OR status is "Gotowe")
                                     var isCompleted = false;
                                     if (workerIndex >= 0 && cells[workerIndex]) {
                                         var worker = (cells[workerIndex].textContent || '').trim();
                                         isCompleted = !!worker;
+                                    }
+                                    // Also check status column
+                                    if (!isCompleted && statusIndex >= 0 && cells[statusIndex]) {
+                                        var status = (cells[statusIndex].textContent || '').trim();
+                                        isCompleted = status === 'Gotowe' || status.toLowerCase() === 'gotowe';
                                     }
                                     
                                     if (!isCompleted && !currentMachine) {
@@ -302,8 +347,16 @@
                 }
             };
             xhr.onerror = function() {
+                console.debug('[EOZ Commission List] XHR error for commission', commissionId, 'URL:', url);
                 resolve(null);
             };
+            
+            xhr.ontimeout = function() {
+                console.debug('[EOZ Commission List] XHR timeout for commission', commissionId);
+                resolve(null);
+            };
+            
+            xhr.timeout = 10000; // 10 second timeout
             xhr.send();
         });
     }
@@ -464,20 +517,31 @@
 
     // Extract commission ID from row
     function getCommissionIdFromRow(row) {
-        var link = row.querySelector('a[href*="/commission/show_details/"]');
+        // Actual format from page: /index.php/pl/commission/show_details/312
+        var link = row.querySelector('a[href*="show_details"]');
+        
         if (link && link.href) {
-            var match = link.href.match(/show_details\/(\d+)/);
-            if (match) return match[1];
+            // Match pattern: show_details/312 or show_details/312?
+            var match = link.href.match(/show_details[\/_](\d+)/);
+            if (match && match[1]) {
+                return match[1];
+            }
         }
+        
         return null;
     }
 
     // Enhance status column with machine info
     function enhanceStatusColumn() {
         var statusIndex = findColumnIndex('Status');
-        if (statusIndex === -1) return;
+        if (statusIndex === -1) {
+            console.warn('[EOZ Commission List] Status column not found');
+            return;
+        }
 
         var rows = document.querySelectorAll('tbody tr.body-row');
+        console.log('[EOZ Commission List] Enhancing status for', rows.length, 'rows');
+        
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td.body-cell');
             if (!cells[statusIndex]) return;
@@ -504,7 +568,13 @@
                 // Check if cell still exists in DOM
                 if (!statusCell || !statusCell.parentNode) return;
                 
-                if (!data || !data.currentMachine) {
+                if (!data) {
+                    console.debug('[EOZ Commission List] No data returned for commission', commissionId);
+                    return;
+                }
+                
+                if (!data.currentMachine) {
+                    console.debug('[EOZ Commission List] No current machine for commission', commissionId, 'Data:', data);
                     // Keep original status if no machine data
                     return;
                 }
@@ -552,6 +622,7 @@
     // Apply row coloring based on machine
     function applyRowColoring() {
         var rows = document.querySelectorAll('tbody tr.body-row');
+        console.log('[EOZ Commission List] Applying row coloring for', rows.length, 'rows');
         var batch = [];
         var batchSize = 10;
 
