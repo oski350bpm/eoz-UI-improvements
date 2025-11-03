@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.0';
+    var VERSION = '2.6.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -108,7 +108,13 @@
         'tbody tr:first-child td input[type="search"],\n' +
         'tbody tr:first-child td select,\n' +
         'tbody tr:first-child:has(input):has(select){display:none!important}\n' +
-        'tbody tr:first-child:has(input):has(select){height:0!important;padding:0!important;margin:0!important;overflow:hidden!important;border:none!important;visibility:hidden!important}\n'\n' +
+        'tbody tr:first-child:has(input):has(select){height:0!important;padding:0!important;margin:0!important;overflow:hidden!important;border:none!important;visibility:hidden!important}\n' +
+        '/* Hide scanner input */\n' +
+        '#scan_order_code,\n' +
+        'input[name="scan_order_code"],\n' +
+        'input.scanner,\n' +
+        'input.form-control.scanner{display:none!important;visibility:hidden!important}\n' +
+        'form:has(#scan_order_code),div:has(#scan_order_code){display:none!important}\n'\n' +
         '.eoz-filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}\n' +
         '.eoz-filter-group{flex:1;min-width:150px}\n' +
         '.eoz-filter-label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}\n' +
@@ -1367,6 +1373,18 @@
                 var hasInputs = firstRow.querySelectorAll('input, select').length > 0;
                 if (hasInputs) {
                     firstRow.style.display = 'none';
+                }
+            }
+            
+            // Hide scanner input and its container
+            var scannerInput = document.querySelector('#scan_order_code');
+            if (scannerInput) {
+                var scannerContainer = scannerInput.closest('form') || scannerInput.closest('div');
+                if (scannerContainer) {
+                    scannerContainer.style.display = 'none';
+                } else {
+                    scannerInput.style.display = 'none';
+                    scannerInput.style.visibility = 'hidden';
                 }
             }
         }, 100);
