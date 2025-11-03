@@ -1,10 +1,14 @@
 // EOZ Control Panel Unified View Module
 // Client-side aggregation for machines/control_panel
+// TEMPORARILY DISABLED
 
 (function() {
     'use strict';
 
     var VERSION = '0.2.1';
+
+    // MODULE DISABLED - early return
+    return;
 
     if (!window.EOZ) {
         console.warn('[EOZ Unified Panel] Core not available');
