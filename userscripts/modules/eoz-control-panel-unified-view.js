@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.1.0';
+    var VERSION = '0.2.0';
 
     if (!window.EOZ) {
         console.warn('[EOZ Unified Panel] Core not available');

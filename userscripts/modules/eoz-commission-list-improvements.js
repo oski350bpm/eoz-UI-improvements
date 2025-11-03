@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.2';
+    var VERSION = '2.5.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -103,6 +103,9 @@
         '.eoz-status-toggle-new.expanded::after{transform:rotate(180deg)}\n' +
         '.eoz-search-filter-container{margin-bottom:16px;padding:16px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}\n' +
         '.eoz-search-input{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;margin-bottom:12px}\n' +
+        '/* Ensure main content is visible */\n' +
+        '#site-content{display:block!important;visibility:visible!important}\n' +
+        '.content{display:block!important;visibility:visible!important}\n' +
         '.eoz-filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}\n' +
         '.eoz-filter-group{flex:1;min-width:150px}\n' +
         '.eoz-filter-label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}\n' +
