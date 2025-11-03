@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.1';
+    var VERSION = '2.5.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -373,6 +373,8 @@
                                         });
                                     }
                                     
+                                    // Set currentMachine to first incomplete machine
+                                    // This is important for "Oczekujące" orders where first machine might not be completed
                                     if (!isCompleted && !currentMachine) {
                                         currentMachine = normalized;
                                     }
@@ -682,14 +684,8 @@
                 statusMain.appendChild(badge);
                 contentWrapper.appendChild(statusMain);
                 
-                // Add expandable process panel for production commissions only
-                // Check if status indicates production (stored in originalStatus)
-                var isInProduction = originalStatus && (
-                    originalStatus.toLowerCase().indexOf('produkcji') !== -1 ||
-                    originalStatus.toLowerCase().indexOf('production') !== -1
-                );
-                
-                if (isInProduction && data.machines && data.machines.length > 0) {
+                // Add expandable process panel for all commissions with machine data
+                if (data.machines && data.machines.length > 0) {
                     var toggle = document.createElement('span');
                     toggle.className = 'eoz-status-toggle-new';
                     toggle.textContent = 'Proces';
@@ -699,62 +695,23 @@
                     panel.className = 'eoz-process-panel';
                     panel.setAttribute('data-commission-id', commissionId);
                     
-                    // Add process stages
-                    PRODUCTION_MACHINES.forEach(function(machineName, index) {
+                    // Add process stages - use actual machines from data, not PRODUCTION_MACHINES
+                    // This ensures we only show machines that actually exist in the commission
+                    data.machines.forEach(function(machineData, index) {
                         var stageDiv = document.createElement('div');
                         stageDiv.className = 'eoz-process-stage-vertical';
                         
-                        // Find machine status - try multiple matching strategies
-                        var machineStatus = null;
-                        var machineNameNorm = normalizeMachineName(machineName);
-                        
-                        for (var m = 0; m < data.machines.length; m++) {
-                            var dataMachine = data.machines[m];
-                            var dataMachineName = dataMachine.name || dataMachine.normalized || '';
-                            var dataMachineNorm = normalizeMachineName(dataMachineName);
-                            
-                            // Exact normalized match
-                            if (dataMachineNorm === machineNameNorm) {
-                                machineStatus = dataMachine;
-                                break;
-                            }
-                            // Partial match (e.g. "Magazyn płyt" matches "Magazyn płyt")
-                            if (dataMachineName && machineName && 
-                                (dataMachineName.indexOf(machineName) !== -1 || 
-                                 machineName.indexOf(dataMachineName) !== -1)) {
-                                machineStatus = dataMachine;
-                                break;
-                            }
-                        }
+                        var machineName = machineData.name || machineData.normalized || '';
+                        var machineNorm = normalizeMachineName(machineName);
+                        var currentMachineNorm = data.currentMachine ? normalizeMachineName(data.currentMachine) : '';
                         
                         // Determine stage state
-                        if (machineStatus && machineStatus.completed) {
+                        if (machineData.completed) {
                             stageDiv.classList.add('completed');
-                        } else if (machineStatus) {
-                            // Check if this is current machine
-                            var currentMachineNorm = data.currentMachine ? normalizeMachineName(data.currentMachine) : '';
-                            var machineStatusNorm = machineStatus.normalized || normalizeMachineName(machineStatus.name || '');
-                            if (machineStatusNorm === currentMachineNorm) {
-                                stageDiv.classList.add('current');
-                            } else {
-                                stageDiv.classList.add('pending');
-                            }
+                        } else if (machineNorm === currentMachineNorm) {
+                            stageDiv.classList.add('current');
                         } else {
-                            // Machine not found in data - check if it's before current machine
-                            var currentIndex = -1;
-                            for (var ci = 0; ci < PRODUCTION_MACHINES.length; ci++) {
-                                if (normalizeMachineName(PRODUCTION_MACHINES[ci]) === (data.currentMachine ? normalizeMachineName(data.currentMachine) : '')) {
-                                    currentIndex = ci;
-                                    break;
-                                }
-                            }
-                            if (index < currentIndex) {
-                                stageDiv.classList.add('completed');
-                            } else if (index === currentIndex) {
-                                stageDiv.classList.add('current');
-                            } else {
-                                stageDiv.classList.add('pending');
-                            }
+                            stageDiv.classList.add('pending');
                         }
                         
                         stageDiv.textContent = machineName;
