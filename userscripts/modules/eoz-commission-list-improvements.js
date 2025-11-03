@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.4';
+    var VERSION = '2.6.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -115,6 +115,9 @@
         'input.scanner,\n' +
         'input.form-control.scanner{display:none!important;visibility:hidden!important}\n' +
         'form:has(#scan_order_code),div:has(#scan_order_code){display:none!important}\n' +
+        '/* Ensure main content is visible */\n' +
+        '#site-content{display:block!important;visibility:visible!important}\n' +
+        '.content{display:block!important;visibility:visible!important}\n' +
         '.eoz-filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}\n' +
         '.eoz-filter-group{flex:1;min-width:150px}\n' +
         '.eoz-filter-label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}\n' +

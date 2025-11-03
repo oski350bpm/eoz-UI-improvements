@@ -35,8 +35,21 @@
             referenceDate: null,
             range: null,
             dates: []
+        },
+        tables: {
+            todo: null,
+            todoBody: null,
+            done: null,
+            doneBody: null
+        },
+        data: {
+            todo: null,
+            done: null
         }
     };
+
+    var htmlCache = Object.create(null);
+    var notFinishedHtmlCache = null;
 
     if (window.location.href.indexOf('/machines/control_panel') === -1) {
         return; // Not the target view
@@ -146,6 +159,8 @@
             '.eoz-unified-panel__tab-content.is-active{display:block}' +
             '.eoz-unified-panel__placeholder{padding:18px 16px;border-radius:12px;background:rgba(37,99,235,0.06);border:1px dashed rgba(37,99,235,0.35);color:#1d4ed8;font-size:14px;line-height:1.45}' +
             '.eoz-unified-panel__legacy-table{background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(15,23,42,0.08);padding:8px}' +
+            '.eoz-unified-date-pill{display:inline-flex;align-items:center;margin-left:8px;padding:2px 10px;border-radius:999px;background:rgba(29,78,216,0.15);color:#1d4ed8;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}' +
+            '.eoz-unified-panel__info-cell{padding:18px;border-radius:12px;background:rgba(148,163,184,0.18);font-weight:600;color:#1f2937;text-align:center}' +
             '@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}';
 
         var styleEl = document.createElement('style');
@@ -284,6 +299,363 @@
         weekInfoEl.textContent = label;
     }
 
+    function formatIsoDate(date) {
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0');
+        var day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function parseIsoDate(isoString) {
+        if (!isoString) return null;
+        var parts = isoString.split('-');
+        if (parts.length !== 3) return null;
+        var year = parseInt(parts[0], 10);
+        var month = parseInt(parts[1], 10) - 1;
+        var day = parseInt(parts[2], 10);
+        if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+            return null;
+        }
+        var date = new Date(year, month, day);
+        date.setHours(0, 0, 0, 0);
+        return date;
+    }
+
+    function createDatePill(isoDate) {
+        var date = parseIsoDate(isoDate);
+        var pill = document.createElement('span');
+        pill.className = 'eoz-unified-date-pill';
+        if (!date) {
+            pill.textContent = isoDate || '';
+            return pill;
+        }
+
+        var day = String(date.getDate()).padStart(2, '0');
+        var month = String(date.getMonth() + 1).padStart(2, '0');
+        pill.textContent = day + '.' + month;
+        return pill;
+    }
+
+    function buildControlPanelUrl(operationDate) {
+        try {
+            var url = new URL(window.location.href);
+            url.searchParams.set('operation_date', operationDate);
+            url.searchParams.delete('operation_date_option');
+            url.searchParams.delete('week_offset');
+            url.searchParams.delete('tab');
+            url.searchParams.delete('unified');
+            return url.origin + url.pathname + '?' + url.searchParams.toString();
+        } catch (error) {
+            console.warn(MODULE_NAME, 'Failed to construct control panel URL', error);
+            return window.location.href;
+        }
+    }
+
+    function buildNotFinishedUrl() {
+        var url = new URL(window.location.href);
+        url.search = '';
+        url.pathname = url.pathname.replace('control_panel', 'control_panel_not_finished');
+        return url.origin + url.pathname;
+    }
+
+    function fetchHtml(url) {
+        return new Promise(function(resolve, reject) {
+            if (typeof GM_xmlhttpRequest === 'function') {
+                try {
+                    GM_xmlhttpRequest({
+                        method: 'GET',
+                        url: url,
+                        onload: function(response) {
+                            if (response.status >= 200 && response.status < 300) {
+                                resolve(response.responseText);
+                            } else {
+                                reject(new Error('HTTP ' + response.status + ' while fetching ' + url));
+                            }
+                        },
+                        onerror: function() {
+                            reject(new Error('Network error while fetching ' + url));
+                        }
+                    });
+                } catch (gmError) {
+                    reject(gmError);
+                }
+            } else {
+                fetch(url, { credentials: 'include' })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('HTTP ' + response.status + ' while fetching ' + url);
+                        }
+                        return response.text();
+                    })
+                    .then(resolve)
+                    .catch(reject);
+            }
+        });
+    }
+
+    function getColumnCount(table) {
+        var thead = table ? table.querySelector('thead') : null;
+        if (!thead) {
+            return 1;
+        }
+        var headers = thead.querySelectorAll('th');
+        return headers.length || 1;
+    }
+
+    function parseOrderRowsFromHtml(html, meta) {
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(html, 'text/html');
+        var table = doc.querySelector('.dynamic-table-container table');
+        if (!table) {
+            return [];
+        }
+
+        var thead = table.querySelector('thead');
+        var headers = thead ? Array.from(thead.querySelectorAll('th')) : [];
+        var statusIndex = headers.findIndex(function(th) {
+            return (th.textContent || '').trim().toLowerCase().indexOf('status') !== -1;
+        });
+        var numberIndex = headers.findIndex(function(th) {
+            return (th.textContent || '').trim().toLowerCase().indexOf('zlecen') !== -1;
+        });
+        var bodyRows = table.querySelectorAll('tbody tr');
+        var results = [];
+        var targetColumns = meta.targetColumns || headers.length || 1;
+
+        bodyRows.forEach(function(row) {
+            var cells = row.querySelectorAll('td');
+            if (!cells.length) {
+                return;
+            }
+
+            if (cells.length === 1) {
+                var text = (cells[0].textContent || '').trim().toLowerCase();
+                if (text.indexOf('brak rekord') !== -1) {
+                    return;
+                }
+            }
+
+            var statusText = statusIndex !== -1 && cells[statusIndex] ? (cells[statusIndex].textContent || '').trim() : '';
+            var orderNumber = numberIndex !== -1 && cells[numberIndex] ? (cells[numberIndex].textContent || '').trim() : '';
+            var imported = document.importNode(row, true);
+
+            var importedCells = imported.querySelectorAll('td');
+            if (importedCells.length < targetColumns) {
+                var deficit = targetColumns - importedCells.length;
+                for (var i = 0; i < deficit; i++) {
+                    imported.appendChild(document.createElement('td'));
+                }
+            } else if (importedCells.length > targetColumns) {
+                for (var j = importedCells.length - 1; j >= targetColumns; j--) {
+                    imported.removeChild(importedCells[j]);
+                }
+            }
+
+            imported.dataset.operationDate = meta.operationDate;
+            imported.dataset.source = meta.source;
+            if (statusText) imported.dataset.statusRaw = statusText;
+            if (orderNumber) imported.dataset.orderNumber = orderNumber;
+
+            results.push({
+                node: imported,
+                status: statusText,
+                orderNumber: orderNumber,
+                operationDate: meta.operationDate,
+                source: meta.source
+            });
+        });
+
+        return results;
+    }
+
+    function fetchDayOrders(date) {
+        var iso = typeof date === 'string' ? date : formatIsoDate(date);
+        if (htmlCache[iso]) {
+            return Promise.resolve(parseOrderRowsFromHtml(htmlCache[iso], {
+                operationDate: iso,
+                source: 'week',
+                targetColumns: getColumnCount(state.tables.todo)
+            }));
+        }
+
+        var url = buildControlPanelUrl(iso);
+        return fetchHtml(url).then(function(html) {
+            htmlCache[iso] = html;
+            return parseOrderRowsFromHtml(html, {
+                operationDate: iso,
+                source: 'week',
+                targetColumns: getColumnCount(state.tables.todo)
+            });
+        });
+    }
+
+    function fetchUnfinishedOrders() {
+        var url = buildNotFinishedUrl();
+        if (notFinishedHtmlCache) {
+            return Promise.resolve(parseOrderRowsFromHtml(notFinishedHtmlCache, {
+                operationDate: 'unfinished',
+                source: 'unfinished',
+                targetColumns: getColumnCount(state.tables.todo)
+            }));
+        }
+
+        return fetchHtml(url).then(function(html) {
+            notFinishedHtmlCache = html;
+            return parseOrderRowsFromHtml(html, {
+                operationDate: 'unfinished',
+                source: 'unfinished',
+                targetColumns: getColumnCount(state.tables.todo)
+            });
+        });
+    }
+
+    function loadTodoDataset(weekDates) {
+        var weekPromises = weekDates.map(function(date) {
+            return fetchDayOrders(date).catch(function(error) {
+                console.warn(MODULE_NAME, 'Failed to fetch orders for date', date, error);
+                return [];
+            });
+        });
+
+        return Promise.all([
+            Promise.all(weekPromises).then(function(results) {
+                return [].concat.apply([], results);
+            }),
+            fetchUnfinishedOrders().catch(function(error) {
+                console.warn(MODULE_NAME, 'Failed to fetch unfinished orders', error);
+                return [];
+            })
+        ]).then(function(tuple) {
+            return {
+                weekRows: tuple[0],
+                unfinishedRows: tuple[1]
+            };
+        });
+    }
+
+    function loadDoneDataset(weekDates) {
+        var weekPromises = weekDates.map(function(date) {
+            return fetchDayOrders(date).catch(function(error) {
+                console.warn(MODULE_NAME, 'Failed to fetch orders for date', date, error);
+                return [];
+            });
+        });
+
+        return Promise.all(weekPromises).then(function(results) {
+            var allRows = [].concat.apply([], results);
+            return allRows.filter(function(row) {
+                return (row.status || '').toLowerCase().indexOf('zako') !== -1;
+            });
+        });
+    }
+
+    function renderInfoRow(tableBody, table, message) {
+        if (!tableBody) return;
+        tableBody.innerHTML = '';
+        var row = document.createElement('tr');
+        var cell = document.createElement('td');
+        cell.className = 'eoz-unified-panel__info-cell';
+        cell.colSpan = getColumnCount(table || state.tables.todo);
+        cell.textContent = message;
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+    }
+
+    function decorateRow(rowData, index) {
+        var row = rowData.node;
+        var cells = row.querySelectorAll('td');
+        if (cells.length) {
+            cells[0].textContent = String(index + 1);
+        }
+
+        if (cells.length > 1 && !cells[1].querySelector('.eoz-unified-date-pill') && rowData.operationDate && rowData.operationDate !== 'unfinished') {
+            cells[1].appendChild(createDatePill(rowData.operationDate));
+        }
+
+        return row;
+    }
+
+    function renderTodoTab(data) {
+        var body = state.tables.todoBody;
+        if (!body || !state.tables.todo) {
+            return;
+        }
+
+        var combined = [].concat(data.unfinishedRows || [], data.weekRows || []);
+        if (!combined.length) {
+            renderInfoRow(body, state.tables.todo, 'Brak zleceń do wykonania w wybranym tygodniu.');
+            return;
+        }
+
+        body.innerHTML = '';
+        combined.forEach(function(rowData, index) {
+            body.appendChild(decorateRow(rowData, index));
+        });
+    }
+
+    function renderDoneTab(rows) {
+        var body = state.tables.doneBody;
+        if (!body || !state.tables.done) {
+            return;
+        }
+
+        if (!rows.length) {
+            renderInfoRow(body, state.tables.done, 'Brak zakończonych zleceń w wybranym tygodniu.');
+            return;
+        }
+
+        body.innerHTML = '';
+        rows.forEach(function(rowData, index) {
+            body.appendChild(decorateRow(rowData, index));
+        });
+    }
+
+    function showLoadingState() {
+        var loadingMessage = 'Ładowanie danych tygodnia...';
+        if (state.tables.todoBody) {
+            renderInfoRow(state.tables.todoBody, state.tables.todo, loadingMessage);
+        }
+        if (state.tables.doneBody) {
+            renderInfoRow(state.tables.doneBody, state.tables.done, loadingMessage);
+        }
+    }
+
+    function showErrorState(error) {
+        var message = 'Nie udało się pobrać danych tygodnia. Odśwież stronę lub spróbuj ponownie.';
+        console.error(MODULE_NAME, 'Data loading error', error);
+        if (state.tables.todoBody) {
+            renderInfoRow(state.tables.todoBody, state.tables.todo, message);
+        }
+        if (state.tables.doneBody) {
+            renderInfoRow(state.tables.doneBody, state.tables.done, message);
+        }
+    }
+
+    function loadAndRenderData() {
+        if (!state.week || !state.week.dates || !state.week.dates.length) {
+            console.warn(MODULE_NAME, 'Week dates not available, skipping data load');
+            return;
+        }
+
+        showLoadingState();
+
+        Promise.all([
+            loadTodoDataset(state.week.dates),
+            loadDoneDataset(state.week.dates)
+        ])
+            .then(function(results) {
+                var todoData = results[0];
+                var doneRows = results[1];
+
+                state.data.todo = todoData;
+                state.data.done = doneRows;
+
+                renderTodoTab(todoData);
+                renderDoneTab(doneRows);
+            })
+            .catch(showErrorState);
+    }
+
     function buildUnifiedPanel() {
         if (state.root) {
             return state.root;
@@ -340,7 +712,29 @@
         legacyParent.insertBefore(root, legacyContainer);
         state.contentContainers[TABS.TODO.key].appendChild(legacyContainer);
 
-        ensureTabContentPlaceholders();
+        var legacyTable = legacyContainer.querySelector('table');
+        if (legacyTable) {
+            var legacyBody = legacyTable.querySelector('tbody');
+            state.tables.todo = legacyTable;
+            state.tables.todoBody = legacyBody || null;
+
+            if (legacyBody) {
+                legacyBody.innerHTML = '';
+            }
+
+            var doneTable = legacyTable.cloneNode(true);
+            var doneBody = doneTable.querySelector('tbody');
+            if (doneBody) {
+                doneBody.innerHTML = '';
+            }
+
+            state.contentContainers[TABS.DONE.key].innerHTML = '';
+            state.contentContainers[TABS.DONE.key].appendChild(doneTable);
+            state.tables.done = doneTable;
+            state.tables.doneBody = doneBody || null;
+        } else {
+            ensureTabContentPlaceholders();
+        }
 
         state.root = root;
         return root;
@@ -360,6 +754,7 @@
         buildUnifiedPanel();
         setActiveTab(state.activeTab, false);
         updateWeekInfoDisplay(weekRange);
+        loadAndRenderData();
 
         console.info(MODULE_NAME, 'Unified view activation placeholder', {
             referenceDate: referenceDate,
