@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.0';
+    var VERSION = '2.5.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -320,13 +320,15 @@
                             console.debug('[EOZ Commission List] Machine column not found for commission', commissionId, 'Headers:', Array.from(headers).map(function(h) { return h.textContent; }));
                         }
                         
-                        // Skip header row if first row looks like headers
+                        // Skip header row if first row in tbody is actually a header row
+                        // Check if first row has same cell count as thead and contains "Gniazdo" in first cell
                         var startRow = 0;
-                        if (rows.length > 0) {
+                        if (rows.length > 0 && headers.length > 0) {
                             var firstRowCells = rows[0].querySelectorAll('td, th');
                             var firstCellText = firstRowCells[0] ? (firstRowCells[0].textContent || '').trim() : '';
-                            // If first cell is "Gniazdo" or header-like, skip it
-                            if (firstCellText === 'Gniazdo' || firstRowCells.length === headers.length) {
+                            // Only skip if first cell is exactly "Gniazdo" (header cell) AND has same number of cells as header
+                            // Don't skip if first cell is "Magazyn płyt" or any other machine name
+                            if (firstCellText === 'Gniazdo' && firstRowCells.length === headers.length) {
                                 startRow = 1;
                             }
                         }
