@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.3';
+    var VERSION = '2.6.4';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1526,13 +1526,13 @@
         });
     }
 
-    // Prevent multiple executions
-    if (window.EOZ_CommissionList_Running) {
-        return;
-    }
-    window.EOZ_CommissionList_Running = true;
-
     function run() {
+        // Prevent multiple executions
+        if (window.EOZ_CommissionList_Running) {
+            return;
+        }
+        window.EOZ_CommissionList_Running = true;
+        
         window.EOZ.waitFor('table.dynamic-table tbody tr.body-row', { timeout: 10000 })
             .then(function(){
                 hideColumns();
