@@ -92,6 +92,15 @@
         '.eoz-process-stage-vertical.pending::before{content:"○";color:#ccc;width:18px;text-align:center}\n' +
         '.eoz-process-stage.pending::before{content:"○";margin-right:4px}\n' +
         '.eoz-process-separator{color:#ccc;margin:0 4px}\n' +
+        '.eoz-search-highlight{background-color:#ffeb3b;color:#000;padding:1px 2px;border-radius:2px;font-weight:600}\n' +
+        '.eoz-status-cell-content{display:flex;flex-direction:column;gap:4px;align-items:flex-start}\n' +
+        '.eoz-status-main{display:flex;align-items:center;gap:6px;flex-wrap:wrap}\n' +
+        '.eoz-status-text{font-weight:500;color:#333}\n' +
+        '.eoz-machine-badge-new{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,0.1)}\n' +
+        '.eoz-status-toggle-new{display:inline-flex;align-items:center;gap:3px;margin-top:2px;color:#007bff;font-size:10px;text-decoration:none;cursor:pointer;user-select:none}\n' +
+        '.eoz-status-toggle-new:hover{color:#0056b3;text-decoration:underline}\n' +
+        '.eoz-status-toggle-new::after{content:"▼";font-size:8px;transition:transform 0.2s;display:inline-block}\n' +
+        '.eoz-status-toggle-new.expanded::after{transform:rotate(180deg)}\n' +
         '.eoz-search-filter-container{margin-bottom:16px;padding:16px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}\n' +
         '.eoz-search-input{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;margin-bottom:12px}\n' +
         '.eoz-filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}\n' +
@@ -337,14 +346,15 @@
                                     
                                     // Check if this stage is completed (has worker OR status is "Gotowe")
                                     var isCompleted = false;
-                                    if (workerIndex >= 0 && cells[workerIndex]) {
-                                        var worker = (cells[workerIndex].textContent || '').trim();
-                                        isCompleted = !!worker;
-                                    }
-                                    // Also check status column
-                                    if (!isCompleted && statusIndex >= 0 && cells[statusIndex]) {
+                                    // First check status column (more reliable)
+                                    if (statusIndex >= 0 && cells[statusIndex]) {
                                         var status = (cells[statusIndex].textContent || '').trim();
-                                        isCompleted = status === 'Gotowe' || status.toLowerCase() === 'gotowe';
+                                        isCompleted = status === 'Gotowe' || status.toLowerCase() === 'gotowe' || status.toLowerCase().indexOf('gotowe') !== -1;
+                                    }
+                                    // Also check worker column
+                                    if (!isCompleted && workerIndex >= 0 && cells[workerIndex]) {
+                                        var worker = (cells[workerIndex].textContent || '').trim();
+                                        isCompleted = !!worker && worker.length > 0;
                                     }
                                     
                                     if (!isCompleted && !currentMachine) {
@@ -634,21 +644,27 @@
                         return data.currentMachine;
                     })() : data.currentMachine;
 
-                // Create enhanced status display
-                var wrapper = document.createElement('div');
-                wrapper.style.lineHeight = '1.4';
+                // Create enhanced status display with better structure
+                var contentWrapper = document.createElement('div');
+                contentWrapper.className = 'eoz-status-cell-content';
                 
-                var statusLine = document.createElement('div');
-                statusLine.textContent = originalStatus;
+                // Main status row
+                var statusMain = document.createElement('div');
+                statusMain.className = 'eoz-status-main';
+                
+                var statusText = document.createElement('span');
+                statusText.className = 'eoz-status-text';
+                statusText.textContent = originalStatus;
                 
                 var badge = document.createElement('span');
-                badge.className = 'eoz-machine-badge';
+                badge.className = 'eoz-machine-badge-new';
                 badge.textContent = originalMachineName;
                 badge.style.backgroundColor = machineInfo.color;
                 badge.style.color = '#333';
                 
-                wrapper.appendChild(statusLine);
-                wrapper.appendChild(badge);
+                statusMain.appendChild(statusText);
+                statusMain.appendChild(badge);
+                contentWrapper.appendChild(statusMain);
                 
                 // Add expandable process panel for production commissions only
                 // Check if status indicates production (stored in originalStatus)
@@ -659,7 +675,7 @@
                 
                 if (isInProduction && data.machines && data.machines.length > 0) {
                     var toggle = document.createElement('span');
-                    toggle.className = 'eoz-status-toggle';
+                    toggle.className = 'eoz-status-toggle-new';
                     toggle.textContent = 'Proces';
                     toggle.setAttribute('data-commission-id', commissionId);
                     
@@ -705,18 +721,18 @@
                         }
                     });
                     
-                    wrapper.appendChild(toggle);
+                    contentWrapper.appendChild(toggle);
                     
                     var expandableWrapper = document.createElement('div');
                     expandableWrapper.className = 'eoz-status-expandable';
-                    expandableWrapper.appendChild(wrapper);
+                    expandableWrapper.appendChild(contentWrapper);
                     expandableWrapper.appendChild(panel);
                     
                     statusCell.innerHTML = '';
                     statusCell.appendChild(expandableWrapper);
                 } else {
                     statusCell.innerHTML = '';
-                    statusCell.appendChild(wrapper);
+                    statusCell.appendChild(contentWrapper);
                 }
             }).catch(function(error) {
                 // Silently handle errors
@@ -824,6 +840,70 @@
         return targetText.indexOf(searchText) !== -1;
     }
 
+    // Highlight search text in row
+    function highlightSearchText(row, searchText) {
+        // Remove existing highlights first
+        removeHighlights(row);
+        
+        var cells = row.querySelectorAll('td.body-cell');
+        var searchLower = normalizeSearchText(searchText);
+        
+        cells.forEach(function(cell) {
+            // Skip status cell (has complex structure) and action cells
+            if (cell.classList.contains('body-options-cell')) return;
+            if (cell.querySelector('.eoz-machine-badge')) return;
+            
+            var cellText = cell.textContent || '';
+            var cellTextNormalized = normalizeSearchText(cellText);
+            
+            if (cellTextNormalized.indexOf(searchLower) !== -1) {
+                // Find all matches and highlight them
+                var highlighted = cellText.replace(new RegExp('(' + escapeRegex(searchText) + ')', 'gi'), function(match) {
+                    return '<mark class="eoz-search-highlight">' + match + '</mark>';
+                });
+                
+                // Only update if we actually added highlights (avoid infinite loops)
+                if (highlighted !== cellText && highlighted.indexOf('<mark') !== -1) {
+                    var originalHTML = cell.innerHTML;
+                    cell.innerHTML = highlighted;
+                    // Store original to restore later
+                    if (!cell.hasAttribute('data-original-html')) {
+                        cell.setAttribute('data-original-html', originalHTML);
+                    }
+                }
+            }
+        });
+    }
+    
+    // Remove search highlights from row
+    function removeHighlights(row) {
+        var cells = row.querySelectorAll('td.body-cell');
+        cells.forEach(function(cell) {
+            var highlights = cell.querySelectorAll('mark.eoz-search-highlight');
+            if (highlights.length > 0) {
+                var originalHTML = cell.getAttribute('data-original-html');
+                if (originalHTML) {
+                    cell.innerHTML = originalHTML;
+                    cell.removeAttribute('data-original-html');
+                } else {
+                    // Fallback: just unwrap highlights
+                    highlights.forEach(function(mark) {
+                        var parent = mark.parentNode;
+                        while (mark.firstChild) {
+                            parent.insertBefore(mark.firstChild, mark);
+                        }
+                        parent.removeChild(mark);
+                    });
+                }
+            }
+        });
+    }
+    
+    // Escape regex special characters
+    function escapeRegex(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     // Extract row data for filtering
     function extractRowDataForFilter(row) {
         var cells = row.querySelectorAll('td.body-cell');
@@ -836,9 +916,11 @@
         var idxNazwa = findColumnIndex('Nazwa zlecenia');
         var idxStatus = findColumnIndex('Status');
         var idxKlient = findColumnIndex('Kod klienta');
+        var idxMaterialy = findColumnIndex('Materiały');
 
         var kod = idxKod >= 0 && cells[idxKod] ? (cells[idxKod].textContent || '').trim() : '';
         var nazwa = idxNazwa >= 0 && cells[idxNazwa] ? (cells[idxNazwa].textContent || '').trim() : '';
+        var materialy = idxMaterialy >= 0 && cells[idxMaterialy] ? (cells[idxMaterialy].textContent || '').trim() : '';
         
         // For status - try to get original status first (before enhancement)
         var status = '';
@@ -867,6 +949,7 @@
         return {
             kod: kod,
             nazwa: nazwa,
+            materialy: materialy,
             status: status,
             klient: klient,
             machine: machine,
@@ -889,13 +972,23 @@
             var rowData = extractRowDataForFilter(row);
             var matches = true;
 
-            // Apply search filter
+            // Apply search filter with highlighting
             if (searchFilterState.searchText) {
                 var searchMatches =
                     fuzzyMatch(searchFilterState.searchText, rowData.kod) ||
                     fuzzyMatch(searchFilterState.searchText, rowData.nazwa) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.materialy) ||
                     fuzzyMatch(searchFilterState.searchText, rowData.klient);
-                if (!searchMatches) matches = false;
+                if (!searchMatches) {
+                    matches = false;
+                    removeHighlights(row);
+                } else {
+                    // Highlight matching text
+                    highlightSearchText(row, searchFilterState.searchText);
+                }
+            } else {
+                // Remove highlights when search is cleared
+                removeHighlights(row);
             }
 
             // Apply status filter
