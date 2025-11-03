@@ -650,8 +650,14 @@
                 wrapper.appendChild(statusLine);
                 wrapper.appendChild(badge);
                 
-                // Add expandable process panel for production commissions
-                if (data.machines && data.machines.length > 0) {
+                // Add expandable process panel for production commissions only
+                // Check if status indicates production (stored in originalStatus)
+                var isInProduction = originalStatus && (
+                    originalStatus.toLowerCase().indexOf('produkcji') !== -1 ||
+                    originalStatus.toLowerCase().indexOf('production') !== -1
+                );
+                
+                if (isInProduction && data.machines && data.machines.length > 0) {
                     var toggle = document.createElement('span');
                     toggle.className = 'eoz-status-toggle';
                     toggle.textContent = 'Proces';
