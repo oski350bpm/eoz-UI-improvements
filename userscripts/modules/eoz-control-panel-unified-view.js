@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.0';
+    var VERSION = '0.2.1';
 
     if (!window.EOZ) {
         console.warn('[EOZ Unified Panel] Core not available');
@@ -94,8 +94,15 @@
         return;
     }
 
-    if (window.location.href.indexOf('/machines/control_panel') === -1) {
+    var url = window.location.href;
+    if (url.indexOf('/machines/control_panel') === -1) {
         return; // Not the target view
+    }
+    
+    // Skip magazine views - they have their own modules
+    if (url.indexOf('control_panel_boards_magazine_2020') !== -1 ||
+        url.indexOf('control_panel_veneers_magazine_2020') !== -1) {
+        return; // Skip magazine views
     }
 
     function getSearchParams() {
@@ -209,6 +216,13 @@
             '.eoz-unified-panel__legacy-table{background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(15,23,42,0.08);padding:8px}' +
             '.eoz-unified-date-pill{display:inline-flex;align-items:center;margin-left:8px;padding:2px 10px;border-radius:999px;background:rgba(29,78,216,0.15);color:#1d4ed8;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}' +
             '.eoz-unified-panel__info-cell{padding:18px;border-radius:12px;background:rgba(148,163,184,0.18);font-weight:600;color:#1f2937;text-align:center}' +
+            '/* Hide stock calendar controls when unified view is active */' +
+            'body:has(.eoz-unified-panel) .day-input,' +
+            'body:has(.eoz-unified-panel) input[name="operation_date"],' +
+            'body:has(.eoz-unified-panel) label:has(+ input[name="operation_date"]),' +
+            'body:has(.eoz-unified-panel) label input[name="operation_date"],' +
+            'body:has(.eoz-unified-panel) label:has(input[name="operation_date"]),' +
+            'body:has(.eoz-unified-panel) div:has(input[name="operation_date"]){display:none!important}' +
             '@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}';
 
         var styleEl = document.createElement('style');
@@ -665,6 +679,7 @@
     }
 
     function loadDoneDataset(weekDates) {
+        var weekRange = state.week.range;
         var weekPromises = weekDates.map(function(date) {
             return fetchDayOrders(date).catch(function(error) {
                 console.warn(MODULE_NAME, 'Failed to fetch orders for date', date, error);
@@ -675,7 +690,15 @@
         return Promise.all(weekPromises).then(function(results) {
             var allRows = [].concat.apply([], results);
             return allRows.filter(function(row) {
-                return (row.status || '').toLowerCase().indexOf('zako') !== -1;
+                var statusMatch = (row.status || '').toLowerCase().indexOf('zako') !== -1;
+                if (!statusMatch) {
+                    return false;
+                }
+                if (!weekRange) {
+                    return true;
+                }
+                var rowDate = row.operationDate;
+                return isDateInWeekRange(rowDate, weekRange);
             });
         });
     }
@@ -692,6 +715,228 @@
         tableBody.appendChild(row);
     }
 
+    function initializeRowButtons(row) {
+        if (!row || !row.nodeType) {
+            return;
+        }
+
+        var cells = row.querySelectorAll('td');
+        if (!cells.length) {
+            return;
+        }
+
+        // Find order ID from Zlecenie cell (usually second cell)
+        var orderId = null;
+        var orderNumber = row.dataset.orderNumber || '';
+        
+        // Try to extract from links in the row
+        var orderLink = row.querySelector('a[href*="/machines/control_panel?"]');
+        if (orderLink) {
+            var hrefMatch = orderLink.href.match(/number2=([^&]+)/);
+            if (hrefMatch) {
+                orderId = hrefMatch[1];
+            }
+        }
+
+        // If no orderId found, try to parse from orderNumber
+        if (!orderId && orderNumber) {
+            var transformed = orderNumber.replace(/\s+/g, '').replace('/', '_');
+            var match = transformed.match(/\d+(?:_\d+)?/);
+            if (match) {
+                orderId = match[0];
+            }
+        }
+
+        // Find columns for notes - look for existing cells or headers
+        var headerRow = row.closest('table') ? row.closest('table').querySelector('thead tr') : null;
+        var headers = headerRow ? Array.from(headerRow.querySelectorAll('th')) : [];
+        
+        var notesKlIndex = -1;
+        var notesWewIndex = -1;
+        var realizationIndex = -1;
+        headers.forEach(function(th, i) {
+            var text = (th.textContent || '').trim();
+            if (text.indexOf('Uwagi klienta') !== -1) notesKlIndex = i;
+            if (text.indexOf('Uwagi wewnętrzne') !== -1) notesWewIndex = i;
+            if (text.indexOf('Realizacja') !== -1) realizationIndex = i;
+        });
+
+        // Reinitialize client notes button if column exists
+        if (notesKlIndex >= 0 && cells[notesKlIndex]) {
+            var notesKlCell = cells[notesKlIndex];
+            var notesKlLink = notesKlCell.querySelector('a');
+            
+            if (orderId) {
+                if (!notesKlLink) {
+                    // Create new link if doesn't exist
+                    notesKlLink = document.createElement('a');
+                    notesKlLink.href = '#';
+                    notesKlLink.innerHTML = '<i class="tableoptions far fa-2x fa-comment"></i>';
+                    notesKlCell.innerHTML = '';
+                    notesKlCell.appendChild(notesKlLink);
+                } else {
+                    // Remove old listeners by cloning
+                    var newLink = notesKlLink.cloneNode(true);
+                    notesKlCell.innerHTML = '';
+                    notesKlCell.appendChild(newLink);
+                    notesKlLink = newLink;
+                }
+                
+                // Check if icon exists - solid = has notes, outline = no notes
+                var icon = notesKlLink.querySelector('i');
+                var hasClientNotes = icon && icon.className.indexOf('fa fa-') !== -1 && icon.className.indexOf('far fa-') === -1;
+                
+                notesKlLink.href = '#';
+                notesKlLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (window.EOZ && window.EOZ.MachinesPanel && typeof window.EOZ.MachinesPanel.showUwagiModal === 'function') {
+                        window.EOZ.MachinesPanel.showUwagiModal(orderId);
+                    } else {
+                        showUwagiModal(orderId);
+                    }
+                    return false;
+                }, true);
+
+                // Async check if notes exist if not already indicated
+                if (!hasClientNotes) {
+                    checkClientNotesExists(orderId, function(hasNotes) {
+                        var icon = notesKlLink.querySelector('i');
+                        if (icon) {
+                            icon.className = hasNotes ? 'tableoptions fa fa-2x fa-comment' : 'tableoptions far fa-2x fa-comment';
+                        }
+                    });
+                }
+            }
+        }
+
+        // Reinitialize internal notes button if column exists
+        if (notesWewIndex >= 0 && cells[notesWewIndex]) {
+            var notesWewCell = cells[notesWewIndex];
+            var notesWewLink = notesWewCell.querySelector('a');
+            
+            if (orderId) {
+                if (!notesWewLink) {
+                    notesWewLink = document.createElement('a');
+                    notesWewLink.href = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_notes/' + orderId;
+                    notesWewLink.innerHTML = '<i class="fas fa-comments"></i>';
+                    notesWewCell.innerHTML = '';
+                    notesWewCell.appendChild(notesWewLink);
+                } else {
+                    // Clone to remove old listeners
+                    var newLink = notesWewLink.cloneNode(true);
+                    var originalHref = notesWewLink.href || ('https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_notes/' + orderId);
+                    notesWewCell.innerHTML = '';
+                    notesWewCell.appendChild(newLink);
+                    newLink.href = originalHref;
+                    notesWewLink = newLink;
+                }
+            }
+        }
+
+        // Reinitialize play/realization button if column exists
+        if (realizationIndex >= 0 && cells[realizationIndex]) {
+            var realizationCell = cells[realizationIndex];
+            var realizationBtn = realizationCell.querySelector('a.eoz-realizacja-btn, a[href*="/machines/control_panel?"]');
+            
+            if (orderLink && orderId) {
+                if (!realizationBtn) {
+                    var btn = document.createElement('a');
+                    btn.href = '#';
+                    btn.className = 'eoz-realizacja-btn';
+                    var playIcon = orderLink.querySelector('i');
+                    btn.innerHTML = playIcon ? playIcon.outerHTML : '<i class="fas fa-play"></i>';
+                    realizationCell.innerHTML = '';
+                    realizationCell.appendChild(btn);
+                    realizationBtn = btn;
+                } else {
+                    // Clone to remove old listeners
+                    var newBtn = realizationBtn.cloneNode(true);
+                    realizationCell.innerHTML = '';
+                    realizationCell.appendChild(newBtn);
+                    realizationBtn = newBtn;
+                }
+                
+                realizationBtn.href = '#';
+                realizationBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                    orderLink.dispatchEvent(clickEvent);
+                    return false;
+                }, true);
+            }
+        }
+    }
+
+    function checkClientNotesExists(orderId, callback) {
+        var xhr = new XMLHttpRequest();
+        var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    var responseText = (xhr.responseText || '').trim();
+                    var textOnly = responseText.replace(/<[^>]*>/g, '').trim();
+                    var hasContent = textOnly.length > 0 && !/\bbrak\b/i.test(textOnly);
+                    callback(hasContent);
+                } else {
+                    callback(false);
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    function showUwagiModal(orderId) {
+        if (!orderId) return;
+        
+        var modalId = 'eoz-uwagi-modal';
+        var existingModal = document.getElementById(modalId);
+        if (!existingModal) {
+            var modalHTML = '' +
+                '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog">' +
+                '  <div class="modal-dialog" role="document">' +
+                '    <div class="modal-content">' +
+                '      <div class="modal-header">' +
+                '        <h4 class="modal-title">Uwagi klienta</h4>' +
+                '        <button type="button" class="close" data-dismiss="modal">&times;</button>' +
+                '      </div>' +
+                '      <div class="modal-body" id="eoz-uwagi-modal-body"></div>' +
+                '      <div class="modal-footer">' +
+                '        <button type="button" class="btn btn-secondary" data-dismiss="modal">Zamknij</button>' +
+                '      </div>' +
+                '    </div>' +
+                '  </div>' +
+                '</div>';
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            existingModal = document.getElementById(modalId);
+        }
+        
+        var modalBody = document.getElementById('eoz-uwagi-modal-body');
+        modalBody.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Ładowanie...</div>';
+        
+        if (window.jQuery && window.jQuery.fn.modal) {
+            window.jQuery(existingModal).modal('show');
+        } else {
+            existingModal.style.display = 'block';
+            existingModal.classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+        
+        var xhr = new XMLHttpRequest();
+        var url = 'https://eoz.iplyty.erozrys.pl/index.php/pl/commission/get_erozrys_order_send_info/' + orderId;
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    modalBody.innerHTML = xhr.responseText;
+                } else {
+                    modalBody.innerHTML = '<div class="alert alert-danger">Błąd ładowania uwag. Spróbuj ponownie.</div>';
+                }
+            }
+        };
+        xhr.send();
+    }
+
     function decorateRow(rowData, index) {
         var row = rowData.node;
         var cells = row.querySelectorAll('td');
@@ -703,12 +948,32 @@
             cells[1].appendChild(createDatePill(rowData.operationDate));
         }
 
+        // Initialize buttons after row is added to DOM
+        setTimeout(function() {
+            initializeRowButtons(row);
+        }, 0);
+
         return row;
+    }
+
+    function isDateInWeekRange(dateIso, weekRange) {
+        if (!weekRange || !dateIso) {
+            return false;
+        }
+        var date = parseIsoDate(dateIso);
+        if (!date) {
+            return false;
+        }
+        var mondayTime = weekRange.monday.getTime();
+        var fridayTime = weekRange.friday.getTime();
+        var dateTime = date.getTime();
+        return dateTime >= mondayTime && dateTime <= fridayTime;
     }
 
     function sortTodoRows(data) {
         var seenOrders = Object.create(null);
         var sorted = [];
+        var weekRange = state.week.range;
 
         var unfinished = (data.unfinishedRows || []).slice();
         unfinished.forEach(function(row) {
@@ -723,6 +988,18 @@
         });
 
         var weekRows = (data.weekRows || []).slice();
+        
+        weekRows = weekRows.filter(function(row) {
+            if (!weekRange) {
+                return true;
+            }
+            var rowDate = row.operationDate;
+            if (rowDate === 'unfinished') {
+                return true;
+            }
+            return isDateInWeekRange(rowDate, weekRange);
+        });
+        
         weekRows.sort(function(a, b) {
             var dateA = parseIsoDate(a.operationDate) || new Date(0);
             var dateB = parseIsoDate(b.operationDate) || new Date(0);
@@ -872,9 +1149,18 @@
         updateWeekNavButtons();
         updateUrlParams({ week_offset: newOffset === 0 ? null : newOffset });
 
+        // Clear cache for dates that are no longer in the current week
+        var currentWeekIsos = state.week.dates.map(formatIsoDate);
+        Object.keys(htmlCache).forEach(function(cachedDate) {
+            if (currentWeekIsos.indexOf(cachedDate) === -1 && cachedDate !== 'unfinished') {
+                delete htmlCache[cachedDate];
+            }
+        });
+
         // Reset cached DOM nodes to avoid attaching the same elements twice
         state.data.todo = null;
         state.data.done = null;
+        state.initialTodayRows = null;
         loadAndRenderData();
     }
 
@@ -1075,6 +1361,7 @@
         }
         setActiveTab(state.activeTab, false);
         updateWeekInfoDisplay(weekRange);
+        setupDateChangeListener();
         
         console.info(MODULE_NAME, 'Unified view activated', {
             referenceDate: referenceDate,
@@ -1090,6 +1377,76 @@
         
         loadAndRenderData();
         // Implementation will be added in subsequent tasks.
+    }
+
+    function setupDateChangeListener() {
+        var dateInput = document.querySelector('input[name="operation_date"]');
+        if (!dateInput) {
+            console.warn(MODULE_NAME, 'Date input not found for change listener');
+            return;
+        }
+
+        var lastKnownDate = dateInput.value;
+        var checkDateChange = function() {
+            var currentDate = dateInput.value;
+            if (currentDate === lastKnownDate) {
+                return;
+            }
+            lastKnownDate = currentDate;
+
+            var selectedDate = parseIsoDate(currentDate);
+            if (!selectedDate) {
+                console.warn(MODULE_NAME, 'Invalid date format:', currentDate);
+                return;
+            }
+
+            var weekRange = state.week.range;
+            if (!weekRange) {
+                return;
+            }
+
+            var mondayTime = weekRange.monday.getTime();
+            var fridayTime = weekRange.friday.getTime();
+            var selectedTime = selectedDate.getTime();
+
+            if (selectedTime < mondayTime || selectedTime > fridayTime) {
+                console.info(MODULE_NAME, 'Selected date', currentDate, 'is outside current week range, adjusting week');
+                var daysFromMonday = getMondayOffset(selectedDate);
+                var newOffset = Math.floor(daysFromMonday / 7);
+                setWeekOffset(newOffset);
+            } else {
+                console.info(MODULE_NAME, 'Selected date', currentDate, 'is within current week, reloading data');
+                state.data.todo = null;
+                state.data.done = null;
+                state.initialTodayRows = null;
+                loadAndRenderData();
+            }
+        };
+
+        dateInput.addEventListener('change', checkDateChange);
+        dateInput.addEventListener('blur', checkDateChange);
+
+        var observer = new MutationObserver(function() {
+            checkDateChange();
+        });
+        observer.observe(dateInput, {
+            attributes: true,
+            attributeFilter: ['value']
+        });
+    }
+
+    function getMondayOffset(date) {
+        var day = date.getDay();
+        var diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        var monday = new Date(date);
+        monday.setDate(diff);
+        monday.setHours(0, 0, 0, 0);
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var referenceMonday = getWeekRange(today).monday;
+        referenceMonday.setHours(0, 0, 0, 0);
+        var weeksDiff = Math.floor((monday.getTime() - referenceMonday.getTime()) / (1000 * 60 * 60 * 24 * 7));
+        return weeksDiff;
     }
 
     function init() {
