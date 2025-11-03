@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.4.0';
+    var VERSION = '2.4.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -346,15 +346,31 @@
                                     
                                     // Check if this stage is completed (has worker OR status is "Gotowe")
                                     var isCompleted = false;
-                                    // First check status column (more reliable)
+                                    
+                                    // First check status column (most reliable)
                                     if (statusIndex >= 0 && cells[statusIndex]) {
                                         var status = (cells[statusIndex].textContent || '').trim();
-                                        isCompleted = status === 'Gotowe' || status.toLowerCase() === 'gotowe' || status.toLowerCase().indexOf('gotowe') !== -1;
+                                        status = status.toLowerCase();
+                                        isCompleted = status === 'gotowe' || status.indexOf('gotowe') !== -1;
                                     }
-                                    // Also check worker column
+                                    
+                                    // Also check worker column if status doesn't indicate completion
                                     if (!isCompleted && workerIndex >= 0 && cells[workerIndex]) {
                                         var worker = (cells[workerIndex].textContent || '').trim();
                                         isCompleted = !!worker && worker.length > 0;
+                                    }
+                                    
+                                    // Debug log for Magazyn płyt
+                                    if (machineName.indexOf('Magazyn płyt') !== -1) {
+                                        console.debug('[EOZ Commission List] Magazyn płyt status check:', {
+                                            commissionId: commissionId,
+                                            machineName: machineName,
+                                            status: statusIndex >= 0 && cells[statusIndex] ? (cells[statusIndex].textContent || '').trim() : 'N/A',
+                                            worker: workerIndex >= 0 && cells[workerIndex] ? (cells[workerIndex].textContent || '').trim() : 'N/A',
+                                            isCompleted: isCompleted,
+                                            statusIndex: statusIndex,
+                                            workerIndex: workerIndex
+                                        });
                                     }
                                     
                                     if (!isCompleted && !currentMachine) {
