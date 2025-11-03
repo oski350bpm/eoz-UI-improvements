@@ -114,7 +114,7 @@
         'input[name="scan_order_code"],\n' +
         'input.scanner,\n' +
         'input.form-control.scanner{display:none!important;visibility:hidden!important}\n' +
-        'form:has(#scan_order_code),div:has(#scan_order_code){display:none!important}\n'\n' +
+        'form:has(#scan_order_code),div:has(#scan_order_code){display:none!important}\n' +
         '.eoz-filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}\n' +
         '.eoz-filter-group{flex:1;min-width:150px}\n' +
         '.eoz-filter-label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}\n' +
