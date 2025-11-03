@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.2';
+    var VERSION = '2.6.3';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -374,17 +374,19 @@
                                         isCompleted = !!worker && worker.length > 0;
                                     }
                                     
-                                    // Debug log for Magazyn płyt
+                                    // Debug log for Magazyn płyt - only log once per commission ID to avoid spam
                                     if (machineName.indexOf('Magazyn płyt') !== -1) {
-                                        console.debug('[EOZ Commission List] Magazyn płyt status check:', {
-                                            commissionId: commissionId,
-                                            machineName: machineName,
-                                            status: statusIndex >= 0 && cells[statusIndex] ? (cells[statusIndex].textContent || '').trim() : 'N/A',
-                                            worker: workerIndex >= 0 && cells[workerIndex] ? (cells[workerIndex].textContent || '').trim() : 'N/A',
-                                            isCompleted: isCompleted,
-                                            statusIndex: statusIndex,
-                                            workerIndex: workerIndex
-                                        });
+                                        var logKey = 'eoz_magazyn_plyt_logged_' + commissionId;
+                                        if (!window[logKey]) {
+                                            window[logKey] = true;
+                                            console.debug('[EOZ Commission List] Magazyn płyt status check:', {
+                                                commissionId: commissionId,
+                                                machineName: machineName,
+                                                status: statusIndex >= 0 && cells[statusIndex] ? (cells[statusIndex].textContent || '').trim() : 'N/A',
+                                                worker: workerIndex >= 0 && cells[workerIndex] ? (cells[workerIndex].textContent || '').trim() : 'N/A',
+                                                isCompleted: isCompleted
+                                            });
+                                        }
                                     }
                                     
                                     // Set currentMachine to first incomplete machine
@@ -622,7 +624,9 @@
         }
 
         var rows = document.querySelectorAll('tbody tr.body-row');
-        console.log('[EOZ Commission List] Enhancing status for', rows.length, 'rows');
+        if (rows.length > 0) {
+            console.log('[EOZ Commission List] Enhancing status for', rows.length, 'rows');
+        }
         
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td.body-cell');
@@ -767,7 +771,9 @@
     // Apply row coloring based on machine
     function applyRowColoring() {
         var rows = document.querySelectorAll('tbody tr.body-row');
-        console.log('[EOZ Commission List] Applying row coloring for', rows.length, 'rows');
+        if (rows.length > 0) {
+            console.log('[EOZ Commission List] Applying row coloring for', rows.length, 'rows');
+        }
         var batch = [];
         var batchSize = 10;
 
@@ -1519,6 +1525,12 @@
             row.appendChild(mobileCell);
         });
     }
+
+    // Prevent multiple executions
+    if (window.EOZ_CommissionList_Running) {
+        return;
+    }
+    window.EOZ_CommissionList_Running = true;
 
     function run() {
         window.EOZ.waitFor('table.dynamic-table tbody tr.body-row', { timeout: 10000 })
