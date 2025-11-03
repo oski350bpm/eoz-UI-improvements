@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.0';
+    var VERSION = '2.2.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -220,14 +220,46 @@
                             return;
                         }
                         
-                        // Find table after heading
-                        var table = processHeading.nextElementSibling;
-                        while (table && table.tagName !== 'TABLE') {
-                            table = table.nextElementSibling;
+                        // Find table after heading - search in all tables that come after heading
+                        var table = null;
+                        var allTables = doc.querySelectorAll('table');
+                        
+                        // Find first table that comes after the heading in document order
+                        for (var t = 0; t < allTables.length; t++) {
+                            var tbl = allTables[t];
+                            // Check if table comes after heading (using compareDocumentPosition)
+                            // 4 = DOCUMENT_POSITION_FOLLOWING
+                            if (processHeading.compareDocumentPosition(tbl) === 4) {
+                                // Check if table has thead with Maszyna column (it's likely the production table)
+                                var thead = tbl.querySelector('thead');
+                                if (thead) {
+                                    var headers = thead.querySelectorAll('th, td');
+                                    for (var h = 0; h < headers.length; h++) {
+                                        if (headers[h].textContent.indexOf('Maszyna') !== -1) {
+                                            table = tbl;
+                                            break;
+                                        }
+                                    }
+                                    if (table) break;
+                                }
+                            }
+                        }
+                        
+                        // Fallback: if no table found, try nextElementSibling approach
+                        if (!table) {
+                            var next = processHeading.nextElementSibling;
+                            var steps = 0;
+                            while (next && next.tagName !== 'TABLE' && steps < 10) {
+                                next = next.nextElementSibling;
+                                steps++;
+                            }
+                            if (next && next.tagName === 'TABLE') {
+                                table = next;
+                            }
                         }
                         
                         if (!table) {
-                            console.debug('[EOZ Commission List] Process table not found for commission', commissionId);
+                            console.debug('[EOZ Commission List] Process table not found for commission', commissionId, 'Heading:', processHeading.textContent.trim());
                             resolve(null);
                             return;
                         }
