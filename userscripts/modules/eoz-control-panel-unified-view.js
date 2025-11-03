@@ -70,6 +70,30 @@
         }
     }
 
+    if (window.location.href.indexOf('control_panel_not_finished') !== -1) {
+        try {
+            var redirectTarget = new URL(window.location.href);
+            redirectTarget.pathname = redirectTarget.pathname.replace('control_panel_not_finished', 'control_panel');
+            redirectTarget.searchParams.set('tab', 'todo');
+            redirectTarget.searchParams.set('unified', 'true');
+            if (!redirectTarget.searchParams.has('week_offset')) {
+                redirectTarget.searchParams.set('week_offset', '0');
+            }
+            window.location.replace(redirectTarget.pathname + '?' + redirectTarget.searchParams.toString());
+        } catch (redirectError) {
+            console.warn(MODULE_NAME, 'Redirect fallback triggered', redirectError);
+            var fallbackUrl = window.location.href.replace('control_panel_not_finished', 'control_panel');
+            if (fallbackUrl.indexOf('?') === -1) {
+                fallbackUrl += '?';
+            } else {
+                fallbackUrl += '&';
+            }
+            fallbackUrl += 'tab=todo&unified=true&week_offset=0';
+            window.location.replace(fallbackUrl);
+        }
+        return;
+    }
+
     if (window.location.href.indexOf('/machines/control_panel') === -1) {
         return; // Not the target view
     }
