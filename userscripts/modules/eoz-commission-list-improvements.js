@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.1';
+    var VERSION = '2.1.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -226,20 +226,25 @@
                         var currentMachine = null;
                         var allMachines = [];
                         
+                        // Find column indices once before loop (performance optimization)
+                        var headers = table.querySelectorAll('thead th, thead td');
+                        var machineIndex = -1;
+                        var workerIndex = -1;
+                        for (var k = 0; k < headers.length; k++) {
+                            var headerText = (headers[k].textContent || '').trim();
+                            if (headerText.indexOf('Maszyna') !== -1 && machineIndex === -1) {
+                                machineIndex = k;
+                            }
+                            if (headerText.indexOf('Pracownik') !== -1 && workerIndex === -1) {
+                                workerIndex = k;
+                            }
+                            // Early exit if both found
+                            if (machineIndex !== -1 && workerIndex !== -1) break;
+                        }
+                        
                         for (var j = 0; j < rows.length; j++) {
                             var row = rows[j];
                             var cells = row.querySelectorAll('td');
-                            
-                            // Find machine column index (look for "Maszyna" header)
-                            var headers = table.querySelectorAll('thead th, thead td');
-                            var machineIndex = -1;
-                            for (var k = 0; k < headers.length; k++) {
-                                var headerText = (headers[k].textContent || '').trim();
-                                if (headerText.indexOf('Maszyna') !== -1) {
-                                    machineIndex = k;
-                                    break;
-                                }
-                            }
                             
                             if (machineIndex >= 0 && cells[machineIndex]) {
                                 var machineName = (cells[machineIndex].textContent || '').trim();
@@ -250,16 +255,7 @@
                                         normalized: normalized
                                     });
                                     
-                                    // Check if this stage is completed (has worker or other indicators)
-                                    var workerIndex = -1;
-                                    for (var l = 0; l < headers.length; l++) {
-                                        var hText = (headers[l].textContent || '').trim();
-                                        if (hText.indexOf('Pracownik') !== -1) {
-                                            workerIndex = l;
-                                            break;
-                                        }
-                                    }
-                                    
+                                    // Check if this stage is completed (has worker)
                                     var isCompleted = false;
                                     if (workerIndex >= 0 && cells[workerIndex]) {
                                         var worker = (cells[workerIndex].textContent || '').trim();
@@ -285,10 +281,14 @@
                             allMachines: allMachines
                         };
                         
-                        // Cache result (LRU eviction)
+                        // Cache result (LRU eviction - remove oldest 10% if cache is full)
                         if (commissionMachineCache.size >= MAX_CACHE_SIZE) {
-                            var firstKey = commissionMachineCache.keys().next().value;
-                            commissionMachineCache.delete(firstKey);
+                            var keysToRemove = Math.floor(MAX_CACHE_SIZE * 0.1); // Remove 10%
+                            var iterator = commissionMachineCache.keys();
+                            for (var c = 0; c < keysToRemove && c < commissionMachineCache.size; c++) {
+                                var key = iterator.next().value;
+                                commissionMachineCache.delete(key);
+                            }
                         }
                         commissionMachineCache.set(commissionId, result);
                         
@@ -501,6 +501,9 @@
 
             // Fetch machine data asynchronously
             fetchCommissionMachineData(commissionId).then(function(data) {
+                // Check if cell still exists in DOM
+                if (!statusCell || !statusCell.parentNode) return;
+                
                 if (!data || !data.currentMachine) {
                     // Keep original status if no machine data
                     return;
@@ -539,6 +542,9 @@
                 
                 statusCell.innerHTML = '';
                 statusCell.appendChild(wrapper);
+            }).catch(function(error) {
+                // Silently handle errors
+                console.debug('[EOZ Commission List] Error enhancing status:', error);
             });
         });
     }
@@ -565,6 +571,9 @@
 
                 Promise.all(promises).then(function(results) {
                     results.forEach(function(result) {
+                        // Check if row still exists in DOM
+                        if (!result.row || !result.row.parentNode) return;
+                        
                         if (!result.data || !result.data.currentMachine) return;
 
                         var machineInfo = getMachineColor(result.data.currentMachine);
@@ -589,6 +598,9 @@
                         }
                         result.row.setAttribute('data-current-machine', originalName ? (originalName.name || result.data.currentMachine) : result.data.currentMachine);
                     });
+                }).catch(function(error) {
+                    // Silently handle errors - don't break the UI
+                    console.debug('[EOZ Commission List] Error in batch processing:', error);
                 });
 
                 batch = [];
@@ -626,6 +638,12 @@
             }
 
             fetchCommissionMachineData(commissionId).then(function(data) {
+                // Check if row still exists in DOM and doesn't already have process bar
+                if (!row || !row.parentNode) return;
+                if (row.nextElementSibling && row.nextElementSibling.classList.contains('eoz-process-row')) {
+                    return;
+                }
+                
                 if (!data || !data.machines) return;
 
                 // Create process row
@@ -686,8 +704,13 @@
                 processCell.appendChild(processBar);
                 processRow.appendChild(processCell);
 
-                // Insert after current row
-                row.parentNode.insertBefore(processRow, row.nextSibling);
+                // Insert after current row (double-check row still exists)
+                if (row && row.parentNode) {
+                    row.parentNode.insertBefore(processRow, row.nextSibling);
+                }
+            }).catch(function(error) {
+                // Silently handle errors
+                console.debug('[EOZ Commission List] Error adding process bar:', error);
             });
         });
     }
@@ -1138,8 +1161,14 @@
             // Header: Lp + Kod (mobile only)
             var header = document.createElement('div');
             header.className = 'eoz-cl-header';
-            header.innerHTML = '<div class="eoz-cl-lp">Lp. ' + lp + '</div>' +
-                               '<div class="eoz-cl-kod">' + kod + '</div>';
+            var lpDiv = document.createElement('div');
+            lpDiv.className = 'eoz-cl-lp';
+            lpDiv.textContent = 'Lp. ' + lp;
+            var kodDiv = document.createElement('div');
+            kodDiv.className = 'eoz-cl-kod';
+            kodDiv.textContent = kod;
+            header.appendChild(lpDiv);
+            header.appendChild(kodDiv);
             
             // Details grid
             var details = document.createElement('div');
@@ -1156,15 +1185,30 @@
             
             var infoCol = document.createElement('div');
             infoCol.className = 'eoz-cl-info';
-            infoCol.innerHTML = '<div><span class="eoz-cl-label">Klient:</span>' + kodKlienta + '</div>' +
-                                '<div><span class="eoz-cl-label">Nazwa zlecenia:</span>' + nazwa + '</div>' +
-                                '<div><span class="eoz-cl-label">Materiały:</span>' + materialy + '</div>' +
-                                '<div><span class="eoz-cl-label">Ilość płyt:</span>' + ilosc + '</div>' +
-                                '<div><span class="eoz-cl-label">Planowana data:</span>' + dataZakonczenia + '</div>';
+            // Safe HTML creation using textContent (XSS protection)
+            function createLabeledDiv(label, value) {
+                var div = document.createElement('div');
+                var labelSpan = document.createElement('span');
+                labelSpan.className = 'eoz-cl-label';
+                labelSpan.textContent = label;
+                div.appendChild(labelSpan);
+                var text = document.createTextNode(value);
+                div.appendChild(text);
+                return div;
+            }
+            
+            infoCol.appendChild(createLabeledDiv('Klient:', kodKlienta));
+            infoCol.appendChild(createLabeledDiv('Nazwa zlecenia:', nazwa));
+            infoCol.appendChild(createLabeledDiv('Materiały:', materialy));
+            infoCol.appendChild(createLabeledDiv('Ilość płyt:', ilosc));
+            infoCol.appendChild(createLabeledDiv('Planowana data:', dataZakonczenia));
             
             var statusCol = document.createElement('div');
             statusCol.className = 'eoz-cl-status-col';
-            statusCol.innerHTML = '<div class="eoz-cl-status">' + status + '</div>';
+            var statusDiv = document.createElement('div');
+            statusDiv.className = 'eoz-cl-status';
+            statusDiv.textContent = status;
+            statusCol.appendChild(statusDiv);
             
             var actionsCol = document.createElement('div');
             actionsCol.className = 'eoz-cl-actions';
