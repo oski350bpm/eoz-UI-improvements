@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ All UI Improvements
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      3.11.6
+// @version      3.11.7
 // @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów (Boards + Veneers + CDP Manager + Scripts Viewer)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js
@@ -12,6 +12,7 @@
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-commission-list-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-boards-magazine-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-machines-control-panel-improvements.js
+// DISABLED: Unified view module temporarily disabled
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-control-panel-unified-view.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-commission-generate-page-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-cdp-manager.js
@@ -22,7 +23,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '3.11.6';
+    var VERSION = '3.11.7';
     
     if (!window.EOZ) {
         console.error('[EOZ All UI v' + VERSION + '] Core not loaded!');
@@ -57,7 +58,8 @@
     if (window.EOZ.ScriptsViewer && window.EOZ.ScriptsViewer.VERSION) {
         console.log('[EOZ All UI v' + VERSION + '] Scripts Viewer Module v' + window.EOZ.ScriptsViewer.VERSION);
     }
-    if (window.EOZ.ControlPanelUnified && window.EOZ.ControlPanelUnified.VERSION) {
-        console.log('[EOZ All UI v' + VERSION + '] Control Panel Unified Module v' + window.EOZ.ControlPanelUnified.VERSION);
-    }
+    // DISABLED: Unified view module temporarily disabled
+    // if (window.EOZ.ControlPanelUnified && window.EOZ.ControlPanelUnified.VERSION) {
+    //     console.log('[EOZ All UI v' + VERSION + '] Control Panel Unified Module v' + window.EOZ.ControlPanelUnified.VERSION);
+    // }
 })();
