@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.2.1';
+    var VERSION = '2.3.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -75,13 +75,21 @@
         '.eoz-row-production{border-left:3px solid #FFC107}\n' +
         '.eoz-machine-badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;display:inline-block;margin-top:4px}\n' +
         '.eoz-status-machine{font-size:12px;color:#666;margin-top:4px}\n' +
-        '.eoz-process-bar{display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:#f8f9fa;border-top:1px solid #ddd;align-items:center}\n' +
-        '.eoz-process-stage{display:flex;align-items:center;gap:4px;font-size:12px;padding:4px 8px;border-radius:4px}\n' +
-        '.eoz-process-stage.completed{color:#9E9E9E;text-decoration:line-through}\n' +
-        '.eoz-process-stage.completed::before{content:"✓";color:#4CAF50;margin-right:4px;font-weight:bold}\n' +
-        '.eoz-process-stage.current{font-weight:bold;background:rgba(255,193,7,0.2);color:#FF9800}\n' +
-        '.eoz-process-stage.current::before{content:"→";color:#FF9800;margin-right:4px;font-weight:bold}\n' +
-        '.eoz-process-stage.pending{opacity:0.4;color:#999}\n' +
+        '.eoz-status-expandable{position:relative}\n' +
+        '.eoz-status-toggle{cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin-left:4px;color:#007bff;font-size:11px}\n' +
+        '.eoz-status-toggle:hover{text-decoration:underline}\n' +
+        '.eoz-status-toggle::after{content:"▼";font-size:9px;transition:transform 0.2s}\n' +
+        '.eoz-status-toggle.expanded::after{transform:rotate(180deg)}\n' +
+        '.eoz-process-panel{display:none;margin-top:8px;padding:10px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;max-width:300px}\n' +
+        '.eoz-process-panel.expanded{display:block}\n' +
+        '.eoz-process-stage-vertical{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;border-bottom:1px solid #e0e0e0}\n' +
+        '.eoz-process-stage-vertical:last-child{border-bottom:none}\n' +
+        '.eoz-process-stage-vertical.completed{color:#9E9E9E}\n' +
+        '.eoz-process-stage-vertical.completed::before{content:"✓";color:#4CAF50;font-weight:bold;width:18px;text-align:center}\n' +
+        '.eoz-process-stage-vertical.current{font-weight:bold;color:#FF9800}\n' +
+        '.eoz-process-stage-vertical.current::before{content:"→";color:#FF9800;font-weight:bold;width:18px;text-align:center}\n' +
+        '.eoz-process-stage-vertical.pending{opacity:0.5;color:#999}\n' +
+        '.eoz-process-stage-vertical.pending::before{content:"○";color:#ccc;width:18px;text-align:center}\n' +
         '.eoz-process-stage.pending::before{content:"○";margin-right:4px}\n' +
         '.eoz-process-separator{color:#ccc;margin:0 4px}\n' +
         '.eoz-search-filter-container{margin-bottom:16px;padding:16px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}\n' +
@@ -642,8 +650,68 @@
                 wrapper.appendChild(statusLine);
                 wrapper.appendChild(badge);
                 
-                statusCell.innerHTML = '';
-                statusCell.appendChild(wrapper);
+                // Add expandable process panel for production commissions
+                if (data.machines && data.machines.length > 0) {
+                    var toggle = document.createElement('span');
+                    toggle.className = 'eoz-status-toggle';
+                    toggle.textContent = 'Proces';
+                    toggle.setAttribute('data-commission-id', commissionId);
+                    
+                    var panel = document.createElement('div');
+                    panel.className = 'eoz-process-panel';
+                    panel.setAttribute('data-commission-id', commissionId);
+                    
+                    // Add process stages
+                    PRODUCTION_MACHINES.forEach(function(machineName, index) {
+                        var stageDiv = document.createElement('div');
+                        stageDiv.className = 'eoz-process-stage-vertical';
+                        
+                        // Find machine status
+                        var machineStatus = null;
+                        for (var m = 0; m < data.machines.length; m++) {
+                            if (normalizeMachineName(data.machines[m].name) === normalizeMachineName(machineName)) {
+                                machineStatus = data.machines[m];
+                                break;
+                            }
+                        }
+                        
+                        if (machineStatus && machineStatus.completed) {
+                            stageDiv.classList.add('completed');
+                        } else if (machineStatus && normalizeMachineName(machineStatus.name || machineStatus.normalized) === data.currentMachine) {
+                            stageDiv.classList.add('current');
+                        } else {
+                            stageDiv.classList.add('pending');
+                        }
+                        
+                        stageDiv.textContent = machineName;
+                        panel.appendChild(stageDiv);
+                    });
+                    
+                    toggle.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var isExpanded = panel.classList.contains('expanded');
+                        if (isExpanded) {
+                            panel.classList.remove('expanded');
+                            toggle.classList.remove('expanded');
+                        } else {
+                            panel.classList.add('expanded');
+                            toggle.classList.add('expanded');
+                        }
+                    });
+                    
+                    wrapper.appendChild(toggle);
+                    
+                    var expandableWrapper = document.createElement('div');
+                    expandableWrapper.className = 'eoz-status-expandable';
+                    expandableWrapper.appendChild(wrapper);
+                    expandableWrapper.appendChild(panel);
+                    
+                    statusCell.innerHTML = '';
+                    statusCell.appendChild(expandableWrapper);
+                } else {
+                    statusCell.innerHTML = '';
+                    statusCell.appendChild(wrapper);
+                }
             }).catch(function(error) {
                 // Silently handle errors
                 console.debug('[EOZ Commission List] Error enhancing status:', error);
@@ -718,112 +786,7 @@
         });
     }
 
-    // Add production process bar for commissions in production
-    function addProductionProcessBars() {
-        var rows = document.querySelectorAll('tbody tr.body-row');
-        rows.forEach(function(row) {
-            // Skip if process bar already added
-            if (row.nextElementSibling && row.nextElementSibling.classList.contains('eoz-process-row')) {
-                return;
-            }
-
-            var commissionId = getCommissionIdFromRow(row);
-            if (!commissionId) return;
-
-            var statusIndex = findColumnIndex('Status');
-            if (statusIndex === -1) return;
-            
-            var cells = row.querySelectorAll('td.body-cell');
-            if (!cells[statusIndex]) return;
-            
-            var statusCell = cells[statusIndex];
-            // Get original status if stored, otherwise current text
-            var statusText = (statusCell.getAttribute('data-original-status') || statusCell.textContent || '').trim().toLowerCase();
-            
-            // Only add for commissions in production (check various status texts)
-            if (statusText.indexOf('produkcji') === -1 && 
-                statusText.indexOf('w produkcji') === -1 &&
-                statusText.indexOf('production') === -1) {
-                return;
-            }
-
-            fetchCommissionMachineData(commissionId).then(function(data) {
-                // Check if row still exists in DOM and doesn't already have process bar
-                if (!row || !row.parentNode) return;
-                if (row.nextElementSibling && row.nextElementSibling.classList.contains('eoz-process-row')) {
-                    return;
-                }
-                
-                if (!data || !data.machines) return;
-
-                // Create process row
-                var processRow = document.createElement('tr');
-                processRow.className = 'eoz-process-row';
-                
-                var processCell = document.createElement('td');
-                processCell.setAttribute('colspan', cells.length);
-                processCell.className = 'eoz-process-cell';
-                
-                var processBar = document.createElement('div');
-                processBar.className = 'eoz-process-bar';
-
-                // Create stages for all production machines
-                var currentMachineIndex = -1;
-                PRODUCTION_MACHINES.forEach(function(machineName, index) {
-                    var normalized = normalizeMachineName(machineName);
-                    var foundMachine = null;
-                    for (var m = 0; m < data.machines.length; m++) {
-                        var machine = data.machines[m];
-                        var machineNormalized = normalizeMachineName(machine.name || machine.normalized);
-                        if (machineNormalized === normalized) {
-                            foundMachine = machine;
-                            break;
-                        }
-                    }
-
-                    var isCompleted = foundMachine ? foundMachine.completed : false;
-                    var isCurrent = data.currentMachine === normalized;
-
-                    if (isCurrent) {
-                        currentMachineIndex = index;
-                    }
-
-                    var stage = document.createElement('div');
-                    stage.className = 'eoz-process-stage';
-                    
-                    if (isCompleted) {
-                        stage.classList.add('completed');
-                    } else if (isCurrent) {
-                        stage.classList.add('current');
-                    } else {
-                        stage.classList.add('pending');
-                    }
-
-                    stage.textContent = machineName;
-                    processBar.appendChild(stage);
-
-                    // Add separator except for last
-                    if (index < PRODUCTION_MACHINES.length - 1) {
-                        var separator = document.createElement('span');
-                        separator.className = 'eoz-process-separator';
-                        separator.textContent = '|';
-                        processBar.appendChild(separator);
-                    }
-                });
-
-                processCell.appendChild(processBar);
-                processRow.appendChild(processCell);
-
-                // Insert after current row (double-check row still exists)
-                if (row && row.parentNode) {
-                    row.parentNode.insertBefore(processRow, row.nextSibling);
-                }
-            }).catch(function(error) {
-                // Silently handle errors
-                console.debug('[EOZ Commission List] Error adding process bar:', error);
-            });
-        });
-    }
+    // Removed addProductionProcessBars - now using expandable status column with vertical process display
 
     // Search and filter state
     var searchFilterState = {
@@ -1381,11 +1344,6 @@
                 // Enhance status column and apply row coloring
                 enhanceStatusColumn();
                 applyRowColoring();
-                
-                // Add production process bars (with delay to ensure machine data is fetched)
-                setTimeout(function() {
-                    addProductionProcessBars();
-                }, 1500);
                 
                 // Re-run filtering after machine data is loaded (for machine filter)
                 setTimeout(function() {
