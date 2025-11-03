@@ -688,21 +688,57 @@
                         var stageDiv = document.createElement('div');
                         stageDiv.className = 'eoz-process-stage-vertical';
                         
-                        // Find machine status
+                        // Find machine status - try multiple matching strategies
                         var machineStatus = null;
+                        var machineNameNorm = normalizeMachineName(machineName);
+                        
                         for (var m = 0; m < data.machines.length; m++) {
-                            if (normalizeMachineName(data.machines[m].name) === normalizeMachineName(machineName)) {
-                                machineStatus = data.machines[m];
+                            var dataMachine = data.machines[m];
+                            var dataMachineName = dataMachine.name || dataMachine.normalized || '';
+                            var dataMachineNorm = normalizeMachineName(dataMachineName);
+                            
+                            // Exact normalized match
+                            if (dataMachineNorm === machineNameNorm) {
+                                machineStatus = dataMachine;
+                                break;
+                            }
+                            // Partial match (e.g. "Magazyn płyt" matches "Magazyn płyt")
+                            if (dataMachineName && machineName && 
+                                (dataMachineName.indexOf(machineName) !== -1 || 
+                                 machineName.indexOf(dataMachineName) !== -1)) {
+                                machineStatus = dataMachine;
                                 break;
                             }
                         }
                         
+                        // Determine stage state
                         if (machineStatus && machineStatus.completed) {
                             stageDiv.classList.add('completed');
-                        } else if (machineStatus && normalizeMachineName(machineStatus.name || machineStatus.normalized) === data.currentMachine) {
-                            stageDiv.classList.add('current');
+                        } else if (machineStatus) {
+                            // Check if this is current machine
+                            var currentMachineNorm = data.currentMachine ? normalizeMachineName(data.currentMachine) : '';
+                            var machineStatusNorm = machineStatus.normalized || normalizeMachineName(machineStatus.name || '');
+                            if (machineStatusNorm === currentMachineNorm) {
+                                stageDiv.classList.add('current');
+                            } else {
+                                stageDiv.classList.add('pending');
+                            }
                         } else {
-                            stageDiv.classList.add('pending');
+                            // Machine not found in data - check if it's before current machine
+                            var currentIndex = -1;
+                            for (var ci = 0; ci < PRODUCTION_MACHINES.length; ci++) {
+                                if (normalizeMachineName(PRODUCTION_MACHINES[ci]) === (data.currentMachine ? normalizeMachineName(data.currentMachine) : '')) {
+                                    currentIndex = ci;
+                                    break;
+                                }
+                            }
+                            if (index < currentIndex) {
+                                stageDiv.classList.add('completed');
+                            } else if (index === currentIndex) {
+                                stageDiv.classList.add('current');
+                            } else {
+                                stageDiv.classList.add('pending');
+                            }
                         }
                         
                         stageDiv.textContent = machineName;
