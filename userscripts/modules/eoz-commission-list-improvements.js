@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.6.5';
+    var VERSION = '2.5.2';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -103,21 +103,6 @@
         '.eoz-status-toggle-new.expanded::after{transform:rotate(180deg)}\n' +
         '.eoz-search-filter-container{margin-bottom:16px;padding:16px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}\n' +
         '.eoz-search-input{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;margin-bottom:12px}\n' +
-        '/* Hide original table filters */\n' +
-        'tbody tr:first-child td input[type="text"],\n' +
-        'tbody tr:first-child td input[type="search"],\n' +
-        'tbody tr:first-child td select,\n' +
-        'tbody tr:first-child:has(input):has(select){display:none!important}\n' +
-        'tbody tr:first-child:has(input):has(select){height:0!important;padding:0!important;margin:0!important;overflow:hidden!important;border:none!important;visibility:hidden!important}\n' +
-        '/* Hide scanner input */\n' +
-        '#scan_order_code,\n' +
-        'input[name="scan_order_code"],\n' +
-        'input.scanner,\n' +
-        'input.form-control.scanner{display:none!important;visibility:hidden!important}\n' +
-        'form:has(#scan_order_code),div:has(#scan_order_code){display:none!important}\n' +
-        '/* Ensure main content is visible */\n' +
-        '#site-content{display:block!important;visibility:visible!important}\n' +
-        '.content{display:block!important;visibility:visible!important}\n' +
         '.eoz-filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}\n' +
         '.eoz-filter-group{flex:1;min-width:150px}\n' +
         '.eoz-filter-label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}\n' +
@@ -377,19 +362,17 @@
                                         isCompleted = !!worker && worker.length > 0;
                                     }
                                     
-                                    // Debug log for Magazyn płyt - only log once per commission ID to avoid spam
+                                    // Debug log for Magazyn płyt
                                     if (machineName.indexOf('Magazyn płyt') !== -1) {
-                                        var logKey = 'eoz_magazyn_plyt_logged_' + commissionId;
-                                        if (!window[logKey]) {
-                                            window[logKey] = true;
-                                            console.debug('[EOZ Commission List] Magazyn płyt status check:', {
-                                                commissionId: commissionId,
-                                                machineName: machineName,
-                                                status: statusIndex >= 0 && cells[statusIndex] ? (cells[statusIndex].textContent || '').trim() : 'N/A',
-                                                worker: workerIndex >= 0 && cells[workerIndex] ? (cells[workerIndex].textContent || '').trim() : 'N/A',
-                                                isCompleted: isCompleted
-                                            });
-                                        }
+                                        console.debug('[EOZ Commission List] Magazyn płyt status check:', {
+                                            commissionId: commissionId,
+                                            machineName: machineName,
+                                            status: statusIndex >= 0 && cells[statusIndex] ? (cells[statusIndex].textContent || '').trim() : 'N/A',
+                                            worker: workerIndex >= 0 && cells[workerIndex] ? (cells[workerIndex].textContent || '').trim() : 'N/A',
+                                            isCompleted: isCompleted,
+                                            statusIndex: statusIndex,
+                                            workerIndex: workerIndex
+                                        });
                                     }
                                     
                                     // Set currentMachine to first incomplete machine
@@ -627,9 +610,7 @@
         }
 
         var rows = document.querySelectorAll('tbody tr.body-row');
-        if (rows.length > 0) {
-            console.log('[EOZ Commission List] Enhancing status for', rows.length, 'rows');
-        }
+        console.log('[EOZ Commission List] Enhancing status for', rows.length, 'rows');
         
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td.body-cell');
@@ -774,9 +755,7 @@
     // Apply row coloring based on machine
     function applyRowColoring() {
         var rows = document.querySelectorAll('tbody tr.body-row');
-        if (rows.length > 0) {
-            console.log('[EOZ Commission List] Applying row coloring for', rows.length, 'rows');
-        }
+        console.log('[EOZ Commission List] Applying row coloring for', rows.length, 'rows');
         var batch = [];
         var batchSize = 10;
 
@@ -987,72 +966,6 @@
             machine: machine,
             fullText: (row.textContent || '').toLowerCase()
         };
-    }
-
-    // Update filter dropdown options based on currently visible rows
-    function updateFilterOptionsFromVisibleRows() {
-        var visibleRows = document.querySelectorAll('tbody tr.body-row:not([style*="display: none"])');
-        var visibleClients = new Set();
-        var visibleStatuses = new Set();
-        var visibleMachines = new Set();
-        
-        visibleRows.forEach(function(row) {
-            var rowData = extractRowDataForFilter(row);
-            
-            if (rowData.klient) {
-                visibleClients.add(rowData.klient);
-            }
-            
-            if (rowData.status) {
-                visibleStatuses.add(rowData.status);
-            }
-            
-            if (rowData.machine) {
-                visibleMachines.add(rowData.machine);
-            }
-        });
-        
-        // Update client dropdown
-        if (filterDropdowns.client) {
-            var clientOptions = Array.from(visibleClients).sort().map(function(client) {
-                return { value: client, text: client };
-            });
-            filterDropdowns.client.populate(clientOptions);
-        }
-        
-        // Update status dropdown
-        if (filterDropdowns.status) {
-            var statusOptions = Array.from(visibleStatuses).sort().map(function(status) {
-                return { value: status, text: status };
-            });
-            filterDropdowns.status.populate(statusOptions);
-        }
-        
-        // Update machine dropdown
-        if (filterDropdowns.machine) {
-            var machineOptions = Array.from(visibleMachines).sort().map(function(machine) {
-                return { value: machine, text: machine };
-            });
-            // Always include "Po kompletacji" if it exists
-            var hasPoKompletacji = Array.from(visibleMachines).some(function(m) {
-                return m === 'Po kompletacji' || m.indexOf('Po kompletacji') !== -1;
-            });
-            if (!hasPoKompletacji && visibleRows.length > 0) {
-                // Check if any visible row has status "Zakończone" or no machine
-                var hasCompleted = false;
-                for (var i = 0; i < visibleRows.length; i++) {
-                    var rd = extractRowDataForFilter(visibleRows[i]);
-                    if (!rd.machine || (rd.status && rd.status.toLowerCase().indexOf('zakończone') !== -1)) {
-                        hasCompleted = true;
-                        break;
-                    }
-                }
-                if (hasCompleted) {
-                    machineOptions.push({ value: 'Po kompletacji', text: 'Po kompletacji' });
-                }
-            }
-            filterDropdowns.machine.populate(machineOptions);
-        }
     }
 
     // Apply search and filter
@@ -1308,33 +1221,36 @@
         searchInput.addEventListener('input', debounce(function(event) {
             searchFilterState.searchText = event.target.value;
             applySearchAndFilter();
-            // Update filter options based on visible rows
-            updateFilterOptionsFromVisibleRows();
         }, 300));
 
         // Filter row
         var filterRow = document.createElement('div');
         filterRow.className = 'eoz-filter-row';
 
-        // Status filter - will be populated dynamically
-        var statusGroup = createFilterDropdown('Status:', 'status', [], function(selected) {
+        // Status filter
+        var statusGroup = createFilterDropdown('Status:', 'status', [
+            { value: 'W produkcji', text: 'W produkcji' },
+            { value: 'Zakończone', text: 'Zakończone' },
+            { value: 'Zarchiwizowane', text: 'Zarchiwizowane' }
+        ], function(selected) {
             searchFilterState.statusFilter = selected;
             applySearchAndFilter();
-            updateFilterOptionsFromVisibleRows();
         });
 
-        // Client filter - will be populated dynamically
+        // Client filter
         var clientGroup = createFilterDropdown('Klient:', 'client', [], function(selected) {
             searchFilterState.clientFilter = selected;
             applySearchAndFilter();
-            updateFilterOptionsFromVisibleRows();
         });
 
-        // Machine filter - will be populated dynamically
-        var machineGroup = createFilterDropdown('Maszyna/Etap:', 'machine', [], function(selected) {
+        // Machine filter
+        var machineOptions = PRODUCTION_MACHINES.map(function(m) {
+            return { value: m, text: m };
+        });
+        machineOptions.push({ value: 'Po kompletacji', text: 'Po kompletacji' });
+        var machineGroup = createFilterDropdown('Maszyna/Etap:', 'machine', machineOptions, function(selected) {
             searchFilterState.machineFilter = selected;
             applySearchAndFilter();
-            updateFilterOptionsFromVisibleRows();
         });
 
         // Reset button
@@ -1370,33 +1286,22 @@
         container.appendChild(searchInput);
         container.appendChild(filterRow);
 
-        // Populate initial filter options from all rows
+        // Populate client filter options
         setTimeout(function() {
-            updateFilterOptionsFromVisibleRows();
+            var rows = document.querySelectorAll('tbody tr.body-row');
+            var clients = new Set();
+            rows.forEach(function(row) {
+                var rowData = extractRowDataForFilter(row);
+                if (rowData.klient) clients.add(rowData.klient);
+            });
+
+            var clientOptions = Array.from(clients).sort().map(function(client) {
+                return { value: client, text: client };
+            });
+            if (filterDropdowns.client) {
+                filterDropdowns.client.populate(clientOptions);
+            }
         }, 500);
-        
-        // Also hide original filter row if it exists
-        setTimeout(function() {
-            var firstRow = document.querySelector('tbody tr:first-child');
-            if (firstRow) {
-                var hasInputs = firstRow.querySelectorAll('input, select').length > 0;
-                if (hasInputs) {
-                    firstRow.style.display = 'none';
-                }
-            }
-            
-            // Hide scanner input and its container
-            var scannerInput = document.querySelector('#scan_order_code');
-            if (scannerInput) {
-                var scannerContainer = scannerInput.closest('form') || scannerInput.closest('div');
-                if (scannerContainer) {
-                    scannerContainer.style.display = 'none';
-                } else {
-                    scannerInput.style.display = 'none';
-                    scannerInput.style.visibility = 'hidden';
-                }
-            }
-        }, 100);
 
         return container;
     }
@@ -1530,12 +1435,6 @@
     }
 
     function run() {
-        // Prevent multiple executions
-        if (window.EOZ_CommissionList_Running) {
-            return;
-        }
-        window.EOZ_CommissionList_Running = true;
-        
         window.EOZ.waitFor('table.dynamic-table tbody tr.body-row', { timeout: 10000 })
             .then(function(){
                 hideColumns();

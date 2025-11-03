@@ -17,6 +17,8 @@
 
     var MODULE_NAME = '[EOZ Unified Panel v' + VERSION + ']';
     var DAY_IN_MS = 24 * 60 * 60 * 1000;
+    var FETCH_TIMEOUT_MS = 10000;
+    var SESSION_CACHE_PREFIX = 'eoz-unified-html-';
     var WEEKDAY_SHORT = ['Nd', 'Pon', 'Wt', 'Sr', 'Czw', 'Pt', 'Sob'];
 
     var TABS = {
@@ -50,6 +52,23 @@
 
     var htmlCache = Object.create(null);
     var notFinishedHtmlCache = null;
+
+    function readSessionCache(key) {
+        try {
+            return window.sessionStorage.getItem(SESSION_CACHE_PREFIX + key);
+        } catch (error) {
+            console.warn(MODULE_NAME, 'Unable to read session cache', error);
+            return null;
+        }
+    }
+
+    function writeSessionCache(key, value) {
+        try {
+            window.sessionStorage.setItem(SESSION_CACHE_PREFIX + key, value);
+        } catch (error) {
+            console.warn(MODULE_NAME, 'Unable to write session cache', error);
+        }
+    }
 
     if (window.location.href.indexOf('/machines/control_panel') === -1) {
         return; // Not the target view
@@ -129,8 +148,8 @@
         return dates;
     }
 
-    function getReferenceDate() {
-        var offset = getWeekOffset();
+    function getReferenceDate(explicitOffset) {
+        var offset = typeof explicitOffset === 'number' ? explicitOffset : getWeekOffset();
         var today = new Date();
         today.setHours(0, 0, 0, 0);
         if (offset === 0) {
@@ -153,7 +172,12 @@
             '.eoz-unified-panel__tab-btn:hover{background:rgba(37,99,235,0.12);color:#1d4ed8}' +
             '.eoz-unified-panel__tab-btn.is-active{background:#1d4ed8;color:#fff;border-color:#1d4ed8;box-shadow:0 10px 18px rgba(29,78,216,0.22)}' +
             '.eoz-unified-panel__tab-btn.is-active:after{content:"";position:absolute;bottom:-11px;left:50%;transform:translateX(-50%);width:14px;height:14px;background:#1d4ed8;border-radius:4px 4px 0 0}' +
-            '.eoz-unified-panel__week-info{font-weight:600;font-size:15px;color:#111827;display:flex;align-items:center;gap:10px}' +
+            '.eoz-unified-panel__week-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:flex-end}' +
+            '.eoz-unified-panel__week-info{font-weight:600;font-size:15px;color:#111827;display:inline-flex;align-items:center;gap:10px}' +
+            '.eoz-unified-panel__week-nav{display:flex;gap:8px;align-items:center}' +
+            '.eoz-unified-panel__week-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid rgba(29,78,216,0.35);background:#fff;color:#1d4ed8;font-weight:600;font-size:13px;cursor:pointer;transition:all .2s ease}' +
+            '.eoz-unified-panel__week-btn:hover{background:rgba(29,78,216,0.12)}' +
+            '.eoz-unified-panel__week-btn:disabled{opacity:0.5;cursor:not-allowed;background:rgba(15,23,42,0.06);color:#64748b;border-color:transparent}' +
             '.eoz-unified-panel__body{padding:20px;position:relative}' +
             '.eoz-unified-panel__tab-content{display:none;animation:fadeIn .18s ease-in-out}' +
             '.eoz-unified-panel__tab-content.is-active{display:block}' +
@@ -360,6 +384,24 @@
 
     function fetchHtml(url) {
         return new Promise(function(resolve, reject) {
+            var resolved = false;
+            var timer = setTimeout(function() {
+                if (resolved) return;
+                resolved = true;
+                reject(new Error('Request timeout after ' + FETCH_TIMEOUT_MS + 'ms for ' + url));
+            }, FETCH_TIMEOUT_MS);
+
+            function finalize(success, value) {
+                if (resolved) return;
+                resolved = true;
+                clearTimeout(timer);
+                if (success) {
+                    resolve(value);
+                } else {
+                    reject(value);
+                }
+            }
+
             if (typeof GM_xmlhttpRequest === 'function') {
                 try {
                     GM_xmlhttpRequest({
@@ -367,17 +409,17 @@
                         url: url,
                         onload: function(response) {
                             if (response.status >= 200 && response.status < 300) {
-                                resolve(response.responseText);
+                                finalize(true, response.responseText);
                             } else {
-                                reject(new Error('HTTP ' + response.status + ' while fetching ' + url));
+                                finalize(false, new Error('HTTP ' + response.status + ' while fetching ' + url));
                             }
                         },
                         onerror: function() {
-                            reject(new Error('Network error while fetching ' + url));
+                            finalize(false, new Error('Network error while fetching ' + url));
                         }
                     });
                 } catch (gmError) {
-                    reject(gmError);
+                    finalize(false, gmError);
                 }
             } else {
                 fetch(url, { credentials: 'include' })
@@ -387,9 +429,19 @@
                         }
                         return response.text();
                     })
-                    .then(resolve)
-                    .catch(reject);
+                    .then(function(text) { finalize(true, text); })
+                    .catch(function(error) { finalize(false, error); });
             }
+        });
+    }
+
+    function fetchHtmlWithRetry(url, retries) {
+        return fetchHtml(url).catch(function(error) {
+            if (retries > 0) {
+                console.warn(MODULE_NAME, 'Retrying request', url, 'retries left:', retries, error);
+                return fetchHtmlWithRetry(url, retries - 1);
+            }
+            throw error;
         });
     }
 
@@ -478,9 +530,20 @@
             }));
         }
 
+        var sessionHtml = readSessionCache(iso);
+        if (sessionHtml) {
+            htmlCache[iso] = sessionHtml;
+            return Promise.resolve(parseOrderRowsFromHtml(sessionHtml, {
+                operationDate: iso,
+                source: 'week',
+                targetColumns: getColumnCount(state.tables.todo)
+            }));
+        }
+
         var url = buildControlPanelUrl(iso);
-        return fetchHtml(url).then(function(html) {
+        return fetchHtmlWithRetry(url, 1).then(function(html) {
             htmlCache[iso] = html;
+            writeSessionCache(iso, html);
             return parseOrderRowsFromHtml(html, {
                 operationDate: iso,
                 source: 'week',
@@ -499,8 +562,19 @@
             }));
         }
 
-        return fetchHtml(url).then(function(html) {
+        var sessionHtml = readSessionCache('unfinished');
+        if (sessionHtml) {
+            notFinishedHtmlCache = sessionHtml;
+            return Promise.resolve(parseOrderRowsFromHtml(sessionHtml, {
+                operationDate: 'unfinished',
+                source: 'unfinished',
+                targetColumns: getColumnCount(state.tables.todo)
+            }));
+        }
+
+        return fetchHtmlWithRetry(url, 1).then(function(html) {
             notFinishedHtmlCache = html;
+            writeSessionCache('unfinished', html);
             return parseOrderRowsFromHtml(html, {
                 operationDate: 'unfinished',
                 source: 'unfinished',
@@ -575,13 +649,57 @@
         return row;
     }
 
+    function sortTodoRows(data) {
+        var seenOrders = Object.create(null);
+        var sorted = [];
+
+        var unfinished = (data.unfinishedRows || []).slice();
+        unfinished.forEach(function(row) {
+            if (row.orderNumber) {
+                var unfinishedKey = row.orderNumber.toLowerCase();
+                if (seenOrders[unfinishedKey]) {
+                    return;
+                }
+                seenOrders[unfinishedKey] = true;
+            }
+            sorted.push(row);
+        });
+
+        var weekRows = (data.weekRows || []).slice();
+        weekRows.sort(function(a, b) {
+            var dateA = parseIsoDate(a.operationDate) || new Date(0);
+            var dateB = parseIsoDate(b.operationDate) || new Date(0);
+            if (dateA.getTime() !== dateB.getTime()) {
+                return dateA - dateB;
+            }
+            var orderA = (a.orderNumber || '').toLowerCase();
+            var orderB = (b.orderNumber || '').toLowerCase();
+            if (orderA < orderB) return -1;
+            if (orderA > orderB) return 1;
+            return 0;
+        });
+
+        weekRows.forEach(function(row) {
+            var key = row.orderNumber ? row.orderNumber.toLowerCase() : null;
+            if (key && seenOrders[key]) {
+                return;
+            }
+            if (key) {
+                seenOrders[key] = true;
+            }
+            sorted.push(row);
+        });
+
+        return sorted;
+    }
+
     function renderTodoTab(data) {
         var body = state.tables.todoBody;
         if (!body || !state.tables.todo) {
             return;
         }
 
-        var combined = [].concat(data.unfinishedRows || [], data.weekRows || []);
+        var combined = sortTodoRows(data);
         if (!combined.length) {
             renderInfoRow(body, state.tables.todo, 'Brak zleceń do wykonania w wybranym tygodniu.');
             return;
@@ -591,6 +709,8 @@
         combined.forEach(function(rowData, index) {
             body.appendChild(decorateRow(rowData, index));
         });
+
+        data.sortedRows = combined;
     }
 
     function renderDoneTab(rows) {
@@ -637,6 +757,7 @@
             return;
         }
 
+        updateWeekNavButtons();
         showLoadingState();
 
         Promise.all([
@@ -654,6 +775,46 @@
                 renderDoneTab(doneRows);
             })
             .catch(showErrorState);
+    }
+
+    function updateWeekNavButtons() {
+        var prev = state.elements.prevWeekBtn;
+        var next = state.elements.nextWeekBtn;
+        var offset = state.week.offset || 0;
+        if (prev) {
+            prev.disabled = offset <= -52;
+        }
+        if (next) {
+            next.disabled = offset >= 52;
+        }
+    }
+
+    function setWeekOffset(newOffset) {
+        if (!Number.isInteger(newOffset)) {
+            newOffset = 0;
+        }
+
+        if (newOffset < -52) newOffset = -52;
+        if (newOffset > 52) newOffset = 52;
+
+        state.week.offset = newOffset;
+        state.week.referenceDate = getReferenceDate(newOffset);
+        state.week.range = getWeekRange(state.week.referenceDate);
+        state.week.dates = getWeekDates(state.week.range.monday);
+
+        updateWeekInfoDisplay(state.week.range);
+        updateWeekNavButtons();
+        updateUrlParams({ week_offset: newOffset === 0 ? null : newOffset });
+
+        // Reset cached DOM nodes to avoid attaching the same elements twice
+        state.data.todo = null;
+        state.data.done = null;
+        loadAndRenderData();
+    }
+
+    function changeWeek(delta) {
+        var current = state.week.offset || 0;
+        setWeekOffset(current + delta);
     }
 
     function buildUnifiedPanel() {
@@ -679,10 +840,35 @@
         tabsWrapper.setAttribute('role', 'tablist');
         toolbar.appendChild(tabsWrapper);
 
+        var weekControls = document.createElement('div');
+        weekControls.className = 'eoz-unified-panel__week-controls';
+        toolbar.appendChild(weekControls);
+
         var weekInfo = document.createElement('div');
         weekInfo.className = 'eoz-unified-panel__week-info';
-        toolbar.appendChild(weekInfo);
+        weekControls.appendChild(weekInfo);
         state.elements.weekInfo = weekInfo;
+
+        var weekNav = document.createElement('div');
+        weekNav.className = 'eoz-unified-panel__week-nav';
+        weekControls.appendChild(weekNav);
+        state.elements.weekNav = weekNav;
+
+        var prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'eoz-unified-panel__week-btn';
+        prevBtn.textContent = '< Poprzedni tydzień';
+        prevBtn.addEventListener('click', function() { changeWeek(-1); });
+        weekNav.appendChild(prevBtn);
+        state.elements.prevWeekBtn = prevBtn;
+
+        var nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'eoz-unified-panel__week-btn';
+        nextBtn.textContent = 'Następny tydzień >';
+        nextBtn.addEventListener('click', function() { changeWeek(1); });
+        weekNav.appendChild(nextBtn);
+        state.elements.nextWeekBtn = nextBtn;
 
         var body = document.createElement('div');
         body.className = 'eoz-unified-panel__body';
@@ -741,10 +927,12 @@
     }
 
     function applyUnifiedView() {
-        var referenceDate = getReferenceDate();
+        var offset = getWeekOffset();
+        var referenceDate = getReferenceDate(offset);
         var weekRange = getWeekRange(referenceDate);
         var weekDates = getWeekDates(weekRange.monday);
 
+        state.week.offset = offset;
         state.week.referenceDate = referenceDate;
         state.week.range = weekRange;
         state.week.dates = weekDates;
