@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.1.0';
+    var VERSION = '2.1.1';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -487,10 +487,16 @@
             
             if (!commissionId) return;
 
-            // Store original status text
-            var originalStatus = statusCell.textContent.trim();
-            if (!statusCell.getAttribute('data-original-status')) {
+            // Store original status text (only once)
+            var originalStatus = statusCell.getAttribute('data-original-status');
+            if (!originalStatus) {
+                originalStatus = statusCell.textContent.trim();
                 statusCell.setAttribute('data-original-status', originalStatus);
+            }
+
+            // Skip if already enhanced
+            if (statusCell.querySelector('.eoz-machine-badge')) {
+                return;
             }
 
             // Fetch machine data asynchronously
@@ -503,6 +509,18 @@
                 var machineInfo = getMachineColor(data.currentMachine);
                 if (!machineInfo) return;
 
+                // Get original machine name (not normalized)
+                var originalMachineName = data.machines && data.machines.length > 0 ? 
+                    (function() {
+                        for (var i = 0; i < data.machines.length; i++) {
+                            var m = data.machines[i];
+                            if (normalizeMachineName(m.name || m.normalized) === data.currentMachine) {
+                                return m.name || data.currentMachine;
+                            }
+                        }
+                        return data.currentMachine;
+                    })() : data.currentMachine;
+
                 // Create enhanced status display
                 var wrapper = document.createElement('div');
                 wrapper.style.lineHeight = '1.4';
@@ -510,20 +528,14 @@
                 var statusLine = document.createElement('div');
                 statusLine.textContent = originalStatus;
                 
-                var machineLine = document.createElement('div');
-                machineLine.className = 'eoz-status-machine';
-                machineLine.textContent = data.currentMachine || '';
-                
                 var badge = document.createElement('span');
                 badge.className = 'eoz-machine-badge';
-                badge.textContent = data.currentMachine;
+                badge.textContent = originalMachineName;
                 badge.style.backgroundColor = machineInfo.color;
                 badge.style.color = '#333';
                 
                 wrapper.appendChild(statusLine);
-                if (data.currentMachine) {
-                    wrapper.appendChild(badge);
-                }
+                wrapper.appendChild(badge);
                 
                 statusCell.innerHTML = '';
                 statusCell.appendChild(wrapper);
@@ -541,9 +553,7 @@
             var commissionId = getCommissionIdFromRow(row);
             if (!commissionId) return;
 
-            if (batch.length < batchSize) {
-                batch.push({ row: row, id: commissionId });
-            }
+            batch.push({ row: row, id: commissionId });
 
             if (batch.length >= batchSize || index === rows.length - 1) {
                 // Process batch
@@ -560,15 +570,24 @@
                         var machineInfo = getMachineColor(result.data.currentMachine);
                         if (!machineInfo) return;
 
-                        // Remove existing machine classes
-                        result.row.className = result.row.className.replace(/eoz-row-machine-\w+/g, '').trim();
+                        // Remove existing machine classes (better regex for hyphenated names)
+                        var classList = result.row.className.split(/\s+/).filter(function(cls) {
+                            return cls && cls.indexOf('eoz-row-machine-') !== 0 && cls !== 'eoz-row-production';
+                        });
+                        result.row.className = classList.join(' ') + ' eoz-row-machine-' + machineInfo.normalized + ' eoz-row-production';
                         
-                        // Add new machine class
-                        result.row.classList.add('eoz-row-machine-' + machineInfo.normalized);
-                        result.row.classList.add('eoz-row-production');
-
-                        // Store machine data in row for filtering
-                        result.row.setAttribute('data-current-machine', result.data.currentMachine);
+                        // Store machine data in row for filtering (use original name, not normalized)
+                        var originalName = null;
+                        if (result.data.machines && result.data.machines.length > 0) {
+                            for (var n = 0; n < result.data.machines.length; n++) {
+                                var m = result.data.machines[n];
+                                if (normalizeMachineName(m.name || m.normalized) === result.data.currentMachine) {
+                                    originalName = m;
+                                    break;
+                                }
+                            }
+                        }
+                        result.row.setAttribute('data-current-machine', originalName ? (originalName.name || result.data.currentMachine) : result.data.currentMachine);
                     });
                 });
 
@@ -593,11 +612,16 @@
             if (statusIndex === -1) return;
             
             var cells = row.querySelectorAll('td.body-cell');
-            var statusCell = cells[statusIndex];
-            var statusText = (statusCell.textContent || '').trim().toLowerCase();
+            if (!cells[statusIndex]) return;
             
-            // Only add for commissions in production
-            if (statusText.indexOf('produkcji') === -1 && statusText.indexOf('w produkcji') === -1) {
+            var statusCell = cells[statusIndex];
+            // Get original status if stored, otherwise current text
+            var statusText = (statusCell.getAttribute('data-original-status') || statusCell.textContent || '').trim().toLowerCase();
+            
+            // Only add for commissions in production (check various status texts)
+            if (statusText.indexOf('produkcji') === -1 && 
+                statusText.indexOf('w produkcji') === -1 &&
+                statusText.indexOf('production') === -1) {
                 return;
             }
 
@@ -780,12 +804,21 @@
             if (matches && searchFilterState.machineFilter.length > 0) {
                 var machineMatches = false;
                 for (var k = 0; k < searchFilterState.machineFilter.length; k++) {
-                    var filterMachine = normalizeMachineName(searchFilterState.machineFilter[k]);
-                    var rowMachine = normalizeMachineName(rowData.machine);
-                    if (normalizeSearchText(filterMachine) === normalizeSearchText(rowMachine)) {
-                        machineMatches = true;
-                        break;
-                    }
+                        var filterMachine = searchFilterState.machineFilter[k];
+                        if (filterMachine === 'Po kompletacji') {
+                            // For "Po kompletacji" - check if row has no current machine or is beyond completion
+                            if (!rowData.machine || rowData.status && rowData.status.toLowerCase().indexOf('zakończone') !== -1) {
+                                machineMatches = true;
+                                break;
+                            }
+                        } else {
+                            var filterMachineNorm = normalizeMachineName(filterMachine);
+                            var rowMachineNorm = normalizeMachineName(rowData.machine);
+                            if (normalizeSearchText(filterMachineNorm) === normalizeSearchText(rowMachineNorm)) {
+                                machineMatches = true;
+                                break;
+                            }
+                        }
                 }
                 if (!machineMatches) matches = false;
             }
