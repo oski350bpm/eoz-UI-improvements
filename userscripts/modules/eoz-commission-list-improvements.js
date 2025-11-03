@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.0.7';
+    var VERSION = '2.1.0';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -62,9 +62,251 @@
         '}\n' +
         '@media (max-width:500px){\n' +
         '  .eoz-cl-details{grid-template-columns:1fr;grid-template-rows:auto auto auto auto}\n' +
+        '}\n' +
+        '/* Machine colors - yellow to orange scale */\n' +
+        '.eoz-row-machine-magazyn-plyt{background-color:rgba(255,253,231,0.15)!important}\n' +
+        '.eoz-row-machine-magazyn-oklein{background-color:rgba(255,249,196,0.15)!important}\n' +
+        '.eoz-row-machine-pila-panelowa{background-color:rgba(255,245,157,0.15)!important}\n' +
+        '.eoz-row-machine-okleiniarka{background-color:rgba(255,241,118,0.15)!important}\n' +
+        '.eoz-row-machine-centrum-wiertarskie{background-color:rgba(255,238,88,0.15)!important}\n' +
+        '.eoz-row-machine-cnc{background-color:rgba(255,235,59,0.15)!important}\n' +
+        '.eoz-row-machine-prace-dodatkowe{background-color:rgba(255,193,7,0.15)!important}\n' +
+        '.eoz-row-machine-kompletacja{background-color:rgba(255,152,0,0.15)!important}\n' +
+        '.eoz-row-production{border-left:3px solid #FFC107}\n' +
+        '.eoz-machine-badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;display:inline-block;margin-top:4px}\n' +
+        '.eoz-status-machine{font-size:12px;color:#666;margin-top:4px}\n' +
+        '.eoz-process-bar{display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:#f8f9fa;border-top:1px solid #ddd;align-items:center}\n' +
+        '.eoz-process-stage{display:flex;align-items:center;gap:4px;font-size:12px;padding:4px 8px;border-radius:4px}\n' +
+        '.eoz-process-stage.completed{color:#9E9E9E;text-decoration:line-through}\n' +
+        '.eoz-process-stage.completed::before{content:"✓";color:#4CAF50;margin-right:4px;font-weight:bold}\n' +
+        '.eoz-process-stage.current{font-weight:bold;background:rgba(255,193,7,0.2);color:#FF9800}\n' +
+        '.eoz-process-stage.current::before{content:"→";color:#FF9800;margin-right:4px;font-weight:bold}\n' +
+        '.eoz-process-stage.pending{opacity:0.4;color:#999}\n' +
+        '.eoz-process-stage.pending::before{content:"○";margin-right:4px}\n' +
+        '.eoz-process-separator{color:#ccc;margin:0 4px}\n' +
+        '.eoz-search-filter-container{margin-bottom:16px;padding:16px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}\n' +
+        '.eoz-search-input{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;margin-bottom:12px}\n' +
+        '.eoz-filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}\n' +
+        '.eoz-filter-group{flex:1;min-width:150px}\n' +
+        '.eoz-filter-label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:4px}\n' +
+        '.eoz-filter-dropdown{position:relative}\n' +
+        '.eoz-filter-dropdown-btn{width:100%;padding:8px 12px;background:#fff;border:1px solid #ddd;border-radius:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px}\n' +
+        '.eoz-filter-dropdown-btn:hover{background:#f8f9fa}\n' +
+        '.eoz-filter-dropdown-btn.open{border-color:#007bff}\n' +
+        '.eoz-filter-dropdown-counter{background:#007bff;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:8px}\n' +
+        '.eoz-filter-dropdown-menu{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;max-height:300px;overflow-y:auto;display:none;margin-top:4px}\n' +
+        '.eoz-filter-dropdown-menu.open{display:block}\n' +
+        '.eoz-filter-dropdown-item{padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background-color 0.2s}\n' +
+        '.eoz-filter-dropdown-item:hover{background:#f8f9fa}\n' +
+        '.eoz-filter-dropdown-item input[type="checkbox"]{margin:0}\n' +
+        '.eoz-filter-reset-btn{padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;white-space:nowrap}\n' +
+        '.eoz-filter-reset-btn:hover{background:#5a6268}\n' +
+        '.eoz-highlight{background-color:#ffeb3b;padding:1px 2px;border-radius:2px}\n' +
+        '@media (max-width:768px){\n' +
+        '  .eoz-filter-row{flex-direction:column}\n' +
+        '  .eoz-filter-group{min-width:100%}\n' +
+        '  .eoz-process-bar{flex-direction:column;align-items:flex-start}\n' +
+        '  .eoz-process-stage{font-size:11px;padding:3px 6px}\n' +
         '}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-commission-list-module-css' });
+
+    // Machine color mapping (yellow to orange scale)
+    var MACHINE_COLORS = {
+        'Magazyn płyt': { color: '#FFFDE7', normalized: 'magazyn-plyt' },
+        'Magazyn oklein': { color: '#FFF9C4', normalized: 'magazyn-oklein' },
+        'Piła panelowa': { color: '#FFF59D', normalized: 'pila-panelowa' },
+        'Okleiniarka': { color: '#FFF176', normalized: 'okleiniarka' },
+        'Centrum wiertarskie': { color: '#FFEE58', normalized: 'centrum-wiertarskie' },
+        'Centrum wiertarskie (CX-100)': { color: '#FFEE58', normalized: 'centrum-wiertarskie' },
+        'CNC': { color: '#FFEB3B', normalized: 'cnc' },
+        'Prace dodatkowe': { color: '#FFC107', normalized: 'prace-dodatkowe' },
+        'Kompletacja': { color: '#FF9800', normalized: 'kompletacja' }
+    };
+
+    // All production machines in order
+    var PRODUCTION_MACHINES = [
+        'Magazyn płyt',
+        'Magazyn oklein',
+        'Piła panelowa',
+        'Okleiniarka',
+        'Centrum wiertarskie',
+        'CNC',
+        'Prace dodatkowe',
+        'Kompletacja'
+    ];
+
+    // Cache for commission machine data
+    var commissionMachineCache = new Map();
+    var MAX_CACHE_SIZE = 200;
+
+    // Debounce utility
+    function debounce(func, wait) {
+        var timeout;
+        return function() {
+            var context = this;
+            var args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(function() {
+                func.apply(context, args);
+            }, wait);
+        };
+    }
+
+    // Normalize machine name
+    function normalizeMachineName(machineName) {
+        if (!machineName) return '';
+        // Remove (CX-100) etc
+        var normalized = machineName.replace(/\s*\([^)]*\)\s*/g, '').trim();
+        return normalized;
+    }
+
+    // Get machine color
+    function getMachineColor(machineName) {
+        if (!machineName) return null;
+        var normalized = normalizeMachineName(machineName);
+        for (var key in MACHINE_COLORS) {
+            var normalizedKey = normalizeMachineName(key);
+            if (normalizedKey.toLowerCase() === normalized.toLowerCase()) {
+                return MACHINE_COLORS[key];
+            }
+        }
+        return null;
+    }
+
+    // Fetch commission machine data from show_details page
+    function fetchCommissionMachineData(commissionId) {
+        if (!commissionId) return Promise.resolve(null);
+        
+        // Check cache first
+        if (commissionMachineCache.has(commissionId)) {
+            return Promise.resolve(commissionMachineCache.get(commissionId));
+        }
+
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            var url = '/index.php/pl/commission/show_details/' + commissionId;
+            xhr.open('GET', url, true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(xhr.responseText, 'text/html');
+                        
+                        // Find "Proces produkcyjny" heading
+                        var headings = doc.querySelectorAll('h2, h3');
+                        var processHeading = null;
+                        for (var i = 0; i < headings.length; i++) {
+                            var text = (headings[i].textContent || '').trim();
+                            if (text.indexOf('Proces produkcyjny') !== -1) {
+                                processHeading = headings[i];
+                                break;
+                            }
+                        }
+                        
+                        if (!processHeading) {
+                            resolve(null);
+                            return;
+                        }
+                        
+                        // Find table after heading
+                        var table = processHeading.nextElementSibling;
+                        while (table && table.tagName !== 'TABLE') {
+                            table = table.nextElementSibling;
+                        }
+                        
+                        if (!table) {
+                            resolve(null);
+                            return;
+                        }
+                        
+                        // Parse table rows
+                        var rows = table.querySelectorAll('tbody tr');
+                        var machines = [];
+                        var currentMachine = null;
+                        var allMachines = [];
+                        
+                        for (var j = 0; j < rows.length; j++) {
+                            var row = rows[j];
+                            var cells = row.querySelectorAll('td');
+                            
+                            // Find machine column index (look for "Maszyna" header)
+                            var headers = table.querySelectorAll('thead th, thead td');
+                            var machineIndex = -1;
+                            for (var k = 0; k < headers.length; k++) {
+                                var headerText = (headers[k].textContent || '').trim();
+                                if (headerText.indexOf('Maszyna') !== -1) {
+                                    machineIndex = k;
+                                    break;
+                                }
+                            }
+                            
+                            if (machineIndex >= 0 && cells[machineIndex]) {
+                                var machineName = (cells[machineIndex].textContent || '').trim();
+                                if (machineName) {
+                                    var normalized = normalizeMachineName(machineName);
+                                    allMachines.push({
+                                        name: machineName,
+                                        normalized: normalized
+                                    });
+                                    
+                                    // Check if this stage is completed (has worker or other indicators)
+                                    var workerIndex = -1;
+                                    for (var l = 0; l < headers.length; l++) {
+                                        var hText = (headers[l].textContent || '').trim();
+                                        if (hText.indexOf('Pracownik') !== -1) {
+                                            workerIndex = l;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    var isCompleted = false;
+                                    if (workerIndex >= 0 && cells[workerIndex]) {
+                                        var worker = (cells[workerIndex].textContent || '').trim();
+                                        isCompleted = !!worker;
+                                    }
+                                    
+                                    if (!isCompleted && !currentMachine) {
+                                        currentMachine = normalized;
+                                    }
+                                    
+                                    machines.push({
+                                        name: machineName,
+                                        normalized: normalized,
+                                        completed: isCompleted
+                                    });
+                                }
+                            }
+                        }
+                        
+                        var result = {
+                            currentMachine: currentMachine,
+                            machines: machines,
+                            allMachines: allMachines
+                        };
+                        
+                        // Cache result (LRU eviction)
+                        if (commissionMachineCache.size >= MAX_CACHE_SIZE) {
+                            var firstKey = commissionMachineCache.keys().next().value;
+                            commissionMachineCache.delete(firstKey);
+                        }
+                        commissionMachineCache.set(commissionId, result);
+                        
+                        resolve(result);
+                    } catch (e) {
+                        console.warn('[EOZ Commission List] Error parsing commission details:', e);
+                        resolve(null);
+                    }
+                } else {
+                    resolve(null);
+                }
+            };
+            xhr.onerror = function() {
+                resolve(null);
+            };
+            xhr.send();
+        });
+    }
 
     function findColumnIndex(headerText) {
         var headers = document.querySelectorAll('th.heading-cell.column-names-cell');
@@ -220,6 +462,589 @@
         });
     }
 
+    // Extract commission ID from row
+    function getCommissionIdFromRow(row) {
+        var link = row.querySelector('a[href*="/commission/show_details/"]');
+        if (link && link.href) {
+            var match = link.href.match(/show_details\/(\d+)/);
+            if (match) return match[1];
+        }
+        return null;
+    }
+
+    // Enhance status column with machine info
+    function enhanceStatusColumn() {
+        var statusIndex = findColumnIndex('Status');
+        if (statusIndex === -1) return;
+
+        var rows = document.querySelectorAll('tbody tr.body-row');
+        rows.forEach(function(row) {
+            var cells = row.querySelectorAll('td.body-cell');
+            if (!cells[statusIndex]) return;
+
+            var statusCell = cells[statusIndex];
+            var commissionId = getCommissionIdFromRow(row);
+            
+            if (!commissionId) return;
+
+            // Store original status text
+            var originalStatus = statusCell.textContent.trim();
+            if (!statusCell.getAttribute('data-original-status')) {
+                statusCell.setAttribute('data-original-status', originalStatus);
+            }
+
+            // Fetch machine data asynchronously
+            fetchCommissionMachineData(commissionId).then(function(data) {
+                if (!data || !data.currentMachine) {
+                    // Keep original status if no machine data
+                    return;
+                }
+
+                var machineInfo = getMachineColor(data.currentMachine);
+                if (!machineInfo) return;
+
+                // Create enhanced status display
+                var wrapper = document.createElement('div');
+                wrapper.style.lineHeight = '1.4';
+                
+                var statusLine = document.createElement('div');
+                statusLine.textContent = originalStatus;
+                
+                var machineLine = document.createElement('div');
+                machineLine.className = 'eoz-status-machine';
+                machineLine.textContent = data.currentMachine || '';
+                
+                var badge = document.createElement('span');
+                badge.className = 'eoz-machine-badge';
+                badge.textContent = data.currentMachine;
+                badge.style.backgroundColor = machineInfo.color;
+                badge.style.color = '#333';
+                
+                wrapper.appendChild(statusLine);
+                if (data.currentMachine) {
+                    wrapper.appendChild(badge);
+                }
+                
+                statusCell.innerHTML = '';
+                statusCell.appendChild(wrapper);
+            });
+        });
+    }
+
+    // Apply row coloring based on machine
+    function applyRowColoring() {
+        var rows = document.querySelectorAll('tbody tr.body-row');
+        var batch = [];
+        var batchSize = 10;
+
+        rows.forEach(function(row, index) {
+            var commissionId = getCommissionIdFromRow(row);
+            if (!commissionId) return;
+
+            if (batch.length < batchSize) {
+                batch.push({ row: row, id: commissionId });
+            }
+
+            if (batch.length >= batchSize || index === rows.length - 1) {
+                // Process batch
+                var promises = batch.map(function(item) {
+                    return fetchCommissionMachineData(item.id).then(function(data) {
+                        return { row: item.row, data: data };
+                    });
+                });
+
+                Promise.all(promises).then(function(results) {
+                    results.forEach(function(result) {
+                        if (!result.data || !result.data.currentMachine) return;
+
+                        var machineInfo = getMachineColor(result.data.currentMachine);
+                        if (!machineInfo) return;
+
+                        // Remove existing machine classes
+                        result.row.className = result.row.className.replace(/eoz-row-machine-\w+/g, '').trim();
+                        
+                        // Add new machine class
+                        result.row.classList.add('eoz-row-machine-' + machineInfo.normalized);
+                        result.row.classList.add('eoz-row-production');
+
+                        // Store machine data in row for filtering
+                        result.row.setAttribute('data-current-machine', result.data.currentMachine);
+                    });
+                });
+
+                batch = [];
+            }
+        });
+    }
+
+    // Add production process bar for commissions in production
+    function addProductionProcessBars() {
+        var rows = document.querySelectorAll('tbody tr.body-row');
+        rows.forEach(function(row) {
+            // Skip if process bar already added
+            if (row.nextElementSibling && row.nextElementSibling.classList.contains('eoz-process-row')) {
+                return;
+            }
+
+            var commissionId = getCommissionIdFromRow(row);
+            if (!commissionId) return;
+
+            var statusIndex = findColumnIndex('Status');
+            if (statusIndex === -1) return;
+            
+            var cells = row.querySelectorAll('td.body-cell');
+            var statusCell = cells[statusIndex];
+            var statusText = (statusCell.textContent || '').trim().toLowerCase();
+            
+            // Only add for commissions in production
+            if (statusText.indexOf('produkcji') === -1 && statusText.indexOf('w produkcji') === -1) {
+                return;
+            }
+
+            fetchCommissionMachineData(commissionId).then(function(data) {
+                if (!data || !data.machines) return;
+
+                // Create process row
+                var processRow = document.createElement('tr');
+                processRow.className = 'eoz-process-row';
+                
+                var processCell = document.createElement('td');
+                processCell.setAttribute('colspan', cells.length);
+                processCell.className = 'eoz-process-cell';
+                
+                var processBar = document.createElement('div');
+                processBar.className = 'eoz-process-bar';
+
+                // Create stages for all production machines
+                var currentMachineIndex = -1;
+                PRODUCTION_MACHINES.forEach(function(machineName, index) {
+                    var normalized = normalizeMachineName(machineName);
+                    var foundMachine = null;
+                    for (var m = 0; m < data.machines.length; m++) {
+                        var machine = data.machines[m];
+                        var machineNormalized = normalizeMachineName(machine.name || machine.normalized);
+                        if (machineNormalized === normalized) {
+                            foundMachine = machine;
+                            break;
+                        }
+                    }
+
+                    var isCompleted = foundMachine ? foundMachine.completed : false;
+                    var isCurrent = data.currentMachine === normalized;
+
+                    if (isCurrent) {
+                        currentMachineIndex = index;
+                    }
+
+                    var stage = document.createElement('div');
+                    stage.className = 'eoz-process-stage';
+                    
+                    if (isCompleted) {
+                        stage.classList.add('completed');
+                    } else if (isCurrent) {
+                        stage.classList.add('current');
+                    } else {
+                        stage.classList.add('pending');
+                    }
+
+                    stage.textContent = machineName;
+                    processBar.appendChild(stage);
+
+                    // Add separator except for last
+                    if (index < PRODUCTION_MACHINES.length - 1) {
+                        var separator = document.createElement('span');
+                        separator.className = 'eoz-process-separator';
+                        separator.textContent = '|';
+                        processBar.appendChild(separator);
+                    }
+                });
+
+                processCell.appendChild(processBar);
+                processRow.appendChild(processCell);
+
+                // Insert after current row
+                row.parentNode.insertBefore(processRow, row.nextSibling);
+            });
+        });
+    }
+
+    // Search and filter state
+    var searchFilterState = {
+        searchText: '',
+        statusFilter: [],
+        clientFilter: [],
+        machineFilter: []
+    };
+
+    var filterDropdowns = {};
+
+    // Normalize text for search
+    function normalizeSearchText(text) {
+        return (text || '').toLowerCase()
+            .replace(/[ąćęłńóśźż]/g, function(char) {
+                var map = {
+                    'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n',
+                    'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z'
+                };
+                return map[char] || char;
+            });
+    }
+
+    // Fuzzy match
+    function fuzzyMatch(searchText, targetText) {
+        if (!searchText) return true;
+        searchText = normalizeSearchText(searchText);
+        targetText = normalizeSearchText(targetText);
+        return targetText.indexOf(searchText) !== -1;
+    }
+
+    // Extract row data for filtering
+    function extractRowDataForFilter(row) {
+        var cells = row.querySelectorAll('td.body-cell');
+        var headers = document.querySelectorAll('th.heading-cell.column-names-cell');
+        var headerNames = [];
+        headers.forEach(function(th) { headerNames.push((th.textContent || '').trim()); });
+
+        var idxKod = headerNames.indexOf('Kod');
+        var idxNazwa = headerNames.indexOf('Nazwa zlecenia');
+        var idxStatus = headerNames.indexOf('Status');
+        var idxKlient = headerNames.indexOf('Kod klienta');
+
+        var kod = idxKod >= 0 && cells[idxKod] ? (cells[idxKod].textContent || '').trim() : '';
+        var nazwa = idxNazwa >= 0 && cells[idxNazwa] ? (cells[idxNazwa].textContent || '').trim() : '';
+        var status = idxStatus >= 0 && cells[idxStatus] ? (cells[idxStatus].textContent || '').trim() : '';
+        var klient = idxKlient >= 0 && cells[idxKlient] ? (cells[idxKlient].textContent || '').trim() : '';
+        var machine = row.getAttribute('data-current-machine') || '';
+
+        return {
+            kod: kod,
+            nazwa: nazwa,
+            status: status,
+            klient: klient,
+            machine: machine,
+            fullText: (row.textContent || '').toLowerCase()
+        };
+    }
+
+    // Apply search and filter
+    function applySearchAndFilter() {
+        var rows = document.querySelectorAll('tbody tr.body-row');
+        var visibleCount = 0;
+
+        rows.forEach(function(row) {
+            // Skip process rows
+            if (row.classList.contains('eoz-process-row')) {
+                row.style.display = '';
+                return;
+            }
+
+            var rowData = extractRowDataForFilter(row);
+            var matches = true;
+
+            // Apply search filter
+            if (searchFilterState.searchText) {
+                var searchMatches =
+                    fuzzyMatch(searchFilterState.searchText, rowData.kod) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.nazwa) ||
+                    fuzzyMatch(searchFilterState.searchText, rowData.klient);
+                if (!searchMatches) matches = false;
+            }
+
+            // Apply status filter
+            if (matches && searchFilterState.statusFilter.length > 0) {
+                var statusMatches = false;
+                var statusLower = rowData.status.toLowerCase();
+                for (var i = 0; i < searchFilterState.statusFilter.length; i++) {
+                    var filterStatus = searchFilterState.statusFilter[i].toLowerCase();
+                    if (statusLower.indexOf(filterStatus) !== -1) {
+                        statusMatches = true;
+                        break;
+                    }
+                }
+                if (!statusMatches) matches = false;
+            }
+
+            // Apply client filter
+            if (matches && searchFilterState.clientFilter.length > 0) {
+                var clientMatches = false;
+                for (var j = 0; j < searchFilterState.clientFilter.length; j++) {
+                    if (normalizeSearchText(rowData.klient) === normalizeSearchText(searchFilterState.clientFilter[j])) {
+                        clientMatches = true;
+                        break;
+                    }
+                }
+                if (!clientMatches) matches = false;
+            }
+
+            // Apply machine filter
+            if (matches && searchFilterState.machineFilter.length > 0) {
+                var machineMatches = false;
+                for (var k = 0; k < searchFilterState.machineFilter.length; k++) {
+                    var filterMachine = normalizeMachineName(searchFilterState.machineFilter[k]);
+                    var rowMachine = normalizeMachineName(rowData.machine);
+                    if (normalizeSearchText(filterMachine) === normalizeSearchText(rowMachine)) {
+                        machineMatches = true;
+                        break;
+                    }
+                }
+                if (!machineMatches) matches = false;
+            }
+
+            // Show/hide row
+            if (matches) {
+                row.style.display = '';
+                visibleCount++;
+                // Show process row if exists
+                var processRow = row.nextElementSibling;
+                if (processRow && processRow.classList.contains('eoz-process-row')) {
+                    processRow.style.display = '';
+                }
+            } else {
+                row.style.display = 'none';
+                // Hide process row if exists
+                var processRow2 = row.nextElementSibling;
+                if (processRow2 && processRow2.classList.contains('eoz-process-row')) {
+                    processRow2.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Create filter dropdown (similar to boards-magazine)
+    function createFilterDropdown(labelText, id, options, onChange) {
+        var group = document.createElement('div');
+        group.className = 'eoz-filter-group';
+
+        var label = document.createElement('label');
+        label.className = 'eoz-filter-label';
+        label.textContent = labelText;
+
+        var dropdown = document.createElement('div');
+        dropdown.className = 'eoz-filter-dropdown';
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'eoz-filter-dropdown-btn';
+        btn.setAttribute('data-filter-id', id);
+
+        var btnText = document.createElement('span');
+        btnText.textContent = 'Wybierz...';
+        btn.appendChild(btnText);
+
+        var counter = document.createElement('span');
+        counter.className = 'eoz-filter-dropdown-counter';
+        counter.style.display = 'none';
+        btn.appendChild(counter);
+
+        var menu = document.createElement('div');
+        menu.className = 'eoz-filter-dropdown-menu';
+
+        function updateButtonText() {
+            var selected = [];
+            var checkboxes = menu.querySelectorAll('input[type="checkbox"]:checked');
+            checkboxes.forEach(function(cb) {
+                selected.push(cb.value);
+            });
+
+            if (selected.length === 0) {
+                btnText.textContent = 'Wybierz...';
+                counter.style.display = 'none';
+            } else if (selected.length === 1) {
+                var option = menu.querySelector('input[value="' + selected[0] + '"]');
+                if (option) {
+                    var labelEl = option.parentElement.querySelector('label');
+                    btnText.textContent = labelEl ? labelEl.textContent : selected[0];
+                }
+                counter.style.display = 'none';
+            } else {
+                btnText.textContent = 'Wybrano ' + selected.length;
+                counter.textContent = selected.length;
+                counter.style.display = 'inline-block';
+            }
+        }
+
+        function populateOptions(newOptions) {
+            menu.innerHTML = '';
+            newOptions.forEach(function(option) {
+                var item = document.createElement('div');
+                item.className = 'eoz-filter-dropdown-item';
+
+                var checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = option.value;
+                checkbox.id = id + '-' + option.value.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+
+                var labelEl = document.createElement('label');
+                labelEl.htmlFor = checkbox.id;
+                labelEl.textContent = option.text;
+
+                item.appendChild(checkbox);
+                item.appendChild(labelEl);
+
+                item.addEventListener('click', function(e) {
+                    if (e.target !== checkbox && e.target !== labelEl) {
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+
+                checkbox.addEventListener('change', function() {
+                    updateButtonText();
+                    if (onChange) {
+                        var selected = [];
+                        menu.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
+                            selected.push(cb.value);
+                        });
+                        onChange(selected);
+                    }
+                });
+
+                menu.appendChild(item);
+            });
+            updateButtonText();
+        }
+
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isOpen = menu.classList.contains('open');
+
+            document.querySelectorAll('.eoz-filter-dropdown-menu.open').forEach(function(m) {
+                if (m !== menu) m.classList.remove('open');
+                m.parentElement.querySelector('.eoz-filter-dropdown-btn').classList.remove('open');
+            });
+
+            if (isOpen) {
+                menu.classList.remove('open');
+                btn.classList.remove('open');
+            } else {
+                menu.classList.add('open');
+                btn.classList.add('open');
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) {
+                menu.classList.remove('open');
+                btn.classList.remove('open');
+            }
+        });
+
+        dropdown.appendChild(btn);
+        dropdown.appendChild(menu);
+
+        group.appendChild(label);
+        group.appendChild(dropdown);
+
+        filterDropdowns[id] = { group: group, dropdown: dropdown, btn: btn, menu: menu, populate: populateOptions, update: updateButtonText };
+
+        if (options && options.length > 0) {
+            populateOptions(options);
+        }
+
+        return group;
+    }
+
+    // Create search and filter UI
+    function createSearchAndFilterUI() {
+        var table = document.querySelector('table.dynamic-table');
+        if (!table) return null;
+
+        var container = document.createElement('div');
+        container.className = 'eoz-search-filter-container';
+
+        // Search input
+        var searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'eoz-search-input';
+        searchInput.placeholder = 'Szukaj: kod zlecenia, nazwa, klient...';
+        searchInput.addEventListener('input', debounce(function(event) {
+            searchFilterState.searchText = event.target.value;
+            applySearchAndFilter();
+        }, 300));
+
+        // Filter row
+        var filterRow = document.createElement('div');
+        filterRow.className = 'eoz-filter-row';
+
+        // Status filter
+        var statusGroup = createFilterDropdown('Status:', 'status', [
+            { value: 'W produkcji', text: 'W produkcji' },
+            { value: 'Zakończone', text: 'Zakończone' },
+            { value: 'Zarchiwizowane', text: 'Zarchiwizowane' }
+        ], function(selected) {
+            searchFilterState.statusFilter = selected;
+            applySearchAndFilter();
+        });
+
+        // Client filter
+        var clientGroup = createFilterDropdown('Klient:', 'client', [], function(selected) {
+            searchFilterState.clientFilter = selected;
+            applySearchAndFilter();
+        });
+
+        // Machine filter
+        var machineOptions = PRODUCTION_MACHINES.map(function(m) {
+            return { value: m, text: m };
+        });
+        machineOptions.push({ value: 'Po kompletacji', text: 'Po kompletacji' });
+        var machineGroup = createFilterDropdown('Maszyna/Etap:', 'machine', machineOptions, function(selected) {
+            searchFilterState.machineFilter = selected;
+            applySearchAndFilter();
+        });
+
+        // Reset button
+        var resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'eoz-filter-reset-btn';
+        resetBtn.textContent = 'Wyczyść filtry';
+        resetBtn.addEventListener('click', function() {
+            searchFilterState.searchText = '';
+            searchFilterState.statusFilter = [];
+            searchFilterState.clientFilter = [];
+            searchFilterState.machineFilter = [];
+            searchInput.value = '';
+
+            Object.keys(filterDropdowns).forEach(function(key) {
+                var dropdown = filterDropdowns[key];
+                if (dropdown && dropdown.menu) {
+                    dropdown.menu.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                        cb.checked = false;
+                    });
+                    dropdown.update();
+                }
+            });
+
+            applySearchAndFilter();
+        });
+
+        filterRow.appendChild(statusGroup);
+        filterRow.appendChild(clientGroup);
+        filterRow.appendChild(machineGroup);
+        filterRow.appendChild(resetBtn);
+
+        container.appendChild(searchInput);
+        container.appendChild(filterRow);
+
+        // Populate client filter options
+        setTimeout(function() {
+            var rows = document.querySelectorAll('tbody tr.body-row');
+            var clients = new Set();
+            rows.forEach(function(row) {
+                var rowData = extractRowDataForFilter(row);
+                if (rowData.klient) clients.add(rowData.klient);
+            });
+
+            var clientOptions = Array.from(clients).sort().map(function(client) {
+                return { value: client, text: client };
+            });
+            if (filterDropdowns.client) {
+                filterDropdowns.client.populate(clientOptions);
+            }
+        }, 500);
+
+        return container;
+    }
+
     function buildMobileLayout() {
         var headers = document.querySelectorAll('th.heading-cell.column-names-cell');
         var headerNames = [];
@@ -334,6 +1159,25 @@
                 formatDates();
                 transformActionButtons();
                 buildMobileLayout();
+                
+                // Add search and filter UI
+                var searchFilterUI = createSearchAndFilterUI();
+                if (searchFilterUI) {
+                    var table = document.querySelector('table.dynamic-table');
+                    if (table && table.parentNode) {
+                        table.parentNode.insertBefore(searchFilterUI, table);
+                    }
+                }
+                
+                // Enhance status column and apply row coloring
+                enhanceStatusColumn();
+                applyRowColoring();
+                
+                // Add production process bars
+                setTimeout(function() {
+                    addProductionProcessBars();
+                }, 1000);
+                
                 console.log('[EOZ Commission List Module v' + VERSION + '] Applied');
             })
             .catch(function(){ console.warn('[EOZ Commission List Module v' + VERSION + '] Table not found'); });
