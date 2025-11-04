@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.15';
+    var VERSION = '2.9.16';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -2475,41 +2475,120 @@
             
             var col4 = document.createElement('div'); 
             col4.className = 'eoz-m-col4 eoz-mp-info';
-            
-            // Row 1: Ilość
-            var iloscRow = document.createElement('div');
-            iloscRow.innerHTML = '<span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—');
-            col4.appendChild(iloscRow);
-            
-            // Row 2: Przygotowane (radio buttons) - use innerHTML and fix duplicate IDs
-            var przygotowaneRow = document.createElement('div');
-            przygotowaneRow.style.marginTop = '8px';
-            przygotowaneRow.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + przygotowaneHTML;
-            
-            // Fix duplicate radio button IDs and names by adding -mobile suffix
-            var mobileRadios = przygotowaneRow.querySelectorAll('input[type="radio"]');
-            mobileRadios.forEach(function(radio){
-                if (radio.id) {
-                    var oldId = radio.id;
-                    radio.id = oldId + '-mobile';
-                    // Update corresponding label
-                    var label = przygotowaneRow.querySelector('label[for="' + oldId + '"]');
-                    if (label) {
-                        label.setAttribute('for', radio.id);
-                    }
-                }
-                if (radio.name) {
-                    radio.name = radio.name + '-mobile';
-                }
-            });
 
-            // Remove inline edit button copied inside przygotowaneHTML to avoid duplicates
-            var inlineEditBtn = przygotowaneRow.querySelector('a.change-amount-manual');
-            if (inlineEditBtn) {
-                inlineEditBtn.parentElement && inlineEditBtn.parentElement.removeChild(inlineEditBtn);
+            if (isVeneers && !isGroupedView) {
+                // Build aggregated veneers list (main row + following sub-rows)
+                var veneers = [];
+
+                // Main row veneer
+                veneers.push({
+                    okleina: plyta || '—',
+                    wymiar: wymiar || '—',
+                    ilosc: ilosc || '—',
+                    przygotowaneHTML: przygotowaneHTML || ''
+                });
+
+                // Collect consecutive sub-rows
+                var sibling = row.nextElementSibling;
+                var guard = 0;
+                while (sibling && guard < 100) {
+                    guard++;
+                    var sCells = sibling.querySelectorAll('td');
+                    if (!sCells || sCells.length === 0) break;
+                    var sHasLink = sibling.querySelector('a[href*="/commission/show_details/"]');
+                    var sHasRowspan = Array.prototype.some.call(sCells, function(td){ return td.hasAttribute('rowspan'); });
+                    var sFirst = sCells[0];
+                    var sHasHiddenLp = sFirst && sFirst.classList.contains('lp') && sFirst.getAttribute('data-column') === 'lp';
+                    var sIsSub = sHasHiddenLp && !sHasLink && !sHasRowspan;
+                    if (!sIsSub) break;
+
+                    var sOkleina = (sCells[1] ? (sCells[1].textContent||'').trim() : '') || '—';
+                    var sWymiar = (sCells[2] ? (sCells[2].textContent||'').trim() : '') || '—';
+                    var sIlosc = (sCells[3] ? (sCells[3].textContent||'').trim() : '') || '—';
+                    var sPrzygotHTML = sCells[4] ? sCells[4].innerHTML : '';
+
+                    veneers.push({ okleina: sOkleina, wymiar: sWymiar, ilosc: sIlosc, przygotowaneHTML: sPrzygotHTML });
+
+                    sibling = sibling.nextElementSibling;
+                }
+
+                // Render veneers list similar to grouped view
+                var veneersDiv = document.createElement('div');
+                veneersDiv.innerHTML = '<span class="eoz-m-label">Okleiny:</span>';
+
+                veneers.forEach(function(veneer, idx){
+                    var veneerItem = document.createElement('div');
+                    veneerItem.style.marginTop = idx > 0 ? '12px' : '8px';
+                    veneerItem.style.padding = '8px';
+                    veneerItem.style.background = '#f8f9fa';
+                    veneerItem.style.borderRadius = '4px';
+
+                    var okleinaDiv = document.createElement('div');
+                    okleinaDiv.style.fontWeight = 'bold';
+                    okleinaDiv.textContent = veneer.okleina || '—';
+                    veneerItem.appendChild(okleinaDiv);
+
+                    var wymiarDiv = document.createElement('div');
+                    wymiarDiv.innerHTML = '<span class="eoz-m-label">Wymiar:</span> ' + (veneer.wymiar || '—');
+                    veneerItem.appendChild(wymiarDiv);
+
+                    var iloscDiv = document.createElement('div');
+                    iloscDiv.innerHTML = '<span class="eoz-m-label">Ilość:</span> ' + (veneer.ilosc || '—');
+                    veneerItem.appendChild(iloscDiv);
+
+                    var przygDiv = document.createElement('div');
+                    przygDiv.style.marginTop = '4px';
+                    przygDiv.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + (veneer.przygotowaneHTML || '');
+
+                    // Fix duplicate radio IDs and names
+                    var vRadios = przygDiv.querySelectorAll('input[type="radio"]');
+                    vRadios.forEach(function(radio){
+                        if (radio.id) {
+                            var oldId = radio.id;
+                            radio.id = oldId + '-mobile-v' + idx;
+                            var label = przygDiv.querySelector('label[for="' + oldId + '"]');
+                            if (label) { label.setAttribute('for', radio.id); }
+                        }
+                        if (radio.name) {
+                            radio.name = radio.name + '-mobile-v' + idx;
+                        }
+                    });
+
+                    veneerItem.appendChild(przygDiv);
+                    veneersDiv.appendChild(veneerItem);
+                });
+
+                col4.appendChild(veneersDiv);
+            } else {
+                // Fallback: single Ilość + Przygotowane (boards or grouped)
+                var iloscRow = document.createElement('div');
+                iloscRow.innerHTML = '<span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—');
+                col4.appendChild(iloscRow);
+
+                var przygotowaneRow = document.createElement('div');
+                przygotowaneRow.style.marginTop = '8px';
+                przygotowaneRow.innerHTML = '<span class="eoz-m-label">Przygotowane:</span><br>' + przygotowaneHTML;
+
+                var mobileRadios = przygotowaneRow.querySelectorAll('input[type="radio"]');
+                mobileRadios.forEach(function(radio){
+                    if (radio.id) {
+                        var oldId = radio.id;
+                        radio.id = oldId + '-mobile';
+                        var label = przygotowaneRow.querySelector('label[for="' + oldId + '"]');
+                        if (label) { label.setAttribute('for', radio.id); }
+                    }
+                    if (radio.name) {
+                        radio.name = radio.name + '-mobile';
+                    }
+                });
+
+                var inlineEditBtn = przygotowaneRow.querySelector('a.change-amount-manual');
+                if (inlineEditBtn) {
+                    inlineEditBtn.parentElement && inlineEditBtn.parentElement.removeChild(inlineEditBtn);
+                }
+
+                col4.appendChild(przygotowaneRow);
             }
-            
-            col4.appendChild(przygotowaneRow);
             
             // Row 3: Edit button with label
             if (editButton) {
