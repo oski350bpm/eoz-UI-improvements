@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.20';
+    var VERSION = '2.9.21';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1410,14 +1410,22 @@
         }
         
         // Final cleanup for veneers sub-rows: remove lp class and data-column from radio button cells
-        if (isVeneers && !isVeneersGrouped) {
+        if (isVeneers) {
             var allBodyRows = document.querySelectorAll('table tbody tr');
             allBodyRows.forEach(function(row){
                 var tds = row.querySelectorAll('td');
                 var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
                 var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
-                var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
-                var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+                
+                var isSubRow = false;
+                if (!isVeneersGrouped) {
+                    // /1 view: sub-rows have hidden LP cell
+                    var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+                    isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+                } else {
+                    // /3 view: sub-rows don't have rowspan and don't have commission link
+                    isSubRow = !hasRowspan && !hasLink && tds.length > 0;
+                }
                 
                 if (isSubRow) {
                     // Clean up all cells with switch-field in sub-rows
