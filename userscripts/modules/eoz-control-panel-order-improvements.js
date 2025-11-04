@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.7';
+    var VERSION = '1.2.8';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1119,7 +1119,7 @@
             '    display: none !important;' +
             '}' +
             '' +
-            '/* Hide Obrazek column (11th column) and Opcje column (12th column) by position */' +
+            '/* Hide Obrazek column (11th column) and Opcje/Akcje column (12th column) by position */' +
             '[role="tabpanel"] table thead tr th:nth-child(11), ' +
             '[role="tabpanel"] table tbody tr td:nth-child(11), ' +
             '.eoz-reorganized-table thead tr th:nth-child(11), ' +
@@ -1138,6 +1138,12 @@
             '    display: none !important;' +
             '}' +
             '' +
+            '/* Hide Obrazek and Opcje/Akcje headers by class (added by JS) */' +
+            '[role="tabpanel"] table thead tr th.eoz-header-hidden, ' +
+            '.eoz-all-tables table thead tr th.eoz-header-hidden {' +
+            '    display: none !important;' +
+            '}' +
+            '' +
             '/* Additional selectors: hide columns with class "opt" (Opcje) */' +
             '[role="tabpanel"] table tbody td.opt, ' +
             '.eoz-reorganized-table tbody td.opt, ' +
@@ -1146,6 +1152,31 @@
             '}';
         
         document.head.appendChild(style);
+    }
+
+    function hideTableHeaders() {
+        // Find and hide headers containing "Obrazek", "Opcje", or "Akcje"
+        var tables = document.querySelectorAll('[role="tabpanel"] table, .eoz-all-tables table');
+        
+        for (var i = 0; i < tables.length; i++) {
+            var table = tables[i];
+            var thead = table.querySelector('thead');
+            
+            if (!thead) {
+                continue;
+            }
+            
+            var headerCells = thead.querySelectorAll('th');
+            for (var j = 0; j < headerCells.length; j++) {
+                var th = headerCells[j];
+                var headerText = th.textContent.trim();
+                
+                // Check if header text contains "Obrazek", "Opcje", or "Akcje"
+                if (headerText === 'Obrazek' || headerText === 'Opcje' || headerText === 'Akcje') {
+                    th.classList.add('eoz-header-hidden');
+                }
+            }
+        }
     }
 
     function apply() {
@@ -1188,7 +1219,10 @@
         
         // Add check-double button for all machines (including Okleiniarka)
         addCheckDoubleButton(checkDoubleHref);
-        
+
+        // Hide table headers for Obrazek and Opcje/Akcje columns
+        hideTableHeaders();
+
         addEndOperationConfirmation();
         installStartStopGuards();
     }
