@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.6';
+    var VERSION = '1.2.7';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -975,7 +975,7 @@
             // Create start operation button
             var startButton = document.createElement('a');
             startButton.href = startUrl || '#';
-            startButton.className = 'btn btn-primary eoz-start-operation-btn';
+            startButton.className = 'btn btn-success eoz-start-operation-btn';
             startButton.style.cssText = 'display: block; width: 100%; margin-top: ' + (materialMessage ? '10px' : '15px') + '; padding: 12px 20px; font-size: 16px; font-weight: bold; text-align: center;';
             startButton.innerHTML = '<i class="fa fa-play"></i> Rozpocznij pracę nad zleceniem';
             
@@ -1093,30 +1093,55 @@
             '/* Make tables full width */' +
             '[role="tabpanel"] table, ' +
             '.eoz-reorganized-table, ' +
-            '[role="tabpanel"] table, ' +
-            'table.eoz-reorganized-table {' +
+            'table.eoz-reorganized-table, ' +
+            '.eoz-all-tables table {' +
             '    width: 100% !important;' +
             '    max-width: 100% !important;' +
+            '    table-layout: auto !important;' +
             '}' +
             '' +
             '/* Make table containers full width */' +
             '[role="tabpanel"], ' +
-            '.eoz-table-section {' +
+            '.eoz-table-section, ' +
+            '.eoz-all-tables, ' +
+            '.eoz-table-wrapper {' +
             '    width: 100% !important;' +
             '    max-width: 100% !important;' +
             '}' +
             '' +
-            '/* Hide Obrazek and Opcje columns in tables */' +
+            '/* Hide Obrazek and Opcje columns in tables by class */' +
             '[role="tabpanel"] table thead th.eoz-hidden-column, ' +
             '[role="tabpanel"] table tbody td.eoz-hidden-column, ' +
             '.eoz-reorganized-table thead th.eoz-hidden-column, ' +
-            '.eoz-reorganized-table tbody td.eoz-hidden-column {' +
+            '.eoz-reorganized-table tbody td.eoz-hidden-column, ' +
+            '.eoz-all-tables table thead th.eoz-hidden-column, ' +
+            '.eoz-all-tables table tbody td.eoz-hidden-column {' +
             '    display: none !important;' +
             '}' +
             '' +
-            '/* Additional selectors: hide columns with class "opt" (Opcje) and empty image columns */' +
+            '/* Hide Obrazek column (11th column) and Opcje column (12th column) by position */' +
+            '[role="tabpanel"] table thead tr th:nth-child(11), ' +
+            '[role="tabpanel"] table tbody tr td:nth-child(11), ' +
+            '.eoz-reorganized-table thead tr th:nth-child(11), ' +
+            '.eoz-reorganized-table tbody tr td:nth-child(11), ' +
+            '.eoz-all-tables table thead tr th:nth-child(11), ' +
+            '.eoz-all-tables table tbody tr td:nth-child(11) {' +
+            '    display: none !important;' +
+            '}' +
+            '' +
+            '[role="tabpanel"] table thead tr th:nth-child(12), ' +
+            '[role="tabpanel"] table tbody tr td:nth-child(12), ' +
+            '.eoz-reorganized-table thead tr th:nth-child(12), ' +
+            '.eoz-reorganized-table tbody tr td:nth-child(12), ' +
+            '.eoz-all-tables table thead tr th:nth-child(12), ' +
+            '.eoz-all-tables table tbody tr td:nth-child(12) {' +
+            '    display: none !important;' +
+            '}' +
+            '' +
+            '/* Additional selectors: hide columns with class "opt" (Opcje) */' +
             '[role="tabpanel"] table tbody td.opt, ' +
-            '.eoz-reorganized-table tbody td.opt {' +
+            '.eoz-reorganized-table tbody td.opt, ' +
+            '.eoz-all-tables table tbody td.opt {' +
             '    display: none !important;' +
             '}';
         
