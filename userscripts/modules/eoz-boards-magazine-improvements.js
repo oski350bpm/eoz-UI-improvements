@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.25';
+    var VERSION = '2.9.26';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1808,10 +1808,20 @@
                     targetCell = cells[0] || null;
                 }
             } else {
-                // Non-grouped view
-                targetCell = cells[idxNazwaOkleiny] || null;
-                if (!targetCell && cells.length <= 4) {
-                    targetCell = cells[0] || null;
+                // Non-grouped view (/1)
+                // Check if this is a sub-row: has hidden LP cell + no commission link + no rowspan
+                var hasHiddenLp = cells.length > 0 && cells[0].classList.contains('lp') && cells[0].getAttribute('data-column') === 'lp';
+                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                var hasRowspan = Array.prototype.some.call(cells, function(td){ return td.hasAttribute('rowspan'); });
+                var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+                
+                if (isSubRow) {
+                    // Sub-row structure: [0: hidden LP, 1: empty, 2: empty, 3: empty, 4: Okleina, 5: Wymiar, 6: Ilość, 7: Przygotowane]
+                    // Okleina is always at index 4 in sub-rows
+                    targetCell = cells[4] || null;
+                } else {
+                    // Main row: use header index
+                    targetCell = cells[idxNazwaOkleiny] || null;
                 }
             }
             if (!targetCell) return;
