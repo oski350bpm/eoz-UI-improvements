@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.18';
+    var VERSION = '2.9.19';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1215,9 +1215,19 @@
                     var link = firstHeaderCell.querySelector('a');
                     if (link) link.remove();
                 }
+                
+                // For veneers /1: normalize "Nazwa okleiny" to "Okleina" (match /3)
+                if (isVeneers) {
+                    var allHeaders = Array.from(headerRow.querySelectorAll('th'));
+                    allHeaders.forEach(function(th){
+                        if (th.textContent.trim() === 'Nazwa okleiny') {
+                            th.textContent = 'Okleina';
+                        }
+                    });
+                }
             }
 
-            // Try hide 5th column (Lp 1/1)
+            // Try hide 5th column (Lp 1/1) - duplicate Lp column
             var allHeaders = document.querySelectorAll('table thead tr th');
             var lpColumnIndex = -1;
             allHeaders.forEach(function(th, index){ if (th.textContent.trim() === 'Lp' && index > 0) lpColumnIndex = index; });
@@ -1699,9 +1709,21 @@
                 var itI = document.createElement('div'); itI.className = 'eoz-ven-item'; itI.textContent = iloscText || '—';
                 var itP = document.createElement('div'); itP.className = 'eoz-ven-item';
                 if (przygotCell) {
-                    // Move existing radio controls into aggregated container
-                    var radiosContainer = przygotCell.querySelector('.switch-field') || przygotCell;
-                    while (radiosContainer && radiosContainer.firstChild){ itP.appendChild(radiosContainer.firstChild); }
+                    // Check if .switch-field wrapper exists
+                    var switchField = przygotCell.querySelector('.switch-field');
+                    if (switchField) {
+                        // Clone the entire .switch-field wrapper to preserve styling
+                        var clonedSwitch = switchField.cloneNode(true);
+                        itP.appendChild(clonedSwitch);
+                    } else {
+                        // Fallback: create .switch-field wrapper and move children
+                        var newSwitchField = document.createElement('div');
+                        newSwitchField.className = 'switch-field';
+                        while (przygotCell.firstChild) {
+                            newSwitchField.appendChild(przygotCell.firstChild);
+                        }
+                        itP.appendChild(newSwitchField);
+                    }
                 }
                 listNazwa.appendChild(itN);
                 listWymiar.appendChild(itW);
