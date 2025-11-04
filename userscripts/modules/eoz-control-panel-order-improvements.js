@@ -1,10 +1,10 @@
 // EOZ Control Panel Order Improvements Module
-// Applies on /machines/control_panel_order (work-in-progress view)
+// Applies on /machines/control_panel_order and /machines/control_panel_order_completions
 
 (function() {
     'use strict';
 
-    var VERSION = '1.2.9';
+    var VERSION = '1.2.10';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -16,7 +16,8 @@
         return;
     }
 
-    if (window.location.href.indexOf('/machines/control_panel_order') === -1) {
+    var url = window.location.href;
+    if (url.indexOf('/machines/control_panel_order') === -1) {
         return; // not this page
     }
 
@@ -837,25 +838,35 @@
     }
 
     function isOrderNotStarted() {
-        // Check if order is not started by looking for "Rozpocznij operację" button in formo-bootstrap container
+        // Check if order is not started by looking for "Rozpocznij operację" button
+        // First check formo-bootstrap container (control_panel_order)
         var formoContainer = document.querySelector('div.margin-top-10.col-xs-12.text-center.formo-bootstrap');
-        if (!formoContainer) {
-            return false;
+        if (formoContainer) {
+            var textContent = formoContainer.textContent || '';
+            var innerHTML = formoContainer.innerHTML || '';
+            
+            // Check for "start operation" button or message patterns
+            var startPatterns = [
+                'Rozpocznij operację',
+                'ROZPOCZNIJ OPERACJĘ',
+                'start_operation_block',
+                'Rozpocznij pracę'
+            ];
+            
+            for (var i = 0; i < startPatterns.length; i++) {
+                if (textContent.indexOf(startPatterns[i]) !== -1 || innerHTML.indexOf(startPatterns[i]) !== -1) {
+                    return true;
+                }
+            }
         }
         
-        var textContent = formoContainer.textContent || '';
-        var innerHTML = formoContainer.innerHTML || '';
-        
-        // Check for "start operation" button or message patterns
-        var startPatterns = [
-            'Rozpocznij operację',
-            'ROZPOCZNIJ OPERACJĘ',
-            'start_operation_block',
-            'Rozpocznij pracę'
-        ];
-        
-        for (var i = 0; i < startPatterns.length; i++) {
-            if (textContent.indexOf(startPatterns[i]) !== -1 || innerHTML.indexOf(startPatterns[i]) !== -1) {
+        // Also check for start button anywhere on the page (control_panel_order_completions)
+        var startButton = document.querySelector('a[href*="start_operation_block"], a.start');
+        if (startButton && startButton.offsetParent !== null) {
+            // Button is visible, check if there's no check-double button
+            var checkDoubleButton = document.querySelector('a[href*="control_panel_set_suborder_elements_status_done_by_form"], a[href*="check-double"]');
+            if (!checkDoubleButton || checkDoubleButton.offsetParent === null) {
+                // Start button visible and no check-double button visible = order not started
                 return true;
             }
         }
@@ -1090,6 +1101,11 @@
             '    display: none !important;' +
             '}' +
             '' +
+            '/* Hide default start operation button if order is in progress */' +
+            'a[href*="start_operation_block"]:not(.eoz-start-operation-btn) {' +
+            '    display: none !important;' +
+            '}' +
+            '' +
             '/* Make tables full width */' +
             '[role="tabpanel"] table, ' +
             '.eoz-reorganized-table, ' +
@@ -1208,6 +1224,16 @@
         
         // Add check-double button for all machines (including Okleiniarka)
         addCheckDoubleButton(checkDoubleHref);
+
+        // Hide default start operation button if order is in progress or completed
+        // (for control_panel_order_completions view where there's no formo-bootstrap container)
+        // If check-double button exists, hide default start button
+        if (checkDoubleHref || !isOrderNotStarted()) {
+            var defaultStartButtons = document.querySelectorAll('a[href*="start_operation_block"]:not(.eoz-start-operation-btn)');
+            for (var i = 0; i < defaultStartButtons.length; i++) {
+                defaultStartButtons[i].style.display = 'none';
+            }
+        }
 
         // Hide table headers for Obrazek and Opcje/Akcje columns
         hideTableHeaders();
