@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.8';
+    var VERSION = '2.9.9';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1246,7 +1246,12 @@
                     var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
                     
                     if (isSubRow) {
-                        // Insert 5 empty cells at the beginning (Data, Klient, Zlecenie, Nazwa zamówienia, Lp)
+                        // Sub-rows should have 12 cells total to match main rows:
+                        // - 5 empty cells at start (covered by rowspan from main row: Lp, Zlecenie, Klient, Nazwa zamówienia, Lp)
+                        // - 4 cells with data (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
+                        // - 3 empty cells at end (covered by rowspan from main row: Opis, Uwagi, Opcje)
+                        
+                        // Insert 5 empty cells at the beginning
                         var emptyCell1 = document.createElement('td');
                         emptyCell1.className = 'body-cell';
                         var emptyCell2 = document.createElement('td');
@@ -1264,7 +1269,32 @@
                             row.insertBefore(emptyCell4, emptyCell5); // Nazwa zamówienia
                             row.insertBefore(emptyCell3, emptyCell4); // Zlecenie
                             row.insertBefore(emptyCell2, emptyCell3); // Klient
-                            row.insertBefore(emptyCell1, emptyCell2); // Data
+                            row.insertBefore(emptyCell1, emptyCell2); // Lp (hidden column)
+                        }
+                        
+                        // Insert 3 empty cells at the end (after Przygotowane)
+                        // These correspond to Opis, Uwagi, Opcje which are covered by rowspan in main row
+                        var emptyCell6 = document.createElement('td');
+                        emptyCell6.className = 'body-cell text-center'; // Opis
+                        var emptyCell7 = document.createElement('td');
+                        emptyCell7.className = 'body-cell text-center'; // Uwagi
+                        var emptyCell8 = document.createElement('td');
+                        emptyCell8.className = 'body-cell'; // Opcje
+                        
+                        // Add them at the end, but before mobile cell if it exists
+                        // After inserting 5 cells at start, we now have: 5 empty + 4 data = 9 cells
+                        // We need to add 3 more to get 12 total (before mobile cell)
+                        var mobileCell = row.querySelector('td.eoz-mobile-cell');
+                        if (mobileCell) {
+                            // Insert before mobile cell
+                            row.insertBefore(emptyCell8, mobileCell);
+                            row.insertBefore(emptyCell7, emptyCell8);
+                            row.insertBefore(emptyCell6, emptyCell7);
+                        } else {
+                            // No mobile cell yet, append at end
+                            row.appendChild(emptyCell6);
+                            row.appendChild(emptyCell7);
+                            row.appendChild(emptyCell8);
                         }
                     }
                 });
