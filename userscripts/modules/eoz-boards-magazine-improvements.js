@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.7';
+    var VERSION = '2.9.8';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1230,6 +1230,47 @@
             // Row numbers — skip empty/info rows (single cell with colspan) and sub-rows
             var bodyRows = document.querySelectorAll('table tbody tr');
             var lpCounter = 0;
+            
+            // First pass: for veneers, add empty cells to sub-rows so they align with headers
+            // Sub-rows have 4 cells: Nazwa okleiny, Wymiar, Ilość, Przygotowane
+            // They need 5 empty cells before (Data/Time, Klient, Zlecenie, Nazwa zamówienia, Lp)
+            if (isVeneers && !isVeneersGrouped) {
+                bodyRows.forEach(function(row){
+                    var tds = row.querySelectorAll('td');
+                    if (!tds || tds.length === 0) return;
+                    var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                    var hasRowspan = false;
+                    tds.forEach(function(td) {
+                        if (td.hasAttribute('rowspan')) hasRowspan = true;
+                    });
+                    var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
+                    
+                    if (isSubRow) {
+                        // Insert 5 empty cells at the beginning (Data, Klient, Zlecenie, Nazwa zamówienia, Lp)
+                        var emptyCell1 = document.createElement('td');
+                        emptyCell1.className = 'body-cell';
+                        var emptyCell2 = document.createElement('td');
+                        emptyCell2.className = 'body-cell';
+                        var emptyCell3 = document.createElement('td');
+                        emptyCell3.className = 'body-cell';
+                        var emptyCell4 = document.createElement('td');
+                        emptyCell4.className = 'body-cell';
+                        var emptyCell5 = document.createElement('td');
+                        emptyCell5.className = 'body-cell';
+                        
+                        var firstCell = row.querySelector('td:first-child');
+                        if (firstCell) {
+                            row.insertBefore(emptyCell5, firstCell); // Lp (will be empty)
+                            row.insertBefore(emptyCell4, emptyCell5); // Nazwa zamówienia
+                            row.insertBefore(emptyCell3, emptyCell4); // Zlecenie
+                            row.insertBefore(emptyCell2, emptyCell3); // Klient
+                            row.insertBefore(emptyCell1, emptyCell2); // Data
+                        }
+                    }
+                });
+            }
+            
+            // Second pass: assign LP numbers (skip sub-rows)
             bodyRows.forEach(function(row){
                 var tds = row.querySelectorAll('td');
                 if (!tds || tds.length === 0) return;
@@ -1242,24 +1283,15 @@
                     tds.forEach(function(td) {
                         if (td.hasAttribute('rowspan')) hasRowspan = true;
                     });
-                    // Sub-row: few cells (<= 4), no link, no rowspan
-                    var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
-                    if (isSubRow) {
-                        // Clear first cell(s) for sub-rows - they should be empty
-                        var firstCell = row.querySelector('td:first-child');
-                        if (firstCell) {
-                            firstCell.textContent = '';
-                        }
-                        // Also clear second and third cells if they exist (Zlecenie, Klient should be empty)
-                        if (tds.length >= 2 && tds[1]) {
-                            tds[1].textContent = '';
-                        }
-                        if (tds.length >= 3 && tds[2]) {
-                            tds[2].textContent = '';
-                        }
-                        if (tds.length >= 4 && tds[3]) {
-                            tds[3].textContent = '';
-                        }
+                    // Sub-row: few cells (<= 4 originally, but now has 9 cells after adding empty ones)
+                    // Or: check if first 5 cells are empty (after our insertion)
+                    var firstFiveEmpty = tds.length >= 5 && 
+                        (!tds[0].textContent.trim() && !tds[1].textContent.trim() && 
+                         !tds[2].textContent.trim() && !tds[3].textContent.trim() && 
+                         !tds[4].textContent.trim()) &&
+                        !hasLink && !hasRowspan;
+                    if (firstFiveEmpty) {
+                        // Keep first cell (LP position) empty for sub-rows
                         return; // skip sub-row, don't increment counter
                     }
                 }
@@ -1545,18 +1577,23 @@
             // Skip info rows
             if (tds.length === 1 && tds[0].hasAttribute('colspan')) return;
             
-            // For veneers non-grouped view: skip sub-rows (they have fewer cells and shouldn't be reordered)
+            // For veneers non-grouped view: handle sub-rows (they now have 9 cells after empty cells were added)
+            // Sub-rows have first 5 cells empty (Data, Klient, Zlecenie, Nazwa zamówienia, Lp)
+            // and then 4 cells with data (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
             if (isVeneers) {
                 var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
                 var hasRowspan = false;
                 tds.forEach(function(td) {
                     if (td.hasAttribute('rowspan')) hasRowspan = true;
                 });
-                // Sub-row: few cells (<= 4), no link, no rowspan
-                var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
-                if (isSubRow) {
-                    return; // skip sub-row reordering
-                }
+                // Check if first 5 cells are empty (sub-row after our insertion)
+                var firstFiveEmpty = tds.length >= 5 && 
+                    (!tds[0].textContent.trim() && !tds[1].textContent.trim() && 
+                     !tds[2].textContent.trim() && !tds[3].textContent.trim() && 
+                     !tds[4].textContent.trim()) &&
+                    !hasLink && !hasRowspan;
+                // Sub-rows should be reordered normally (they now have correct number of cells)
+                // But we need to ensure the order array accounts for the correct indices
             }
             
             var frag = document.createDocumentFragment();
