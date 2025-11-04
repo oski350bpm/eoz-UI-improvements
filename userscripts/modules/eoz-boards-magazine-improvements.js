@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.10';
+    var VERSION = '2.9.11';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1574,7 +1574,7 @@
             // Skip info rows
             if (tds.length === 1 && tds[0].hasAttribute('colspan')) return;
             
-            // For veneers non-grouped view: sub-rows should not be reordered
+            // For veneers non-grouped view: sub-rows need special handling
             // They have only: hidden Lp column + 4 data cells (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
             // Other columns are covered by rowspan from main row
             if (isVeneers) {
@@ -1585,8 +1585,59 @@
                 });
                 var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
                 var isSubRow = hasHiddenLp && tds.length <= 6 && !hasLink && !hasRowspan;
+                
                 if (isSubRow) {
-                    return; // skip sub-row reordering
+                    // Sub-rows need to be reordered to match the new header order
+                    // Sub-row structure: [0: hidden Lp, 1: Nazwa okleiny, 2: Wymiar, 3: Ilość, 4: Przygotowane, 5: mobile cell]
+                    // Hidden Lp column stays at index 0 (it's not part of reordering)
+                    // We need to reorder only the data cells (indices 1-4) to match new header order
+                    
+                    var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
+                    var idxWymiar = findHeaderIndex('Wymiar');
+                    var idxIlosc = findHeaderIndex('Ilość');
+                    var idxPrzygot = findHeaderIndex('Przygotowane');
+                    
+                    // Find where these columns are in the new order array
+                    var nazwaOkleinyPos = order.indexOf(idxNazwaOkleiny);
+                    var wymiarPos = order.indexOf(idxWymiar);
+                    var iloscPos = order.indexOf(idxIlosc);
+                    var przygotPos = order.indexOf(idxPrzygot);
+                    
+                    // Create mapping: [new order position] -> [original sub-row index]
+                    var subRowMapping = [];
+                    if (nazwaOkleinyPos >= 0) subRowMapping.push({newPos: nazwaOkleinyPos, origIdx: 1});
+                    if (wymiarPos >= 0) subRowMapping.push({newPos: wymiarPos, origIdx: 2});
+                    if (iloscPos >= 0) subRowMapping.push({newPos: iloscPos, origIdx: 3});
+                    if (przygotPos >= 0) subRowMapping.push({newPos: przygotPos, origIdx: 4});
+                    
+                    // Sort by new position to get correct order
+                    subRowMapping.sort(function(a, b) { return a.newPos - b.newPos; });
+                    
+                    // Build new order for sub-row
+                    var subRowFrag = document.createDocumentFragment();
+                    var mobileCell = null;
+                    
+                    // Always keep hidden Lp column first (index 0)
+                    subRowFrag.appendChild(tds[0]);
+                    
+                    // Add data cells in new order (indices 1-4)
+                    subRowMapping.forEach(function(mapping) {
+                        if (tds[mapping.origIdx]) {
+                            subRowFrag.appendChild(tds[mapping.origIdx]);
+                        }
+                    });
+                    
+                    // Preserve mobile cell at the end
+                    if (tds.length > 5 && tds[tds.length - 1].classList.contains('eoz-mobile-cell')) {
+                        mobileCell = tds[tds.length - 1];
+                    }
+                    
+                    row.appendChild(subRowFrag);
+                    if (mobileCell) {
+                        row.appendChild(mobileCell);
+                    }
+                    
+                    return; // done with sub-row
                 }
             }
             
