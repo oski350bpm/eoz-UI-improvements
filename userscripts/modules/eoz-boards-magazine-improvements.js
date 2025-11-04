@@ -1227,87 +1227,87 @@
                 rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
             }
 
-            // Row numbers — skip empty/info rows (single cell with colspan) and sub-rows
-            var bodyRows = document.querySelectorAll('table tbody tr');
-            var lpCounter = 0;
-            
-            if (isVeneers && !isVeneersGrouped) {
-                bodyRows.forEach(function(row){
-                    var tds = row.querySelectorAll('td');
-                    if (!tds || tds.length === 0) return;
-                    
-                    var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
-                    var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
-                    var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
-                    var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
-                    
-                    if (isSubRow) {
-                        var mobileCell = row.querySelector('td.eoz-mobile-cell');
-                        var hiddenLpCell = row.querySelector('td.lp[data-column="lp"]');
-                        if (!hiddenLpCell) {
-                            hiddenLpCell = document.createElement('td');
-                            hiddenLpCell.className = 'body-cell lp';
-                            hiddenLpCell.setAttribute('data-column', 'lp');
-                        }
-                        hiddenLpCell.textContent = '';
-                        row.insertBefore(hiddenLpCell, row.firstChild);
-                        
-                        var children = Array.from(row.children);
-                        var dataCells = [];
-                        var toRemove = [];
-                        children.forEach(function(cell){
-                            if (cell === hiddenLpCell || cell === mobileCell) return;
-                            var hasContent = !!cell.querySelector('.switch-field') || !!cell.getAttribute('title') || ((cell.textContent || '').trim() !== '');
-                            if (hasContent) {
-                                dataCells.push(cell);
-                            } else {
-                                toRemove.push(cell);
-                            }
-                        });
-                        toRemove.forEach(function(cell){ if (cell.parentNode === row) row.removeChild(cell); });
-                        if (dataCells.length > 4) {
-                            dataCells.slice(4).forEach(function(extra){ if (extra.parentNode === row) row.removeChild(extra); });
-                            dataCells = dataCells.slice(0, 4);
-                        }
-                        if (mobileCell && mobileCell.parentNode === row) {
-                            row.removeChild(mobileCell);
-                        }
-                        while (row.firstChild) {
-                            row.removeChild(row.firstChild);
-                        }
-                        row.appendChild(hiddenLpCell);
-                        dataCells.forEach(function(cell){ row.appendChild(cell); });
-                        if (mobileCell) {
-                            row.appendChild(mobileCell);
-                        }
-                    }
-                });
-            }
-            
-            // Second pass: assign LP numbers (skip sub-rows)
+        // Row numbers — skip empty/info rows (single cell with colspan) and sub-rows
+        var bodyRows = document.querySelectorAll('table tbody tr');
+        var lpCounter = 0;
+
+        if (isVeneers && !isVeneersGrouped) {
             bodyRows.forEach(function(row){
                 var tds = row.querySelectorAll('td');
                 if (!tds || tds.length === 0) return;
-                if (tds.length === 1 && tds[0].hasAttribute('colspan')) return; // skip info row
-                
-                if (isVeneers && !isVeneersGrouped) {
-                    var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
-                    var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
-                    var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
-                    var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
-                    if (isSubRow) {
-                        return; // skip sub-row, don't increment counter
+
+                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
+                var mobileCell = row.querySelector('td.eoz-mobile-cell');
+                var hiddenLpCell = row.querySelector('td.lp[data-column="lp"]');
+                var hasHiddenLp = !!hiddenLpCell;
+                var isSubRow = !hasLink && !hasRowspan && (hasHiddenLp || tds.length <= 5);
+
+                if (isSubRow) {
+                    if (!hiddenLpCell) {
+                        hiddenLpCell = document.createElement('td');
+                        hiddenLpCell.className = 'body-cell lp';
+                        hiddenLpCell.setAttribute('data-column', 'lp');
+                    }
+                    hiddenLpCell.textContent = '';
+                    row.insertBefore(hiddenLpCell, row.firstChild);
+
+                    var children = Array.from(row.children);
+                    var dataCells = [];
+                    var toRemove = [];
+                    children.forEach(function(cell){
+                        if (cell === hiddenLpCell || cell === mobileCell) return;
+                        var hasContent = !!cell.querySelector('.switch-field') || !!cell.getAttribute('title') || ((cell.textContent || '').trim() !== '');
+                        if (hasContent) {
+                            dataCells.push(cell);
+                        } else {
+                            toRemove.push(cell);
+                        }
+                    });
+                    toRemove.forEach(function(cell){ if (cell.parentNode === row) row.removeChild(cell); });
+                    if (dataCells.length > 4) {
+                        dataCells.slice(4).forEach(function(extra){ if (extra.parentNode === row) row.removeChild(extra); });
+                        dataCells = dataCells.slice(0, 4);
+                    }
+                    if (mobileCell && mobileCell.parentNode === row) {
+                        row.removeChild(mobileCell);
+                    }
+                    while (row.firstChild) {
+                        row.removeChild(row.firstChild);
+                    }
+                    row.appendChild(hiddenLpCell);
+                    dataCells.forEach(function(cell){ row.appendChild(cell); });
+                    if (mobileCell) {
+                        row.appendChild(mobileCell);
                     }
                 }
-                
-                lpCounter++;
-                var firstCell = row.querySelector('td:first-child');
-                if (firstCell) {
-                    firstCell.textContent = lpCounter.toString();
-                    firstCell.style.fontWeight = 'bold';
-                    firstCell.style.textAlign = 'center';
-                }
             });
+        }
+
+        // Second pass: assign LP numbers (skip sub-rows)
+        bodyRows.forEach(function(row){
+            var tds = row.querySelectorAll('td');
+            if (!tds || tds.length === 0) return;
+            if (tds.length === 1 && tds[0].hasAttribute('colspan')) return; // skip info row
+
+            if (isVeneers && !isVeneersGrouped) {
+                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
+                var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+                var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+                if (isSubRow) {
+                    return; // skip sub-row, don't increment counter
+                }
+            }
+
+            lpCounter++;
+            var firstCell = row.querySelector('td:first-child');
+            if (firstCell) {
+                firstCell.textContent = lpCounter.toString();
+                firstCell.style.fontWeight = 'bold';
+                firstCell.style.textAlign = 'center';
+            }
+        });
         } else {
             // For veneers grouped view (/3): Change first header to Lp. and add custom LP numbers
             var headerRow = document.querySelector('table thead tr');
@@ -1580,23 +1580,17 @@
             if (!tds || tds.length === 0) return;
             // Skip info rows
             if (tds.length === 1 && tds[0].hasAttribute('colspan')) return;
-            
-            // For veneers non-grouped view: handle sub-rows (they now have 9 cells after empty cells were added)
-            // Sub-rows have first 5 cells empty (Data, Klient, Zlecenie, Nazwa zamówienia, Lp)
-            // and then 4 cells with data (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
+
             if (isVeneers) {
                 var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
-                var hasRowspan = false;
-                tds.forEach(function(td) {
-                    if (td.hasAttribute('rowspan')) hasRowspan = true;
-                });
+                var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
                 var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
                 var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
                 if (isSubRow) {
                     return; // keep sub-row structure as-is
                 }
             }
-            
+
             var frag = document.createDocumentFragment();
             order.forEach(function(i){ if (tds[i]) frag.appendChild(tds[i]); });
             row.appendChild(frag);
