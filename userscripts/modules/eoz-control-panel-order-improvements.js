@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.5';
+    var VERSION = '1.2.6';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -482,12 +482,19 @@
             // Find columns to remove - check both thead (if exists) and first data row
             var indicesToRemove = [];
             
-            // If table has thead, use headers to find column indices
+            // Find column indices to hide (Obrazek and Opcje) - we'll use CSS to hide them
+            var obrazekIndex = -1;
+            var opcjeIndex = -1;
+            
             if (thead) {
                 var headerCells = thead.querySelectorAll('th');
                 for (var hIdx = 0; hIdx < headerCells.length; hIdx++) {
                     var headerText = headerCells[hIdx].textContent.trim();
-                    if (headerText === 'Usłojenie' || headerText === 'Obrazek' || headerText === 'Info' || headerText === 'Zlecenie') {
+                    if (headerText === 'Obrazek') {
+                        obrazekIndex = hIdx;
+                    } else if (headerText === 'Opcje') {
+                        opcjeIndex = hIdx;
+                    } else if (headerText === 'Usłojenie' || headerText === 'Info' || headerText === 'Zlecenie') {
                         indicesToRemove.push(hIdx);
                     }
                 }
@@ -496,14 +503,38 @@
             // Also check first data row to verify/find columns (if no thead or didn't find all in thead)
             var firstDataRow = tbody.querySelector('tr:not(:empty)') || tbody.querySelector('tr');
             if (firstDataRow) {
-                // If we found columns from thead, verify they're correct by checking data
-                // If we didn't find from thead, find from data
-                if (indicesToRemove.length === 0) {
-                    // If no thead or didn't find columns in headers, use data row
-                    var sampleCells = firstDataRow.querySelectorAll('td');
+                var sampleCells = firstDataRow.querySelectorAll('td');
                 
-                // Find Usłojenie (index 9), Obrazek (index 10), and Info/Zlecenie (last column)
-                if (sampleCells.length > 10) {
+                // If we didn't find Obrazek and Opcje in thead, find them in data rows
+                if ((obrazekIndex < 0 || opcjeIndex < 0) && sampleCells.length > 10) {
+                    // Find Obrazek column (usually empty or contains img)
+                    if (obrazekIndex < 0) {
+                        for (var oIdx = 0; oIdx < sampleCells.length; oIdx++) {
+                            var cell = sampleCells[oIdx];
+                            var cellText = cell ? cell.textContent.trim() : '';
+                            var hasImg = cell && cell.querySelector('img');
+                            // Obrazek is usually empty or has img
+                            if ((cellText === '' && hasImg) || (cellText === '' && oIdx === 10)) {
+                                obrazekIndex = oIdx;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Find Opcje column (usually has class "opt" or contains buttons)
+                    if (opcjeIndex < 0) {
+                        for (var opIdx = 0; opIdx < sampleCells.length; opIdx++) {
+                            var opCell = sampleCells[opIdx];
+                            if (opCell && (opCell.classList.contains('opt') || opCell.querySelector('a.tippy'))) {
+                                opcjeIndex = opIdx;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Find Usłojenie, Info, Zlecenie columns for removal (if not found in thead)
+                if (indicesToRemove.length === 0 && sampleCells.length > 10) {
                     // Check if cell at index 9 looks like Usłojenie (contains "Nie" or "Tak")
                     var cell9Text = sampleCells[9] ? sampleCells[9].textContent.trim() : '';
                     var cell10Text = sampleCells[10] ? sampleCells[10].textContent.trim() : '';
@@ -511,10 +542,6 @@
                     // If cell 9 has "Nie" or "Tak", it's likely Usłojenie
                     if (cell9Text === 'Nie' || cell9Text === 'Tak') {
                         indicesToRemove.push(9); // Usłojenie
-                    }
-                    // If cell 10 is empty or looks like image column, it's Obrazek
-                    if (cell10Text === '' || (sampleCells[10] && sampleCells[10].querySelector('img'))) {
-                        indicesToRemove.push(10); // Obrazek
                     }
                     
                     // Check last column for "Info" or "Zlecenie"
@@ -527,7 +554,6 @@
                             indicesToRemove.push(lastIndex);
                         }
                     }
-                }
                 }
             }
             
@@ -581,7 +607,15 @@
                     }
                 }
                 
-                // Remove data cells in reverse order (to maintain indices)
+                // Mark Obrazek and Opcje columns for hiding (add class)
+                if (obrazekIndex >= 0 && cells[obrazekIndex]) {
+                    cells[obrazekIndex].classList.add('eoz-hidden-column');
+                }
+                if (opcjeIndex >= 0 && cells[opcjeIndex]) {
+                    cells[opcjeIndex].classList.add('eoz-hidden-column');
+                }
+                
+                // Remove data cells in reverse order (to maintain indices) - only Usłojenie, Info, Zlecenie
                 indicesToRemove.sort(function(a, b) { return b - a; }).forEach(function(idx) {
                     if (cells[idx]) {
                         cells[idx].parentElement.removeChild(cells[idx]);
@@ -630,10 +664,19 @@
             }
             
             // Remove thead headers (we don't want headers - panels should display without them)
-            // But first remove columns from thead if exists
+            // But first mark Obrazek and Opcje columns in thead for hiding, then remove other columns
             if (thead) {
                 var headerCells = thead.querySelectorAll('th');
-                // Remove header cells in reverse order
+                
+                // Mark Obrazek and Opcje columns in thead
+                if (obrazekIndex >= 0 && headerCells[obrazekIndex]) {
+                    headerCells[obrazekIndex].classList.add('eoz-hidden-column');
+                }
+                if (opcjeIndex >= 0 && headerCells[opcjeIndex]) {
+                    headerCells[opcjeIndex].classList.add('eoz-hidden-column');
+                }
+                
+                // Remove header cells in reverse order (only Usłojenie, Info, Zlecenie)
                 indicesToRemove.sort(function(a, b) { return b - a; }).forEach(function(idx) {
                     if (headerCells[idx]) {
                         headerCells[idx].parentElement.removeChild(headerCells[idx]);
@@ -793,6 +836,105 @@
         return null;
     }
 
+    function isOrderNotStarted() {
+        // Check if order is not started by looking for "Rozpocznij operację" button in formo-bootstrap container
+        var formoContainer = document.querySelector('div.margin-top-10.col-xs-12.text-center.formo-bootstrap');
+        if (!formoContainer) {
+            return false;
+        }
+        
+        var textContent = formoContainer.textContent || '';
+        var innerHTML = formoContainer.innerHTML || '';
+        
+        // Check for "start operation" button or message patterns
+        var startPatterns = [
+            'Rozpocznij operację',
+            'ROZPOCZNIJ OPERACJĘ',
+            'start_operation_block',
+            'Rozpocznij pracę'
+        ];
+        
+        for (var i = 0; i < startPatterns.length; i++) {
+            if (textContent.indexOf(startPatterns[i]) !== -1 || innerHTML.indexOf(startPatterns[i]) !== -1) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    function getStartOperationUrl() {
+        // Extract start operation URL from formo-bootstrap container
+        var formoContainer = document.querySelector('div.margin-top-10.col-xs-12.text-center.formo-bootstrap');
+        if (!formoContainer) {
+            return null;
+        }
+        
+        // Look for button or link with start_operation_block
+        var startButton = formoContainer.querySelector('a[href*="start_operation_block"], button[href*="start_operation_block"], a.start');
+        if (startButton && startButton.href) {
+            return startButton.href;
+        }
+        
+        // Fallback: construct URL from block_id in page URL
+        var urlParams = new URLSearchParams(window.location.search);
+        var blockId = urlParams.get('block_id');
+        if (blockId) {
+            var baseUrl = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
+            return baseUrl + '/start_operation_block/' + blockId;
+        }
+        
+        return null;
+    }
+
+    function getMaterialNotPreparedMessage() {
+        // Extract material not prepared message from formo-bootstrap container
+        var formoContainer = document.querySelector('div.margin-top-10.col-xs-12.text-center.formo-bootstrap');
+        if (!formoContainer) {
+            return null;
+        }
+        
+        var textContent = formoContainer.textContent || '';
+        var innerHTML = formoContainer.innerHTML || '';
+        
+        // Look for material preparation warning patterns
+        var materialPatterns = [
+            'Nie przygotowano',
+            'nie przygotowano',
+            'materiał',
+            'materiałów'
+        ];
+        
+        // Check if any pattern matches
+        var hasMaterialWarning = false;
+        for (var i = 0; i < materialPatterns.length; i++) {
+            if (textContent.indexOf(materialPatterns[i]) !== -1 || innerHTML.indexOf(materialPatterns[i]) !== -1) {
+                hasMaterialWarning = true;
+                break;
+            }
+        }
+        
+        if (!hasMaterialWarning) {
+            return null;
+        }
+        
+        // Try to find the actual message text
+        // Look for paragraphs or divs that might contain the message
+        var allElements = formoContainer.querySelectorAll('p, div, span');
+        for (var j = 0; j < allElements.length; j++) {
+            var elem = allElements[j];
+            var elemText = elem.textContent.trim();
+            for (var k = 0; k < materialPatterns.length; k++) {
+                if (elemText.indexOf(materialPatterns[k]) !== -1 && elemText.length < 200) {
+                    return elemText;
+                }
+            }
+        }
+        
+        // Fallback: return generic message
+        return 'Nie przygotowano wszystkich materiałów';
+    }
+
     function addCheckDoubleButton(checkDoubleHref) {
         // Find header info container
         var headerInfo = document.getElementById('eoz-order-header-info');
@@ -816,7 +958,33 @@
             return;
         }
         
-        // Order is not completed, show button
+        // Check if order is not started
+        if (isOrderNotStarted()) {
+            var startUrl = getStartOperationUrl();
+            var materialMessage = getMaterialNotPreparedMessage();
+            
+            // Show material warning message if exists
+            if (materialMessage) {
+                var warningDiv = document.createElement('div');
+                warningDiv.className = 'eoz-material-warning-message';
+                warningDiv.style.cssText = 'display: block; width: 100%; margin-top: 15px; padding: 12px 20px; font-size: 14px; font-weight: 600; text-align: center; color: #856404; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;';
+                warningDiv.textContent = materialMessage;
+                headerInfo.appendChild(warningDiv);
+            }
+            
+            // Create start operation button
+            var startButton = document.createElement('a');
+            startButton.href = startUrl || '#';
+            startButton.className = 'btn btn-primary eoz-start-operation-btn';
+            startButton.style.cssText = 'display: block; width: 100%; margin-top: ' + (materialMessage ? '10px' : '15px') + '; padding: 12px 20px; font-size: 16px; font-weight: bold; text-align: center;';
+            startButton.innerHTML = '<i class="fa fa-play"></i> Rozpocznij pracę nad zleceniem';
+            
+            // Append to header info container (at the end)
+            headerInfo.appendChild(startButton);
+            return;
+        }
+        
+        // Order is in progress, show check-double button
         if (!checkDoubleHref) {
             console.warn('[EOZ Control Panel Order v' + VERSION + '] Check-double button href not provided');
             return;
@@ -908,7 +1076,7 @@
     }
 
     function injectStyles() {
-        // Inject CSS to hide formo-bootstrap container
+        // Inject CSS to hide formo-bootstrap container and style tables
         var styleId = 'eoz-control-panel-order-styles';
         if (document.getElementById(styleId)) {
             return; // Already injected
@@ -919,6 +1087,36 @@
         style.textContent = '' +
             '/* Hide formo-bootstrap container */' +
             'div.margin-top-10.col-xs-12.text-center.formo-bootstrap {' +
+            '    display: none !important;' +
+            '}' +
+            '' +
+            '/* Make tables full width */' +
+            '[role="tabpanel"] table, ' +
+            '.eoz-reorganized-table, ' +
+            '[role="tabpanel"] table, ' +
+            'table.eoz-reorganized-table {' +
+            '    width: 100% !important;' +
+            '    max-width: 100% !important;' +
+            '}' +
+            '' +
+            '/* Make table containers full width */' +
+            '[role="tabpanel"], ' +
+            '.eoz-table-section {' +
+            '    width: 100% !important;' +
+            '    max-width: 100% !important;' +
+            '}' +
+            '' +
+            '/* Hide Obrazek and Opcje columns in tables */' +
+            '[role="tabpanel"] table thead th.eoz-hidden-column, ' +
+            '[role="tabpanel"] table tbody td.eoz-hidden-column, ' +
+            '.eoz-reorganized-table thead th.eoz-hidden-column, ' +
+            '.eoz-reorganized-table tbody td.eoz-hidden-column {' +
+            '    display: none !important;' +
+            '}' +
+            '' +
+            '/* Additional selectors: hide columns with class "opt" (Opcje) and empty image columns */' +
+            '[role="tabpanel"] table tbody td.opt, ' +
+            '.eoz-reorganized-table tbody td.opt {' +
             '    display: none !important;' +
             '}';
         
