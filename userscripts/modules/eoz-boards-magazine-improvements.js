@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.10';
+    var VERSION = '2.9.11';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1252,29 +1252,29 @@
                     hiddenLpCell.textContent = '';
                     row.insertBefore(hiddenLpCell, row.firstChild);
 
+                    // Collect all cells first, then remove and rebuild
                     var children = Array.from(row.children);
                     var dataCells = [];
-                    var toRemove = [];
                     children.forEach(function(cell){
                         if (cell === hiddenLpCell || cell === mobileCell) return;
+                        // Check if cell has content: switch-field, title attribute, or non-empty text
                         var hasContent = !!cell.querySelector('.switch-field') || !!cell.getAttribute('title') || ((cell.textContent || '').trim() !== '');
                         if (hasContent) {
                             dataCells.push(cell);
-                        } else {
-                            toRemove.push(cell);
                         }
                     });
-                    toRemove.forEach(function(cell){ if (cell.parentNode === row) row.removeChild(cell); });
+                    
+                    // Limit to 4 data cells (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
                     if (dataCells.length > 4) {
-                        dataCells.slice(4).forEach(function(extra){ if (extra.parentNode === row) row.removeChild(extra); });
                         dataCells = dataCells.slice(0, 4);
                     }
-                    if (mobileCell && mobileCell.parentNode === row) {
-                        row.removeChild(mobileCell);
-                    }
+                    
+                    // Remove all children from row
                     while (row.firstChild) {
                         row.removeChild(row.firstChild);
                     }
+                    
+                    // Rebuild row: hidden LP cell + 4 data cells + mobile cell
                     row.appendChild(hiddenLpCell);
                     dataCells.forEach(function(cell){ row.appendChild(cell); });
                     if (mobileCell) {
