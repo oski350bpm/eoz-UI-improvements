@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.12';
+    var VERSION = '2.9.13';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1272,6 +1272,11 @@
                         // Check if cell has content: switch-field, title attribute, or non-empty text
                         var hasContent = !!cell.querySelector('.switch-field') || !!cell.getAttribute('title') || ((cell.textContent || '').trim() !== '');
                         if (hasContent) {
+                            // Remove lp class and data-column attribute from cells with switch-field
+                            if (cell.querySelector('.switch-field')) {
+                                cell.classList.remove('lp');
+                                cell.removeAttribute('data-column');
+                            }
                             dataCells.push(cell);
                         }
                     });
