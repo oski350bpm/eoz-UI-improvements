@@ -119,17 +119,25 @@
     }
 
     function shouldActivateUnifiedView() {
+        // MODULE DISABLED - always return false
+        return false;
+        
         var params = getSearchParams();
         if (!params) {
-            return true;
+            return false; // Changed: default to false instead of true
         }
 
         var explicit = params.get('unified');
         if (explicit === 'false') {
             return false;
         }
+        
+        // Only activate if explicitly set to 'true'
+        if (explicit === 'true') {
+            return true;
+        }
 
-        return true;
+        return false; // Changed: default to false instead of true
     }
 
     function getWeekOffset() {

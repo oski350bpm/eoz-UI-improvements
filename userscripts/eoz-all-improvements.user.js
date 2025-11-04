@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ All UI Improvements
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      3.11.7
+// @version      3.11.8
 // @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów (Boards + Veneers + CDP Manager + Scripts Viewer)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js
@@ -12,8 +12,7 @@
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-commission-list-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-boards-magazine-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-machines-control-panel-improvements.js
-// DISABLED: Unified view module temporarily disabled
-// @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-control-panel-unified-view.js
+// DISABLED: Unified view module temporarily disabled - @require removed
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-commission-generate-page-improvements.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-cdp-manager.js
 // @require      https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/modules/eoz-scripts-viewer.js
@@ -23,7 +22,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '3.11.7';
+    var VERSION = '3.11.8';
     
     if (!window.EOZ) {
         console.error('[EOZ All UI v' + VERSION + '] Core not loaded!');
