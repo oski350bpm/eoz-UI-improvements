@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.19';
+    var VERSION = '2.9.20';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1620,7 +1620,8 @@
 
         var materialIndexes = [];
         if (isVeneers){
-            materialIndexes = [ findHeaderIndex('Nazwa okleiny'), findHeaderIndex('Wymiar') ];
+            // Use findHeaderIndexAny to support both 'Okleina' (after normalization) and 'Nazwa okleiny' (before)
+            materialIndexes = [ findHeaderIndexAny(['Okleina', 'Nazwa okleiny']), findHeaderIndex('Wymiar') ];
         } else {
             materialIndexes = [ findHeaderIndex('Płyta i wymiar') ];
         }
@@ -1672,7 +1673,8 @@
         var headerRow = document.querySelector('table thead tr');
         if (!headerRow) return;
 
-        var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
+        // Use findHeaderIndexAny to support both 'Okleina' (after normalization) and 'Nazwa okleiny' (before)
+        var idxNazwaOkleiny = findHeaderIndexAny(['Okleina', 'Nazwa okleiny']);
         var idxWymiar = findHeaderIndex('Wymiar');
         var idxIlosc = findHeaderIndex('Ilość');
         var idxPrzygot = findHeaderIndex('Przygotowane');
@@ -1852,11 +1854,8 @@
     }
 
     function replaceVeneerCodesWithNames(isGrouped){
-        // Support both headers used across views
-        var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
-        if (idxNazwaOkleiny < 0) {
-            idxNazwaOkleiny = findHeaderIndex('Okleina');
-        }
+        // Support both headers used across views (use findHeaderIndexAny for consistency)
+        var idxNazwaOkleiny = findHeaderIndexAny(['Okleina', 'Nazwa okleiny']);
         if (idxNazwaOkleiny < 0) return;
         var rows = Array.from(document.querySelectorAll('table tbody tr'));
         if (rows.length === 0) return;
