@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.9';
+    var VERSION = '2.9.10';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1246,55 +1246,25 @@
                     var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
                     
                     if (isSubRow) {
-                        // Sub-rows should have 12 cells total to match main rows:
-                        // - 5 empty cells at start (covered by rowspan from main row: Lp, Zlecenie, Klient, Nazwa zamówienia, Lp)
-                        // - 4 cells with data (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
-                        // - 3 empty cells at end (covered by rowspan from main row: Opis, Uwagi, Opcje)
+                        // Sub-rows should have only 1 empty cell at the beginning (hidden Lp column)
+                        // All other columns (Lp., Zlecenie, Klient, Nazwa zamówienia, Opis, Uwagi, Opcje) 
+                        // are covered by rowspan from main row, so they don't need their own cells
                         
-                        // Insert 5 empty cells at the beginning
-                        var emptyCell1 = document.createElement('td');
-                        emptyCell1.className = 'body-cell';
-                        var emptyCell2 = document.createElement('td');
-                        emptyCell2.className = 'body-cell';
-                        var emptyCell3 = document.createElement('td');
-                        emptyCell3.className = 'body-cell';
-                        var emptyCell4 = document.createElement('td');
-                        emptyCell4.className = 'body-cell';
-                        var emptyCell5 = document.createElement('td');
-                        emptyCell5.className = 'body-cell';
-                        
+                        // Check if first cell is already the hidden Lp column
                         var firstCell = row.querySelector('td:first-child');
-                        if (firstCell) {
-                            row.insertBefore(emptyCell5, firstCell); // Lp (will be empty)
-                            row.insertBefore(emptyCell4, emptyCell5); // Nazwa zamówienia
-                            row.insertBefore(emptyCell3, emptyCell4); // Zlecenie
-                            row.insertBefore(emptyCell2, emptyCell3); // Klient
-                            row.insertBefore(emptyCell1, emptyCell2); // Lp (hidden column)
-                        }
+                        var hasHiddenLp = firstCell && firstCell.classList.contains('lp') && firstCell.getAttribute('data-column') === 'lp';
                         
-                        // Insert 3 empty cells at the end (after Przygotowane)
-                        // These correspond to Opis, Uwagi, Opcje which are covered by rowspan in main row
-                        var emptyCell6 = document.createElement('td');
-                        emptyCell6.className = 'body-cell text-center'; // Opis
-                        var emptyCell7 = document.createElement('td');
-                        emptyCell7.className = 'body-cell text-center'; // Uwagi
-                        var emptyCell8 = document.createElement('td');
-                        emptyCell8.className = 'body-cell'; // Opcje
-                        
-                        // Add them at the end, but before mobile cell if it exists
-                        // After inserting 5 cells at start, we now have: 5 empty + 4 data = 9 cells
-                        // We need to add 3 more to get 12 total (before mobile cell)
-                        var mobileCell = row.querySelector('td.eoz-mobile-cell');
-                        if (mobileCell) {
-                            // Insert before mobile cell
-                            row.insertBefore(emptyCell8, mobileCell);
-                            row.insertBefore(emptyCell7, emptyCell8);
-                            row.insertBefore(emptyCell6, emptyCell7);
-                        } else {
-                            // No mobile cell yet, append at end
-                            row.appendChild(emptyCell6);
-                            row.appendChild(emptyCell7);
-                            row.appendChild(emptyCell8);
+                        if (!hasHiddenLp) {
+                            // Insert 1 empty cell for hidden Lp column at the beginning
+                            var emptyLpCell = document.createElement('td');
+                            emptyLpCell.className = 'body-cell lp';
+                            emptyLpCell.setAttribute('data-column', 'lp');
+                            
+                            if (firstCell) {
+                                row.insertBefore(emptyLpCell, firstCell);
+                            } else {
+                                row.appendChild(emptyLpCell);
+                            }
                         }
                     }
                 });
@@ -1313,15 +1283,12 @@
                     tds.forEach(function(td) {
                         if (td.hasAttribute('rowspan')) hasRowspan = true;
                     });
-                    // Sub-row: few cells (<= 4 originally, but now has 9 cells after adding empty ones)
-                    // Or: check if first 5 cells are empty (after our insertion)
-                    var firstFiveEmpty = tds.length >= 5 && 
-                        (!tds[0].textContent.trim() && !tds[1].textContent.trim() && 
-                         !tds[2].textContent.trim() && !tds[3].textContent.trim() && 
-                         !tds[4].textContent.trim()) &&
-                        !hasLink && !hasRowspan;
-                    if (firstFiveEmpty) {
-                        // Keep first cell (LP position) empty for sub-rows
+                    // Sub-row: has hidden Lp column (first cell) + 4 data cells (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
+                    // Total: 5 cells (or 6 with mobile cell)
+                    var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+                    var isSubRow = hasHiddenLp && tds.length <= 6 && !hasLink && !hasRowspan;
+                    if (isSubRow) {
+                        // Keep first cell (hidden Lp column) empty for sub-rows
                         return; // skip sub-row, don't increment counter
                     }
                 }
@@ -1607,23 +1574,20 @@
             // Skip info rows
             if (tds.length === 1 && tds[0].hasAttribute('colspan')) return;
             
-            // For veneers non-grouped view: handle sub-rows (they now have 9 cells after empty cells were added)
-            // Sub-rows have first 5 cells empty (Data, Klient, Zlecenie, Nazwa zamówienia, Lp)
-            // and then 4 cells with data (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
+            // For veneers non-grouped view: sub-rows should not be reordered
+            // They have only: hidden Lp column + 4 data cells (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
+            // Other columns are covered by rowspan from main row
             if (isVeneers) {
                 var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
                 var hasRowspan = false;
                 tds.forEach(function(td) {
                     if (td.hasAttribute('rowspan')) hasRowspan = true;
                 });
-                // Check if first 5 cells are empty (sub-row after our insertion)
-                var firstFiveEmpty = tds.length >= 5 && 
-                    (!tds[0].textContent.trim() && !tds[1].textContent.trim() && 
-                     !tds[2].textContent.trim() && !tds[3].textContent.trim() && 
-                     !tds[4].textContent.trim()) &&
-                    !hasLink && !hasRowspan;
-                // Sub-rows should be reordered normally (they now have correct number of cells)
-                // But we need to ensure the order array accounts for the correct indices
+                var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+                var isSubRow = hasHiddenLp && tds.length <= 6 && !hasLink && !hasRowspan;
+                if (isSubRow) {
+                    return; // skip sub-row reordering
+                }
             }
             
             var frag = document.createDocumentFragment();
