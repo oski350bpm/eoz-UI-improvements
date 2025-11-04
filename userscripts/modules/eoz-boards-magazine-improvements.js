@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.16';
+    var VERSION = '2.9.17';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1394,6 +1394,11 @@
             try { reorderColumnsDesktop(isVeneers); } catch(_) {}
         }
         
+        // Desktop veneers /1: aggregate sub-rows into main row (mirror of /3)
+        if (isVeneers && !isVeneersGrouped && window.innerWidth > 960) {
+            try { aggregateVeneersDesktopNonGrouped(); } catch(_) {}
+        }
+        
         // Final cleanup for veneers sub-rows: remove lp class and data-column from radio button cells
         if (isVeneers && !isVeneersGrouped) {
             var allBodyRows = document.querySelectorAll('table tbody tr');
@@ -1646,6 +1651,102 @@
             order.forEach(function(i){ if (tds[i]) frag.appendChild(tds[i]); });
             row.appendChild(frag);
         });
+    }
+
+    // Aggregate veneers in non-grouped desktop view: move sub-row veneer values into main row lists
+    function aggregateVeneersDesktopNonGrouped(){
+        var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
+        if (!isVeneers) return;
+
+        var headerRow = document.querySelector('table thead tr');
+        if (!headerRow) return;
+
+        var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
+        var idxWymiar = findHeaderIndex('Wymiar');
+        var idxIlosc = findHeaderIndex('Ilość');
+        var idxPrzygot = findHeaderIndex('Przygotowane');
+        if (idxNazwaOkleiny < 0 || idxWymiar < 0 || idxIlosc < 0 || idxPrzygot < 0) return;
+
+        var rows = Array.from(document.querySelectorAll('table tbody tr'));
+        for (var i = 0; i < rows.length; i++){
+            var row = rows[i];
+            var tds = row.querySelectorAll('td');
+            if (!tds || tds.length === 0) continue;
+
+            var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+            var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
+            var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+            var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+            if (isSubRow) continue; // handle only main rows
+
+            // Ensure target cells exist on main row
+            var cellNazwa = tds[idxNazwaOkleiny];
+            var cellWymiar = tds[idxWymiar];
+            var cellIlosc = tds[idxIlosc];
+            var cellPrzygot = tds[idxPrzygot];
+            if (!cellNazwa || !cellWymiar || !cellIlosc || !cellPrzygot) continue;
+
+            // Create containers for aggregated lists
+            var listNazwa = document.createElement('div'); listNazwa.className = 'eoz-ven-list eoz-ven-list-nazwa';
+            var listWymiar = document.createElement('div'); listWymiar.className = 'eoz-ven-list eoz-ven-list-wymiar';
+            var listIlosc = document.createElement('div'); listIlosc.className = 'eoz-ven-list eoz-ven-list-ilosc';
+            var listPrzygot = document.createElement('div'); listPrzygot.className = 'eoz-ven-list eoz-ven-list-przygot';
+
+            function appendItem(nazwaText, wymiarText, iloscText, przygotCell){
+                var itN = document.createElement('div'); itN.className = 'eoz-ven-item'; itN.textContent = nazwaText || '—';
+                var itW = document.createElement('div'); itW.className = 'eoz-ven-item'; itW.textContent = wymiarText || '—';
+                var itI = document.createElement('div'); itI.className = 'eoz-ven-item'; itI.textContent = iloscText || '—';
+                var itP = document.createElement('div'); itP.className = 'eoz-ven-item';
+                if (przygotCell) {
+                    // Move existing radio controls into aggregated container
+                    var radiosContainer = przygotCell.querySelector('.switch-field') || przygotCell;
+                    while (radiosContainer && radiosContainer.firstChild){ itP.appendChild(radiosContainer.firstChild); }
+                }
+                listNazwa.appendChild(itN);
+                listWymiar.appendChild(itW);
+                listIlosc.appendChild(itI);
+                listPrzygot.appendChild(itP);
+            }
+
+            // Add main row values first (move radios out of main cell)
+            appendItem((cellNazwa.textContent||'').trim(), (cellWymiar.textContent||'').trim(), (cellIlosc.textContent||'').trim(), cellPrzygot);
+
+            // Collect following sub-rows and merge, then remove them
+            var cursor = row.nextElementSibling;
+            var removedCount = 0;
+            while (cursor){
+                var cTds = cursor.querySelectorAll('td');
+                if (!cTds || cTds.length === 0) break;
+                var cHasLink = cursor.querySelector('a[href*="/commission/show_details/"]');
+                var cHasRowspan = Array.prototype.some.call(cTds, function(td){ return td.hasAttribute('rowspan'); });
+                var cHasHiddenLp = cTds.length > 0 && cTds[0].classList.contains('lp') && cTds[0].getAttribute('data-column') === 'lp';
+                var cIsSub = cHasHiddenLp && !cHasLink && !cHasRowspan;
+                if (!cIsSub) break;
+
+                // Sub-row mapping: [0 hidden LP, 1 Nazwa okleiny, 2 Wymiar, 3 Ilość, 4 Przygotowane]
+                var sNazwa = (cTds[1] ? (cTds[1].textContent||'').trim() : '');
+                var sWymiar = (cTds[2] ? (cTds[2].textContent||'').trim() : '');
+                var sIlosc = (cTds[3] ? (cTds[3].textContent||'').trim() : '');
+                var sPrzygotCell = cTds[4] || null;
+                appendItem(sNazwa, sWymiar, sIlosc, sPrzygotCell);
+
+                var toRemove = cursor;
+                cursor = cursor.nextElementSibling;
+                toRemove.parentElement && toRemove.parentElement.removeChild(toRemove);
+                removedCount++;
+            }
+
+            // Replace main row cells with aggregated lists
+            cellNazwa.innerHTML = ''; cellNazwa.appendChild(listNazwa);
+            cellWymiar.innerHTML = ''; cellWymiar.appendChild(listWymiar);
+            cellIlosc.innerHTML = ''; cellIlosc.appendChild(listIlosc);
+            cellPrzygot.innerHTML = ''; cellPrzygot.appendChild(listPrzygot);
+
+            // Advance i if we removed rows, since NodeList snapshot was taken before modifications
+            if (removedCount > 0) {
+                // no-op; loop over static array 'rows' so indices remain consistent
+            }
+        }
     }
 
     function normalizeGroupedSwitches(){}
