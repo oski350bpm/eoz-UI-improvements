@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.21';
+    var VERSION = '2.9.22';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1045,6 +1045,8 @@
     function tagColumnByHeader(headerText, className){
         if (!headerText || !className) return;
         var headers = Array.from(document.querySelectorAll('table thead th'));
+        var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
+        
         headers.forEach(function(th, index){
             if ((th.textContent || '').trim().toLowerCase() === headerText.toLowerCase()){
                 th.classList.add(className);
@@ -1053,6 +1055,13 @@
                 rows.forEach(function(row){
                     var cells = row.querySelectorAll('td');
                     if (cells[index]) {
+                        // For veneers, skip sub-rows (rows without rowspan that aren't main rows)
+                        if (isVeneers) {
+                            var hasRowspan = Array.prototype.some.call(cells, function(td){ return td.hasAttribute('rowspan'); });
+                            var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                            // Only tag main rows (with rowspan or commission link)
+                            if (!hasRowspan && !hasLink) return;
+                        }
                         cells[index].classList.add(className);
                         cells[index].setAttribute('data-column', className);
                     }
@@ -1191,6 +1200,7 @@
         // Set data attribute to distinguish veneers from boards
         var isVeneers = window.location.href.indexOf('control_panel_veneers_magazine_2020') !== -1;
         var isVeneersGrouped = isVeneers && window.location.href.indexOf('/3') !== -1;
+        var isVeneersNonGrouped = isVeneers && window.location.href.indexOf('/1') !== -1;
         
         if (isVeneers) {
             document.body.setAttribute('data-veneer', 'true');
@@ -1405,40 +1415,8 @@
         }
         
         // Desktop veneers /1: aggregate sub-rows into main row (mirror of /3)
-        if (isVeneers && !isVeneersGrouped && window.innerWidth > 960) {
+        if (isVeneersNonGrouped && window.innerWidth > 960) {
             try { aggregateVeneersDesktopNonGrouped(); } catch(_) {}
-        }
-        
-        // Final cleanup for veneers sub-rows: remove lp class and data-column from radio button cells
-        if (isVeneers) {
-            var allBodyRows = document.querySelectorAll('table tbody tr');
-            allBodyRows.forEach(function(row){
-                var tds = row.querySelectorAll('td');
-                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
-                var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
-                
-                var isSubRow = false;
-                if (!isVeneersGrouped) {
-                    // /1 view: sub-rows have hidden LP cell
-                    var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
-                    isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
-                } else {
-                    // /3 view: sub-rows don't have rowspan and don't have commission link
-                    isSubRow = !hasRowspan && !hasLink && tds.length > 0;
-                }
-                
-                if (isSubRow) {
-                    // Clean up all cells with switch-field in sub-rows
-                    var cells = row.querySelectorAll('td');
-                    for (var i = 0; i < cells.length; i++) {
-                        var cell = cells[i];
-                        if (cell.querySelector('.switch-field')) {
-                            cell.classList.remove('lp');
-                            cell.removeAttribute('data-column');
-                        }
-                    }
-                }
-            });
         }
 
         // If veneers, replace code in "Nazwa okleiny" with full name from commission page
@@ -1477,6 +1455,41 @@
 
         // Debug radio buttons state
         debugRadioButtons('AFTER_LOAD');
+        
+        // Final cleanup for veneers sub-rows: remove lp class and data-column from radio button cells
+        // This runs AFTER all other transformations to ensure cleanup sticks
+        if (isVeneers) {
+            var allBodyRows = document.querySelectorAll('table tbody tr');
+            allBodyRows.forEach(function(row){
+                var tds = row.querySelectorAll('td');
+                if (!tds || tds.length === 0) return;
+                
+                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
+                
+                var isSubRow = false;
+                if (isVeneersNonGrouped) {
+                    // /1 view: sub-rows have hidden LP cell
+                    var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+                    isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+                } else if (isVeneersGrouped) {
+                    // /3 view: sub-rows don't have rowspan and don't have commission link
+                    isSubRow = !hasRowspan && !hasLink;
+                }
+                
+                if (isSubRow) {
+                    // Clean up all cells with switch-field in sub-rows
+                    var cells = row.querySelectorAll('td');
+                    for (var i = 0; i < cells.length; i++) {
+                        var cell = cells[i];
+                        if (cell.querySelector('.switch-field')) {
+                            cell.classList.remove('lp');
+                            cell.removeAttribute('data-column');
+                        }
+                    }
+                }
+            });
+        }
 
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
         
