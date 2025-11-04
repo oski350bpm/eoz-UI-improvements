@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.22';
+    var VERSION = '2.9.23';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1409,14 +1409,15 @@
         // Fix grouped view switches: if main row has empty Przygotowane cell, copy from first sub-row
         // (Grouped view retains original switches per veneer row)
 
+        // Desktop veneers /1: aggregate sub-rows into main row (mirror of /3)
+        // IMPORTANT: Must run BEFORE reorderColumnsDesktop, because reorder changes column indices
+        if (isVeneersNonGrouped && window.innerWidth > 960) {
+            try { aggregateVeneersDesktopNonGrouped(); } catch(_) {}
+        }
+
         // Desktop: reorder columns to align with Machines Panel layout (non-grouped only)
         if (!isVeneersGrouped && window.innerWidth > 960) {
             try { reorderColumnsDesktop(isVeneers); } catch(_) {}
-        }
-        
-        // Desktop veneers /1: aggregate sub-rows into main row (mirror of /3)
-        if (isVeneersNonGrouped && window.innerWidth > 960) {
-            try { aggregateVeneersDesktopNonGrouped(); } catch(_) {}
         }
 
         // If veneers, replace code in "Nazwa okleiny" with full name from commission page
