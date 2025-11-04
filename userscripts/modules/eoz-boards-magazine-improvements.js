@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.17';
+    var VERSION = '2.9.18';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1438,7 +1438,8 @@
         debugRadioButtons('BEFORE_MOBILE_BUILD');
         
         // Build mobile grid cell per row
-        if (isVeneersGrouped) {
+        if (isVeneers) {
+            // Always use grouped logic for veneers (/1 mirrors /3)
             buildMobileLayoutVeneersGrouped();
         } else {
             buildMobileLayout();
@@ -2041,16 +2042,16 @@
                 return;
             }
             
-            // Detect main row (with rowspan) vs sub-row (additional veneers)
+            // Detect main row vs sub-row (handle both /3 and /1 styles)
             var hasRowspan = false;
-            cells.forEach(function(cell){
-                if (cell.hasAttribute('rowspan')) hasRowspan = true;
-            });
-            
-            if (!hasRowspan) {
-                // This is a sub-row (additional veneer) - skip it, we'll handle it with the main row
-                return;
-            }
+            cells.forEach(function(cell){ if (cell.hasAttribute('rowspan')) hasRowspan = true; });
+            var hasDetailLink = row.querySelector('a[href*="/commission/show_details/"]');
+            var firstTd = cells[0];
+            var hasHiddenLp = firstTd && firstTd.classList && firstTd.classList.contains('lp') && firstTd.getAttribute('data-column') === 'lp';
+            var looksGroupedSub = !hasRowspan && !hasDetailLink && cells.length <= 4;
+            var looksNonGroupedSub = !hasRowspan && !hasDetailLink && hasHiddenLp;
+            var isSubRow = looksGroupedSub || looksNonGroupedSub;
+            if (isSubRow) return;
             
             // This is a main row - collect all veneers for this order
             orderCount++;
@@ -2084,34 +2085,46 @@
             };
             veneers.push(veneer1);
             
-            // Check next rows for additional veneers (sub-rows)
+            // Check next rows for additional veneers (sub-rows) - support /3 and /1 styles
             var nextRowIndex = rIndex + 1;
             while (nextRowIndex < rows.length) {
                 var nextRow = rows[nextRowIndex];
                 var nextCells = nextRow.querySelectorAll('td');
                 
-                // Check if this is a sub-row (no rowspan, only 4 cells)
+                // Determine if next row is a sub-row (both formats)
                 var hasRowspanNext = false;
-                nextCells.forEach(function(cell){
-                    if (cell.hasAttribute('rowspan')) hasRowspanNext = true;
-                });
-                
-                if (hasRowspanNext || nextCells.length < 4) {
-                    // This is a new main row or grouping header, stop collecting
+                nextCells.forEach(function(cell){ if (cell.hasAttribute('rowspan')) hasRowspanNext = true; });
+                var hasDetailLinkNext = nextRow.querySelector('a[href*="/commission/show_details/"]');
+                var nextFirst = nextCells[0];
+                var hasHiddenLpNext = nextFirst && nextFirst.classList && nextFirst.classList.contains('lp') && nextFirst.getAttribute('data-column') === 'lp';
+                var looksGroupedSubNext = !hasRowspanNext && !hasDetailLinkNext && nextCells.length <= 4;
+                var looksNonGroupedSubNext = !hasRowspanNext && !hasDetailLinkNext && hasHiddenLpNext;
+                var isSubNext = looksGroupedSubNext || looksNonGroupedSubNext;
+
+                if (!isSubNext) {
+                    // New main row or header, stop collecting
                     break;
                 }
-                
-                // This is a sub-row - cells are: Okleina | Wymiar | Ilość | Przygotowane
+
+                // Map values depending on format
                 var radioCell = null;
                 for (var rc=0; rc<nextCells.length; rc++){
                     if (nextCells[rc].querySelector && nextCells[rc].querySelector('.switch-field')) { radioCell = nextCells[rc]; break; }
                 }
-                var veneerSub = {
-                    okleina: nextCells[0] ? (nextCells[0].textContent||'').trim() : '',
-                    wymiar: nextCells[1] ? (nextCells[1].textContent||'').trim() : '',
-                    ilosc: nextCells[2] ? (nextCells[2].textContent||'').trim() : '',
-                    przygotowaneHTML: radioCell ? radioCell.innerHTML : (nextCells[3] ? nextCells[3].innerHTML : '')
-                };
+                var veneerSub = {};
+                if (hasHiddenLpNext) {
+                    // /1 style sub-row: [0 hidden LP, 1 Nazwa okleiny, 2 Wymiar, 3 Ilość, 4 Przygotowane]
+                    veneerSub.okleina = nextCells[1] ? (nextCells[1].textContent||'').trim() : '';
+                    veneerSub.wymiar = nextCells[2] ? (nextCells[2].textContent||'').trim() : '';
+                    veneerSub.ilosc = nextCells[3] ? (nextCells[3].textContent||'').trim() : '';
+                    veneerSub.przygotowaneHTML = radioCell ? radioCell.innerHTML : (nextCells[4] ? nextCells[4].innerHTML : '');
+                } else {
+                    // /3 style sub-row: [Okleina, Wymiar, Ilość, Przygotowane]
+                    veneerSub.okleina = nextCells[0] ? (nextCells[0].textContent||'').trim() : '';
+                    veneerSub.wymiar = nextCells[1] ? (nextCells[1].textContent||'').trim() : '';
+                    veneerSub.ilosc = nextCells[2] ? (nextCells[2].textContent||'').trim() : '';
+                    veneerSub.przygotowaneHTML = radioCell ? radioCell.innerHTML : (nextCells[3] ? nextCells[3].innerHTML : '');
+                }
                 veneers.push(veneerSub);
                 nextRowIndex++;
             }
