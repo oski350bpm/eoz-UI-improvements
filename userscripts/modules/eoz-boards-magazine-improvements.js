@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.6';
+    var VERSION = '2.9.7';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1227,13 +1227,43 @@
                 rows.forEach(function(row){ var cells = row.querySelectorAll('td'); if (cells[lpColumnIndex]) cells[lpColumnIndex].style.display = 'none'; });
             }
 
-            // Row numbers — skip empty/info rows (single cell with colspan)
+            // Row numbers — skip empty/info rows (single cell with colspan) and sub-rows
             var bodyRows = document.querySelectorAll('table tbody tr');
             var lpCounter = 0;
             bodyRows.forEach(function(row){
                 var tds = row.querySelectorAll('td');
                 if (!tds || tds.length === 0) return;
                 if (tds.length === 1 && tds[0].hasAttribute('colspan')) return; // skip info row
+                
+                // For veneers: detect sub-rows (few cells, no link to commission details, no rowspan)
+                if (isVeneers && !isVeneersGrouped) {
+                    var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                    var hasRowspan = false;
+                    tds.forEach(function(td) {
+                        if (td.hasAttribute('rowspan')) hasRowspan = true;
+                    });
+                    // Sub-row: few cells (<= 4), no link, no rowspan
+                    var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
+                    if (isSubRow) {
+                        // Clear first cell(s) for sub-rows - they should be empty
+                        var firstCell = row.querySelector('td:first-child');
+                        if (firstCell) {
+                            firstCell.textContent = '';
+                        }
+                        // Also clear second and third cells if they exist (Zlecenie, Klient should be empty)
+                        if (tds.length >= 2 && tds[1]) {
+                            tds[1].textContent = '';
+                        }
+                        if (tds.length >= 3 && tds[2]) {
+                            tds[2].textContent = '';
+                        }
+                        if (tds.length >= 4 && tds[3]) {
+                            tds[3].textContent = '';
+                        }
+                        return; // skip sub-row, don't increment counter
+                    }
+                }
+                
                 lpCounter++;
                 var firstCell = row.querySelector('td:first-child');
                 if (firstCell) {
@@ -1514,6 +1544,21 @@
             if (!tds || tds.length === 0) return;
             // Skip info rows
             if (tds.length === 1 && tds[0].hasAttribute('colspan')) return;
+            
+            // For veneers non-grouped view: skip sub-rows (they have fewer cells and shouldn't be reordered)
+            if (isVeneers) {
+                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                var hasRowspan = false;
+                tds.forEach(function(td) {
+                    if (td.hasAttribute('rowspan')) hasRowspan = true;
+                });
+                // Sub-row: few cells (<= 4), no link, no rowspan
+                var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
+                if (isSubRow) {
+                    return; // skip sub-row reordering
+                }
+            }
+            
             var frag = document.createDocumentFragment();
             order.forEach(function(i){ if (tds[i]) frag.appendChild(tds[i]); });
             row.appendChild(frag);
