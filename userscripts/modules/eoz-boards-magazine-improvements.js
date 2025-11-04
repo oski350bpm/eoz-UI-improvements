@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.24';
+    var VERSION = '2.9.25';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1320,8 +1320,7 @@
                     for (var emptyIdx = 0; emptyIdx < 3; emptyIdx++) {
                         var emptyCell = document.createElement('td');
                         emptyCell.className = 'body-cell';
-                        emptyCell.style.padding = '0';
-                        emptyCell.style.border = 'none';
+                        emptyCell.style.display = 'none';
                         row.appendChild(emptyCell);
                     }
                     
