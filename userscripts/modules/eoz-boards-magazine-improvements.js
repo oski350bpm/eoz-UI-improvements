@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.11';
+    var VERSION = '2.9.10';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1231,40 +1231,54 @@
             var bodyRows = document.querySelectorAll('table tbody tr');
             var lpCounter = 0;
             
-            // First pass: for veneers, add empty cells to sub-rows so they align with headers
-            // Sub-rows have 4 cells: Nazwa okleiny, Wymiar, Ilość, Przygotowane
-            // They need 5 empty cells before (Data/Time, Klient, Zlecenie, Nazwa zamówienia, Lp)
             if (isVeneers && !isVeneersGrouped) {
                 bodyRows.forEach(function(row){
                     var tds = row.querySelectorAll('td');
                     if (!tds || tds.length === 0) return;
+                    
                     var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
-                    var hasRowspan = false;
-                    tds.forEach(function(td) {
-                        if (td.hasAttribute('rowspan')) hasRowspan = true;
-                    });
-                    var isSubRow = tds.length <= 4 && !hasLink && !hasRowspan;
+                    var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
+                    var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+                    var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
                     
                     if (isSubRow) {
-                        // Sub-rows should have only 1 empty cell at the beginning (hidden Lp column)
-                        // All other columns (Lp., Zlecenie, Klient, Nazwa zamówienia, Opis, Uwagi, Opcje) 
-                        // are covered by rowspan from main row, so they don't need their own cells
+                        var mobileCell = row.querySelector('td.eoz-mobile-cell');
+                        var hiddenLpCell = row.querySelector('td.lp[data-column="lp"]');
+                        if (!hiddenLpCell) {
+                            hiddenLpCell = document.createElement('td');
+                            hiddenLpCell.className = 'body-cell lp';
+                            hiddenLpCell.setAttribute('data-column', 'lp');
+                        }
+                        hiddenLpCell.textContent = '';
+                        row.insertBefore(hiddenLpCell, row.firstChild);
                         
-                        // Check if first cell is already the hidden Lp column
-                        var firstCell = row.querySelector('td:first-child');
-                        var hasHiddenLp = firstCell && firstCell.classList.contains('lp') && firstCell.getAttribute('data-column') === 'lp';
-                        
-                        if (!hasHiddenLp) {
-                            // Insert 1 empty cell for hidden Lp column at the beginning
-                            var emptyLpCell = document.createElement('td');
-                            emptyLpCell.className = 'body-cell lp';
-                            emptyLpCell.setAttribute('data-column', 'lp');
-                            
-                            if (firstCell) {
-                                row.insertBefore(emptyLpCell, firstCell);
+                        var children = Array.from(row.children);
+                        var dataCells = [];
+                        var toRemove = [];
+                        children.forEach(function(cell){
+                            if (cell === hiddenLpCell || cell === mobileCell) return;
+                            var hasContent = !!cell.querySelector('.switch-field') || !!cell.getAttribute('title') || ((cell.textContent || '').trim() !== '');
+                            if (hasContent) {
+                                dataCells.push(cell);
                             } else {
-                                row.appendChild(emptyLpCell);
+                                toRemove.push(cell);
                             }
+                        });
+                        toRemove.forEach(function(cell){ if (cell.parentNode === row) row.removeChild(cell); });
+                        if (dataCells.length > 4) {
+                            dataCells.slice(4).forEach(function(extra){ if (extra.parentNode === row) row.removeChild(extra); });
+                            dataCells = dataCells.slice(0, 4);
+                        }
+                        if (mobileCell && mobileCell.parentNode === row) {
+                            row.removeChild(mobileCell);
+                        }
+                        while (row.firstChild) {
+                            row.removeChild(row.firstChild);
+                        }
+                        row.appendChild(hiddenLpCell);
+                        dataCells.forEach(function(cell){ row.appendChild(cell); });
+                        if (mobileCell) {
+                            row.appendChild(mobileCell);
                         }
                     }
                 });
@@ -1276,19 +1290,12 @@
                 if (!tds || tds.length === 0) return;
                 if (tds.length === 1 && tds[0].hasAttribute('colspan')) return; // skip info row
                 
-                // For veneers: detect sub-rows (few cells, no link to commission details, no rowspan)
                 if (isVeneers && !isVeneersGrouped) {
                     var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
-                    var hasRowspan = false;
-                    tds.forEach(function(td) {
-                        if (td.hasAttribute('rowspan')) hasRowspan = true;
-                    });
-                    // Sub-row: has hidden Lp column (first cell) + 4 data cells (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
-                    // Total: 5 cells (or 6 with mobile cell)
+                    var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
                     var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
-                    var isSubRow = hasHiddenLp && tds.length <= 6 && !hasLink && !hasRowspan;
+                    var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
                     if (isSubRow) {
-                        // Keep first cell (hidden Lp column) empty for sub-rows
                         return; // skip sub-row, don't increment counter
                     }
                 }
@@ -1574,9 +1581,9 @@
             // Skip info rows
             if (tds.length === 1 && tds[0].hasAttribute('colspan')) return;
             
-            // For veneers non-grouped view: sub-rows need special handling
-            // They have only: hidden Lp column + 4 data cells (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
-            // Other columns are covered by rowspan from main row
+            // For veneers non-grouped view: handle sub-rows (they now have 9 cells after empty cells were added)
+            // Sub-rows have first 5 cells empty (Data, Klient, Zlecenie, Nazwa zamówienia, Lp)
+            // and then 4 cells with data (Nazwa okleiny, Wymiar, Ilość, Przygotowane)
             if (isVeneers) {
                 var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
                 var hasRowspan = false;
@@ -1584,60 +1591,9 @@
                     if (td.hasAttribute('rowspan')) hasRowspan = true;
                 });
                 var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
-                var isSubRow = hasHiddenLp && tds.length <= 6 && !hasLink && !hasRowspan;
-                
+                var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
                 if (isSubRow) {
-                    // Sub-rows need to be reordered to match the new header order
-                    // Sub-row structure: [0: hidden Lp, 1: Nazwa okleiny, 2: Wymiar, 3: Ilość, 4: Przygotowane, 5: mobile cell]
-                    // Hidden Lp column stays at index 0 (it's not part of reordering)
-                    // We need to reorder only the data cells (indices 1-4) to match new header order
-                    
-                    var idxNazwaOkleiny = findHeaderIndex('Nazwa okleiny');
-                    var idxWymiar = findHeaderIndex('Wymiar');
-                    var idxIlosc = findHeaderIndex('Ilość');
-                    var idxPrzygot = findHeaderIndex('Przygotowane');
-                    
-                    // Find where these columns are in the new order array
-                    var nazwaOkleinyPos = order.indexOf(idxNazwaOkleiny);
-                    var wymiarPos = order.indexOf(idxWymiar);
-                    var iloscPos = order.indexOf(idxIlosc);
-                    var przygotPos = order.indexOf(idxPrzygot);
-                    
-                    // Create mapping: [new order position] -> [original sub-row index]
-                    var subRowMapping = [];
-                    if (nazwaOkleinyPos >= 0) subRowMapping.push({newPos: nazwaOkleinyPos, origIdx: 1});
-                    if (wymiarPos >= 0) subRowMapping.push({newPos: wymiarPos, origIdx: 2});
-                    if (iloscPos >= 0) subRowMapping.push({newPos: iloscPos, origIdx: 3});
-                    if (przygotPos >= 0) subRowMapping.push({newPos: przygotPos, origIdx: 4});
-                    
-                    // Sort by new position to get correct order
-                    subRowMapping.sort(function(a, b) { return a.newPos - b.newPos; });
-                    
-                    // Build new order for sub-row
-                    var subRowFrag = document.createDocumentFragment();
-                    var mobileCell = null;
-                    
-                    // Always keep hidden Lp column first (index 0)
-                    subRowFrag.appendChild(tds[0]);
-                    
-                    // Add data cells in new order (indices 1-4)
-                    subRowMapping.forEach(function(mapping) {
-                        if (tds[mapping.origIdx]) {
-                            subRowFrag.appendChild(tds[mapping.origIdx]);
-                        }
-                    });
-                    
-                    // Preserve mobile cell at the end
-                    if (tds.length > 5 && tds[tds.length - 1].classList.contains('eoz-mobile-cell')) {
-                        mobileCell = tds[tds.length - 1];
-                    }
-                    
-                    row.appendChild(subRowFrag);
-                    if (mobileCell) {
-                        row.appendChild(mobileCell);
-                    }
-                    
-                    return; // done with sub-row
+                    return; // keep sub-row structure as-is
                 }
             }
             
