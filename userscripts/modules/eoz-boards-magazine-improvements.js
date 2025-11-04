@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.11';
+    var VERSION = '2.9.12';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1244,19 +1244,31 @@
                 var isSubRow = !hasLink && !hasRowspan && (hasHiddenLp || tds.length <= 5);
 
                 if (isSubRow) {
+                    // Make sure we have a proper hidden LP cell
                     if (!hiddenLpCell) {
                         hiddenLpCell = document.createElement('td');
                         hiddenLpCell.className = 'body-cell lp';
                         hiddenLpCell.setAttribute('data-column', 'lp');
                     }
                     hiddenLpCell.textContent = '';
-                    row.insertBefore(hiddenLpCell, row.firstChild);
+                    
+                    // Remove any existing hidden LP cell that might be in wrong position
+                    var existingHiddenLp = row.querySelector('td.lp[data-column="lp"]');
+                    if (existingHiddenLp && existingHiddenLp !== hiddenLpCell) {
+                        if (existingHiddenLp.parentNode === row) {
+                            row.removeChild(existingHiddenLp);
+                        }
+                    }
 
                     // Collect all cells first, then remove and rebuild
                     var children = Array.from(row.children);
                     var dataCells = [];
                     children.forEach(function(cell){
-                        if (cell === hiddenLpCell || cell === mobileCell) return;
+                        if (cell === hiddenLpCell || cell === mobileCell || cell === existingHiddenLp) return;
+                        // Exclude cells that are already marked as hidden LP (but preserve those with switch-field)
+                        if (cell.classList.contains('lp') && cell.getAttribute('data-column') === 'lp' && !cell.querySelector('.switch-field')) {
+                            return; // Skip other hidden LP cells
+                        }
                         // Check if cell has content: switch-field, title attribute, or non-empty text
                         var hasContent = !!cell.querySelector('.switch-field') || !!cell.getAttribute('title') || ((cell.textContent || '').trim() !== '');
                         if (hasContent) {
