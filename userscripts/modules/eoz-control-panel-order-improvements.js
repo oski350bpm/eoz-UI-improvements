@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.8';
+    var VERSION = '1.2.9';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1138,12 +1138,6 @@
             '    display: none !important;' +
             '}' +
             '' +
-            '/* Hide Obrazek and Opcje/Akcje headers by class (added by JS) */' +
-            '[role="tabpanel"] table thead tr th.eoz-header-hidden, ' +
-            '.eoz-all-tables table thead tr th.eoz-header-hidden {' +
-            '    display: none !important;' +
-            '}' +
-            '' +
             '/* Additional selectors: hide columns with class "opt" (Opcje) */' +
             '[role="tabpanel"] table tbody td.opt, ' +
             '.eoz-reorganized-table tbody td.opt, ' +
@@ -1155,25 +1149,20 @@
     }
 
     function hideTableHeaders() {
-        // Find and hide headers containing "Obrazek", "Opcje", or "Akcje"
+        // Find and hide all TH elements containing "Obrazek", "Opcje", or "Akcje"
         var tables = document.querySelectorAll('[role="tabpanel"] table, .eoz-all-tables table');
         
         for (var i = 0; i < tables.length; i++) {
             var table = tables[i];
-            var thead = table.querySelector('thead');
+            var allThs = table.querySelectorAll('th');
             
-            if (!thead) {
-                continue;
-            }
-            
-            var headerCells = thead.querySelectorAll('th');
-            for (var j = 0; j < headerCells.length; j++) {
-                var th = headerCells[j];
+            for (var j = 0; j < allThs.length; j++) {
+                var th = allThs[j];
                 var headerText = th.textContent.trim();
                 
                 // Check if header text contains "Obrazek", "Opcje", or "Akcje"
                 if (headerText === 'Obrazek' || headerText === 'Opcje' || headerText === 'Akcje') {
-                    th.classList.add('eoz-header-hidden');
+                    th.style.display = 'none';
                 }
             }
         }
