@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.4';
+    var VERSION = '1.2.5';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -741,16 +741,84 @@
         return null;
     }
 
-    function addCheckDoubleButton(checkDoubleHref) {
-        if (!checkDoubleHref) {
-            console.warn('[EOZ Control Panel Order v' + VERSION + '] Check-double button href not provided');
-            return;
+    function isOrderCompleted() {
+        // Check if order is completed by looking for completion message in formo-bootstrap container
+        var formoContainer = document.querySelector('div.margin-top-10.col-xs-12.text-center.formo-bootstrap');
+        if (!formoContainer) {
+            return false;
         }
         
+        var textContent = formoContainer.textContent || '';
+        var innerHTML = formoContainer.innerHTML || '';
+        
+        // Check for completion message patterns
+        var completionPatterns = [
+            'Etap zlecenia został już zakończony',
+            'zakończony',
+            'został zakończony',
+            'zakończone'
+        ];
+        
+        for (var i = 0; i < completionPatterns.length; i++) {
+            if (textContent.indexOf(completionPatterns[i]) !== -1 || innerHTML.indexOf(completionPatterns[i]) !== -1) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    function getOrderCompletionMessage() {
+        // Extract completion message from formo-bootstrap container
+        var formoContainer = document.querySelector('div.margin-top-10.col-xs-12.text-center.formo-bootstrap');
+        if (!formoContainer) {
+            return null;
+        }
+        
+        // Look for paragraph with red color (style="color:red;")
+        var redParagraph = formoContainer.querySelector('p[style*="color:red"], p[style*="color: red"]');
+        if (redParagraph) {
+            return redParagraph.textContent.trim();
+        }
+        
+        // Fallback: look for any paragraph with completion text
+        var paragraphs = formoContainer.querySelectorAll('p');
+        for (var i = 0; i < paragraphs.length; i++) {
+            var text = paragraphs[i].textContent.trim();
+            if (text.indexOf('zakończony') !== -1 || text.indexOf('zakończone') !== -1) {
+                return text;
+            }
+        }
+        
+        return null;
+    }
+
+    function addCheckDoubleButton(checkDoubleHref) {
         // Find header info container
         var headerInfo = document.getElementById('eoz-order-header-info');
         if (!headerInfo) {
             console.warn('[EOZ Control Panel Order v' + VERSION + '] Header info container not found');
+            return;
+        }
+        
+        // Check if order is completed
+        if (isOrderCompleted()) {
+            var completionMessage = getOrderCompletionMessage() || 'Etap zlecenia został już zakończony';
+            
+            // Create message element instead of button
+            var messageDiv = document.createElement('div');
+            messageDiv.className = 'eoz-order-completed-message';
+            messageDiv.style.cssText = 'display: block; width: 100%; margin-top: 15px; padding: 12px 20px; font-size: 16px; font-weight: bold; text-align: center; color: #dc3545; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;';
+            messageDiv.textContent = completionMessage;
+            
+            // Append to header info container (at the end)
+            headerInfo.appendChild(messageDiv);
+            return;
+        }
+        
+        // Order is not completed, show button
+        if (!checkDoubleHref) {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] Check-double button href not provided');
             return;
         }
         
