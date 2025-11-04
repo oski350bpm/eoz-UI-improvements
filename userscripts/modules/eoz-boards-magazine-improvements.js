@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.13';
+    var VERSION = '2.9.14';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1297,6 +1297,16 @@
                     if (mobileCell) {
                         row.appendChild(mobileCell);
                     }
+                    
+                    // Final cleanup: ensure all cells with switch-field don't have lp class or data-column
+                    var allCells = row.querySelectorAll('td');
+                    for (var i = 0; i < allCells.length; i++) {
+                        var cell = allCells[i];
+                        if (cell.querySelector('.switch-field')) {
+                            cell.classList.remove('lp');
+                            cell.removeAttribute('data-column');
+                        }
+                    }
                 }
             });
         }
@@ -1382,6 +1392,30 @@
         // Desktop: reorder columns to align with Machines Panel layout (non-grouped only)
         if (!isVeneersGrouped && window.innerWidth > 960) {
             try { reorderColumnsDesktop(isVeneers); } catch(_) {}
+        }
+        
+        // Final cleanup for veneers sub-rows: remove lp class and data-column from radio button cells
+        if (isVeneers && !isVeneersGrouped) {
+            var allBodyRows = document.querySelectorAll('table tbody tr');
+            allBodyRows.forEach(function(row){
+                var tds = row.querySelectorAll('td');
+                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                var hasRowspan = Array.prototype.some.call(tds, function(td){ return td.hasAttribute('rowspan'); });
+                var hasHiddenLp = tds.length > 0 && tds[0].classList.contains('lp') && tds[0].getAttribute('data-column') === 'lp';
+                var isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+                
+                if (isSubRow) {
+                    // Clean up all cells with switch-field in sub-rows
+                    var cells = row.querySelectorAll('td');
+                    for (var i = 0; i < cells.length; i++) {
+                        var cell = cells[i];
+                        if (cell.querySelector('.switch-field')) {
+                            cell.classList.remove('lp');
+                            cell.removeAttribute('data-column');
+                        }
+                    }
+                }
+            });
         }
 
         // If veneers, replace code in "Nazwa okleiny" with full name from commission page
