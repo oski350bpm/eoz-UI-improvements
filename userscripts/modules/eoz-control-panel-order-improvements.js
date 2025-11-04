@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.2.3';
+    var VERSION = '1.2.4';
 
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -701,7 +701,7 @@
     }
 
     function findCheckDoubleHref() {
-        // Find check-double button href from any table
+        // First, try to find check-double button in tables
         var checkDoubleButtons = document.querySelectorAll('a.tippy');
         
         for (var i = 0; i < checkDoubleButtons.length; i++) {
@@ -709,6 +709,33 @@
             if (icon && icon.className.indexOf('fa-check-double') !== -1) {
                 return checkDoubleButtons[i].href;
             }
+        }
+        
+        // Second, try to find in formo-bootstrap container (before it's hidden)
+        var formoContainer = document.querySelector('div.margin-top-10.col-xs-12.text-center.formo-bootstrap');
+        if (formoContainer) {
+            var containerButtons = formoContainer.querySelectorAll('a.tippy, a.btn, button');
+            for (var j = 0; j < containerButtons.length; j++) {
+                var btn = containerButtons[j];
+                var btnIcon = btn.querySelector('i');
+                if (btnIcon && btnIcon.className.indexOf('fa-check-double') !== -1) {
+                    return btn.href || btn.getAttribute('href');
+                }
+            }
+        }
+        
+        // Third, construct URL from page parameters
+        var urlParams = new URLSearchParams(window.location.search);
+        var number2 = urlParams.get('number2');
+        var blockId = urlParams.get('block_id');
+        
+        if (number2 && blockId) {
+            // Construct URL pattern: control_panel_set_suborder_elements_status_done_by_form/ORDER_CODE?number2=X&block_id=Y
+            var baseUrl = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
+            var checkDoubleUrl = baseUrl + '/control_panel_set_suborder_elements_status_done_by_form/' + number2 + 
+                '?number2=' + encodeURIComponent(number2) + 
+                '&block_id=' + encodeURIComponent(blockId);
+            return checkDoubleUrl;
         }
         
         return null;
@@ -720,10 +747,10 @@
             return;
         }
         
-        // Find end operation button
-        var endButton = document.querySelector('a.btn-danger.end_operation_button');
-        if (!endButton) {
-            console.warn('[EOZ Control Panel Order v' + VERSION + '] End operation button not found');
+        // Find header info container
+        var headerInfo = document.getElementById('eoz-order-header-info');
+        if (!headerInfo) {
+            console.warn('[EOZ Control Panel Order v' + VERSION + '] Header info container not found');
             return;
         }
         
@@ -731,7 +758,7 @@
         var newButton = document.createElement('a');
         newButton.href = checkDoubleHref;
         newButton.className = 'btn btn-success end_operation_button eoz-check-double-btn';
-        newButton.style.cssText = 'margin-left: 10px;';
+        newButton.style.cssText = 'display: block; width: 100%; margin-top: 15px; padding: 12px 20px; font-size: 16px; font-weight: bold; text-align: center;';
         newButton.innerHTML = '<i class="fa fa-check-double"></i> Zakończ wszystkie';
         
         // Add click handler with confirmation
@@ -747,8 +774,8 @@
             }
         });
         
-        // Insert after end button
-        endButton.parentElement.insertBefore(newButton, endButton.nextSibling);
+        // Append to header info container (at the end)
+        headerInfo.appendChild(newButton);
     }
 
     function showCheckDoubleConfirmationModal(originalHref) {
@@ -812,9 +839,30 @@
         return machineText.indexOf('Okleiniarka') !== -1;
     }
 
+    function injectStyles() {
+        // Inject CSS to hide formo-bootstrap container
+        var styleId = 'eoz-control-panel-order-styles';
+        if (document.getElementById(styleId)) {
+            return; // Already injected
+        }
+        
+        var style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = '' +
+            '/* Hide formo-bootstrap container */' +
+            'div.margin-top-10.col-xs-12.text-center.formo-bootstrap {' +
+            '    display: none !important;' +
+            '}';
+        
+        document.head.appendChild(style);
+    }
+
     function apply() {
         // Get machine ID
         var machineId = getMachineId();
+        
+        // Inject CSS styles first
+        injectStyles();
         
         addHeaderInfo();
         
@@ -831,6 +879,8 @@
         }
         
         // Hide check-double button for Okleiniarka machine (detect by text, not ID)
+        // COMMENTED OUT: Button should be visible for all machines including Okleiniarka
+        /*
         var isOkleiniarka = isOkleiniarkaMachine();
         if (isOkleiniarka) {
             // Don't add the button for Okleiniarka
@@ -843,6 +893,10 @@
             // Add check-double button for other machines
             addCheckDoubleButton(checkDoubleHref);
         }
+        */
+        
+        // Add check-double button for all machines (including Okleiniarka)
+        addCheckDoubleButton(checkDoubleHref);
         
         addEndOperationConfirmation();
         installStartStopGuards();
