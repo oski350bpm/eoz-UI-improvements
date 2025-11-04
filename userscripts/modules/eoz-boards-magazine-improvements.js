@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.14';
+    var VERSION = '2.9.15';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -2261,10 +2261,61 @@
             if (row.querySelector('td.eoz-mobile-cell')) return; // already built
             var cells = row.querySelectorAll('td');
             if (!cells || cells.length === 0) return;
-            // Veneers: skip sub-rows that only contain veneer lines (usually 4 cells, no details link)
+            
+            // Veneers: detect sub-rows (have hidden LP cell, no commission link, no rowspan)
+            var isSubRow = false;
             if (isVeneers && !isGroupedView) {
-                var looksLikeSubRow = cells.length <= 4 && !row.querySelector('a[href*="/commission/show_details/"]');
-                if (looksLikeSubRow) return;
+                var hasLink = row.querySelector('a[href*="/commission/show_details/"]');
+                var hasRowspan = Array.prototype.some.call(cells, function(cell){ return cell.hasAttribute('rowspan'); });
+                var firstCell = cells[0];
+                var hasHiddenLp = firstCell && firstCell.classList.contains('lp') && firstCell.getAttribute('data-column') === 'lp';
+                isSubRow = hasHiddenLp && !hasLink && !hasRowspan;
+            }
+            
+            // Handle sub-rows separately
+            if (isSubRow) {
+                // Sub-rows have structure: [hidden LP, Nazwa okleiny, Wymiar, Ilość, Przygotowane]
+                // Map: cells[1] = Nazwa okleiny, cells[2] = Wymiar, cells[3] = Ilość, cells[4] = Przygotowane
+                if (cells.length < 5) return; // Invalid sub-row structure
+                
+                var nazwaOkleiny = (cells[1] ? (cells[1].textContent||'').trim() : '') || '—';
+                var wymiar = (cells[2] ? (cells[2].textContent||'').trim() : '') || '—';
+                var ilosc = (cells[3] ? (cells[3].textContent||'').trim() : '') || '—';
+                var przygotowaneHTML = cells[4] ? cells[4].innerHTML : '';
+                
+                var mobileCell = document.createElement('td');
+                mobileCell.className = 'eoz-mobile-cell';
+                mobileCell.colSpan = cells.length;
+                
+                var grid = document.createElement('div');
+                grid.className = 'eoz-mobile-grid';
+                
+                // Header: just Wymiar (no LP, no Zlecenie)
+                var header = document.createElement('div');
+                header.className = 'eoz-m-header';
+                
+                var wymiarDiv = document.createElement('div');
+                wymiarDiv.className = 'eoz-m-zlecenie eoz-mp-zlec';
+                wymiarDiv.textContent = wymiar;
+                header.appendChild(wymiarDiv);
+                
+                // Details: only Okleina, Wymiar, Ilość, Przygotowane
+                var details = document.createElement('div');
+                details.className = 'eoz-m-details eoz-mp-details';
+                
+                var col3 = document.createElement('div');
+                col3.className = 'eoz-m-col3 eoz-mp-info';
+                col3.innerHTML = '<div><span class="eoz-m-label">Okleina:</span><br>' + (nazwaOkleiny||'—') + '</div>' +
+                                  '<div><span class="eoz-m-label">Wymiar:</span><br>' + (wymiar||'—') + '</div>' +
+                                  '<div><span class="eoz-m-label">Ilość:</span><br>' + (ilosc||'—') + '</div>' +
+                                  '<div style="margin-top: 4px;"><span class="eoz-m-label">Przygotowane:</span><br>' + (przygotowaneHTML||'—') + '</div>';
+                
+                details.appendChild(col3);
+                grid.appendChild(header);
+                grid.appendChild(details);
+                mobileCell.appendChild(grid);
+                row.appendChild(mobileCell);
+                return;
             }
             
             // Skip rows that only have a single cell with colspan (empty/separator rows)
