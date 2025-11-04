@@ -504,7 +504,7 @@
             // Also check first data row to verify/find columns (if no thead or didn't find all in thead)
             var firstDataRow = tbody.querySelector('tr:not(:empty)') || tbody.querySelector('tr');
             if (firstDataRow) {
-                var sampleCells = firstDataRow.querySelectorAll('td');
+                    var sampleCells = firstDataRow.querySelectorAll('td');
                 
                 // If we didn't find Obrazek and Opcje in thead, find them in data rows
                 if ((obrazekIndex < 0 || opcjeIndex < 0) && sampleCells.length > 10) {
@@ -553,8 +553,8 @@
                         var hasButtons = lastCell.querySelector('a.tippy');
                         if (!hasButtons && (lastCellText === '' || lastCellText.toLowerCase().indexOf('info') !== -1 || lastCellText.toLowerCase().indexOf('zlecenie') !== -1)) {
                             indicesToRemove.push(lastIndex);
-                        }
                     }
+                }
                 }
             }
             
@@ -1237,7 +1237,7 @@
 
         // Hide table headers for Obrazek and Opcje/Akcje columns
         hideTableHeaders();
-
+        
         addEndOperationConfirmation();
         installStartStopGuards();
     }
