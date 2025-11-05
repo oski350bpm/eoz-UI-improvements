@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ All UI Improvements
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      3.11.35
+// @version      3.11.36
 // @description  Wszystkie ulepszenia UI dla EOZ - loader dla wszystkich modułów (Boards + Veneers + CDP Manager + Scripts Viewer)
 // @match        https://eoz.iplyty.erozrys.pl/*
 // @updateURL    https://raw.githubusercontent.com/oski350bpm/eoz-UI-improvements/main/userscripts/eoz-all-improvements.user.js

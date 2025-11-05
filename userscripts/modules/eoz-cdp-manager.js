@@ -54,6 +54,7 @@
                 GM_xmlhttpRequest({
                     method: 'GET',
                     url: url,
+                    timeout: 5000,
                     onload: function(response) {
                         if (response.status === 200) {
                             try {
@@ -63,24 +64,57 @@
                                 reject(new Error('Failed to parse JSON: ' + e.message));
                             }
                         } else {
-                            reject(new Error('HTTP ' + response.status + ': ' + response.statusText));
+                            reject(new Error('HTTP ' + response.status + ': ' + (response.statusText || 'Unknown status')));
                         }
                     },
                     onerror: function(err) {
-                        reject(new Error('Request failed: ' + (err.message || 'Unknown error')));
+                        console.error('[EOZ CDP Manager] GM_xmlhttpRequest error:', err);
+                        var errorMsg = 'Request failed';
+                        if (err && typeof err === 'object') {
+                            if (err.message) {
+                                errorMsg += ': ' + err.message;
+                            } else if (err.error) {
+                                errorMsg += ': ' + err.error;
+                            } else {
+                                errorMsg += ': ' + JSON.stringify(err);
+                            }
+                        } else if (err) {
+                            errorMsg += ': ' + String(err);
+                        } else {
+                            errorMsg += ': Connection refused or Chrome not running with CDP';
+                        }
+                        reject(new Error(errorMsg));
+                    },
+                    ontimeout: function() {
+                        reject(new Error('Request timeout: Chrome CDP not responding on port'));
                     }
                 });
             } else {
                 // Fallback to regular fetch (may fail due to CORS)
-                fetch(url)
+                var abortController = new AbortController();
+                var timeoutId = setTimeout(function() {
+                    abortController.abort();
+                }, 5000);
+                
+                fetch(url, { method: 'GET', signal: abortController.signal })
                     .then(function(response) {
+                        clearTimeout(timeoutId);
                         if (!response.ok) {
-                            throw new Error('HTTP ' + response.status);
+                            throw new Error('HTTP ' + response.status + ': ' + response.statusText);
                         }
                         return response.json();
                     })
                     .then(resolve)
-                    .catch(reject);
+                    .catch(function(err) {
+                        clearTimeout(timeoutId);
+                        if (err.name === 'AbortError') {
+                            reject(new Error('Request timeout: Chrome CDP not responding on port'));
+                        } else if (err.message) {
+                            reject(err);
+                        } else {
+                            reject(new Error('Request failed: Connection refused or CORS blocked. Make sure Chrome is running with --remote-debugging-port'));
+                        }
+                    });
             }
         });
     }
@@ -88,10 +122,15 @@
     // Auto-detect CDP WebSocket URL from port
     function detectCDPUrl(port) {
         port = port || 9222;
+        console.log('[EOZ CDP Manager] Attempting to detect CDP on port', port);
         
         // First, try to get browser target from /json/version
-        return fetchCDP('http://127.0.0.1:' + port + '/json/version')
+        var versionUrl = 'http://127.0.0.1:' + port + '/json/version';
+        console.log('[EOZ CDP Manager] Fetching:', versionUrl);
+        
+        return fetchCDP(versionUrl)
             .then(function(versionData) {
+                console.log('[EOZ CDP Manager] /json/version response:', versionData);
                 // If /json/version has webSocketDebuggerUrl, use it (this is the browser target)
                 if (versionData && versionData.webSocketDebuggerUrl) {
                     console.log('[EOZ CDP Manager] Using browser target from /json/version:', versionData.webSocketDebuggerUrl);
@@ -99,8 +138,12 @@
                 }
                 
                 // Otherwise, try /json for page targets
-                return fetchCDP('http://127.0.0.1:' + port + '/json')
+                var jsonUrl = 'http://127.0.0.1:' + port + '/json';
+                console.log('[EOZ CDP Manager] Fetching:', jsonUrl);
+                
+                return fetchCDP(jsonUrl)
                     .then(function(targets) {
+                        console.log('[EOZ CDP Manager] /json response:', targets);
                         if (!targets || targets.length === 0) {
                             throw new Error('No targets available. Open at least one tab in Chrome.');
                         }
@@ -127,6 +170,10 @@
             })
             .catch(function(err) {
                 console.error('[EOZ CDP Manager] Auto-detect failed:', err);
+                // Add more context to the error message
+                if (err.message && err.message.includes('Connection refused')) {
+                    throw new Error('Chrome not running with CDP on port ' + port + '. Run: ./start-chrome-cdp.sh ' + port + ' "Profile 5"');
+                }
                 throw err;
             });
     }
@@ -291,23 +338,26 @@
 
         // Click outside to close - removed, we'll use overlay instead if needed
 
-        // Auto-detect CDP URL
+            // Auto-detect CDP URL
         detectBtn.addEventListener('click', function() {
             var port = parseInt(portInput.value) || 9222;
+            console.log('[EOZ CDP Manager] Starting auto-detect on port', port);
             detectBtn.disabled = true;
             detectBtn.textContent = 'Detecting...';
-            statusDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ffc107;"></span><span>Status: <strong>Detecting CDP...</strong></span></div>';
+            statusDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ffc107;"></span><span>Status: <strong>Detecting CDP on port ' + port + '...</strong></span></div>';
 
             detectCDPUrl(port).then(function(url) {
+                console.log('[EOZ CDP Manager] Auto-detect successful:', url);
                 urlInput.value = url;
                 detectBtn.disabled = false;
                 detectBtn.textContent = 'Auto-detect';
                 statusDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #28a745;"></span><span>Status: <strong>CDP URL detected!</strong></span></div>';
             }).catch(function(err) {
+                console.error('[EOZ CDP Manager] Auto-detect failed:', err);
                 detectBtn.disabled = false;
                 detectBtn.textContent = 'Auto-detect';
-                statusDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc3545;"></span><span>Status: <strong>Detection failed: ' + err.message + '</strong></span></div>';
-                console.warn('[EOZ CDP Manager] Auto-detect failed:', err);
+                var errorMsg = err.message || 'Unknown error';
+                statusDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc3545;"></span><span>Status: <strong>Detection failed: ' + errorMsg + '</strong></span></div>';
             });
         });
 

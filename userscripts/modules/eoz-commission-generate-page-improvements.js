@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.5';
+    var VERSION = '1.0.6';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -31,7 +31,12 @@
         // Ukryj wszystkie obrazki kodów kreskowych (uniwersalne selektory)
         'img.heading-img[src*="dynamic_barcode"]{display:none!important}\n' +
         'img.smallsmall-img[src*="dynamic_barcode"]{display:none!important}\n' +
-        'img.sub-image[src*="dynamic_barcode"]{display:none!important}\n';
+        'img.sub-image[src*="dynamic_barcode"]{display:none!important}\n' +
+        // Style dla H1 - numer zlecenia i nazwa
+        'h1.eoz-commission-header .eoz-commission-number{font-size:10em!important;display:block!important;line-height:1!important}\n' +
+        'h1.eoz-commission-header .eoz-commission-name{font-size:6em!important;display:block!important;line-height:1.2!important;margin-top:0.2em!important}\n' +
+        // Style dla paragrafu z klientem
+        'p.eoz-commission-client{font-size:2em!important}\n';
 
     window.EOZ.injectStyles(styles, { id: 'eoz-commission-generate-page-module-css' });
 
@@ -87,22 +92,82 @@
     }
 
     /**
-     * Dodaje nazwę zlecenia do H1
+     * Formatuje H1 - usuwa "Zlecenie produkcyjne nr ", zostawia tylko numer i nazwę z odpowiednimi stylami
      */
-    function addCommissionNameToH1(commissionName) {
+    function formatH1(commissionName) {
         var h1 = document.querySelector('h1');
         if (!h1) {
             console.warn('[EOZ Commission Generate Page Module] H1 not found');
             return;
         }
         
+        var currentHTML = h1.innerHTML || '';
         var currentText = h1.textContent || '';
-        // Sprawdzamy czy nazwa już nie jest dodana (żeby nie duplikować)
-        if (currentText.indexOf(commissionName) === -1) {
-            // Używamy innerHTML aby <br> było renderowane, a nie textContent
-            h1.innerHTML = currentText.trim() + '<br>' + commissionName;
-            console.log('[EOZ Commission Generate Page Module] Commission name added to H1: ' + commissionName);
+        
+        // Wyciągnij numer zlecenia - szukamy po "Zlecenie produkcyjne nr " i wyciągamy to co jest przed <br> lub końcem
+        var numberMatch = currentHTML.match(/Zlecenie produkcyjne nr\s+([^<\n\r]+)/i) || 
+                         currentText.match(/Zlecenie produkcyjne nr\s+([^\n\r]+)/i);
+        
+        var commissionNumber = '';
+        var existingName = '';
+        
+        if (numberMatch && numberMatch[1]) {
+            var fullMatch = numberMatch[1].trim();
+            // Jeśli jest <br> w HTML, podziel na części
+            if (currentHTML.indexOf('<br>') !== -1) {
+                var parts = currentHTML.split('<br>');
+                if (parts.length >= 2) {
+                    // Pierwsza część to "Zlecenie produkcyjne nr XXXX", wyciągnij tylko numer
+                    var firstPart = parts[0];
+                    var numMatch = firstPart.match(/Zlecenie produkcyjne nr\s+([^\s<]+)/i);
+                    commissionNumber = numMatch ? numMatch[1].trim() : '';
+                    // Druga część to nazwa
+                    existingName = parts[1].trim();
+                }
+            } else {
+                // Jeśli nie ma <br>, spróbuj wyciągnąć numer z tekstu
+                var numMatch = fullMatch.match(/^([^\s]+)/);
+                commissionNumber = numMatch ? numMatch[1] : fullMatch;
+            }
         }
+        
+        // Jeśli nadal nie ma numeru, spróbuj znaleźć go inaczej
+        if (!commissionNumber) {
+            // Szukaj wzorca "nr 3892_1" lub podobnego
+            var altMatch = currentHTML.match(/nr\s+([0-9_]+)/i) || currentText.match(/nr\s+([0-9_]+)/i);
+            commissionNumber = altMatch ? altMatch[1] : commissionId;
+        }
+        
+        // Użyj nazwy z parametru lub z istniejącego HTML
+        var nameToAdd = commissionName || existingName;
+        
+        // Formatuj H1: numer zlecenia (10em) + nazwa (6em)
+        h1.className = (h1.className || '') + ' eoz-commission-header';
+        h1.innerHTML = '<span class="eoz-commission-number">' + commissionNumber + '</span>' +
+                      (nameToAdd ? '<span class="eoz-commission-name">' + nameToAdd + '</span>' : '');
+        
+        console.log('[EOZ Commission Generate Page Module] H1 formatted - Number: ' + commissionNumber + ', Name: ' + nameToAdd);
+    }
+    
+    /**
+     * Formatuje paragraf z klientem - rozmiar 2em
+     */
+    function formatClientParagraph() {
+        var paragraphs = Array.from(document.querySelectorAll('p'));
+        var clientPara = paragraphs.find(function(p) {
+            var text = p.textContent || '';
+            return text.includes('Klient:') || text.indexOf('Klient:') === 0;
+        });
+        
+        if (!clientPara) {
+            console.warn('[EOZ Commission Generate Page Module] Client paragraph not found');
+            return;
+        }
+        
+        // Dodaj klasę do paragrafu
+        clientPara.className = (clientPara.className || '') + ' eoz-commission-client';
+        
+        console.log('[EOZ Commission Generate Page Module] Client paragraph formatted');
     }
 
     /**
@@ -405,15 +470,20 @@
      * Główna funkcja aplikująca modyfikacje
      */
     function apply() {
-        // Pobierz nazwę zlecenia
+        // Pobierz nazwę zlecenia i formatuj H1
         fetchCommissionName(commissionId)
             .then(function(commissionName) {
-                addCommissionNameToH1(commissionName);
-                console.log('[EOZ Commission Generate Page Module] Commission name fetched successfully');
+                formatH1(commissionName);
+                console.log('[EOZ Commission Generate Page Module] Commission name fetched and H1 formatted');
             })
             .catch(function(error) {
                 console.warn('[EOZ Commission Generate Page Module] Failed to fetch commission name:', error);
+                // Formatuj H1 nawet jeśli nie udało się pobrać nazwy
+                formatH1('');
             });
+        
+        // Formatuj paragraf z klientem
+        formatClientParagraph();
         
         // Zmodyfikuj tabelę procesu produkcyjnego
         modifyProductionProcessTable();
