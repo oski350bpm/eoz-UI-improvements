@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '1.0.6';
+    var VERSION = '1.0.7';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -34,7 +34,7 @@
         'img.sub-image[src*="dynamic_barcode"]{display:none!important}\n' +
         // Style dla H1 - numer zlecenia i nazwa
         'h1.eoz-commission-header .eoz-commission-number{font-size:10em!important;display:block!important;line-height:1!important}\n' +
-        'h1.eoz-commission-header .eoz-commission-name{font-size:6em!important;display:block!important;line-height:1.2!important;margin-top:0.2em!important}\n' +
+        'h1.eoz-commission-header .eoz-commission-name{font-size:3em!important;display:block!important;line-height:1.6!important;margin-top:0.2em!important}\n' +
         // Style dla paragrafu z klientem
         'p.eoz-commission-client{font-size:2em!important}\n';
 
@@ -368,6 +368,7 @@
 
     /**
      * Dodaje podział strony A4 - lista formatek na drugiej stronie jeśli nie zmieści się na pierwszej
+     * Tytuł i tabela są w jednym kontenerze, który nie może być podzielony
      */
     function addPageBreakForFormatsList() {
         // Znajdź nagłówek "Lista formatek"
@@ -391,7 +392,42 @@
             return;
         }
         
-        // Dodaj klasę do nagłówka
+        // Utwórz kontener, który obejmie tytuł i tabelę razem
+        var container = document.createElement('div');
+        container.className = 'eoz-generate-page-format-list-container';
+        
+        // Wstaw kontener przed tytułem
+        listaFormatHeading.parentNode.insertBefore(container, listaFormatHeading);
+        
+        // Przenieś tytuł i tabelę do kontenera
+        container.appendChild(listaFormatHeading);
+        
+        // Przenieś wszystko między tytułem a tabelą (jeśli coś jest)
+        var nextSibling = listaFormatHeading.nextSibling;
+        while (nextSibling && nextSibling !== table) {
+            var toMove = nextSibling;
+            nextSibling = nextSibling.nextSibling;
+            container.appendChild(toMove);
+        }
+        
+        // Przenieś tabelę
+        container.appendChild(table);
+        
+        // Przenieś wszystko po tabeli do kontenera (jeśli jest część tabeli, np. tbody)
+        // Ale najpierw sprawdźmy czy tabela ma więcej elementów poza sobą
+        var afterTable = table.nextSibling;
+        while (afterTable && afterTable.tagName && afterTable.tagName !== 'H2' && afterTable.tagName !== 'DIV') {
+            // Jeśli to element związany z tabelą (np. tbody, thead), zostawmy go
+            // Ale jeśli to jakiś inny element, może być część tabeli
+            if (afterTable.tagName === 'TABLE' || afterTable.tagName === 'TBODY' || afterTable.tagName === 'THEAD' || afterTable.tagName === 'TFOOT') {
+                container.appendChild(afterTable);
+                afterTable = table.nextSibling;
+            } else {
+                break;
+            }
+        }
+        
+        // Dodaj klasy do elementów
         listaFormatHeading.classList.add('eoz-generate-page-format-list-heading');
         table.classList.add('eoz-generate-page-format-list-table');
         
@@ -403,7 +439,7 @@
             // Sprawdzamy przybliżoną wysokość sekcji przed "Lista formatek"
             var estimatedAvailableHeight = 970; // px w trybie drukowania
             
-            // Znajdź wszystkie sekcje przed "Lista formatek"
+            // Znajdź wszystkie sekcje przed kontenerem "Lista formatek"
             var allHeadings = Array.from(document.querySelectorAll('h1, h2'));
             var listaIndex = allHeadings.findIndex(function(h) { return h === listaFormatHeading; });
             var sectionsBefore = allHeadings.slice(0, listaIndex);
@@ -411,11 +447,11 @@
             // Szacunkowa wysokość sekcji przed (bardzo przybliżona)
             var estimatedBeforeHeight = sectionsBefore.length * 150; // każda sekcja ~150px
             
-            // Sprawdź wysokość tabeli
-            var tableHeight = table.offsetHeight || table.scrollHeight;
+            // Sprawdź wysokość całego kontenera (tytuł + tabela)
+            var containerHeight = container.offsetHeight || container.scrollHeight;
             
-            // Jeśli tabela + sekcje przed > dostępna wysokość, użyj page-break
-            var needsPageBreak = (estimatedBeforeHeight + tableHeight) > estimatedAvailableHeight;
+            // Jeśli kontener + sekcje przed > dostępna wysokość, użyj page-break
+            var needsPageBreak = (estimatedBeforeHeight + containerHeight) > estimatedAvailableHeight;
             
             return needsPageBreak;
         }
@@ -426,41 +462,51 @@
         // Dodaj style CSS dla podziału strony (działa w trybie drukowania)
         var pageBreakStyles = '' +
             '@media print {\n' +
-            '  /* Jeśli tabela nie zmieści się, użyj page-break-before */\n' +
-            '  .eoz-generate-page-format-list-heading.eoz-needs-pagebreak {\n' +
+            '  /* Kontener - tytuł i tabela razem, nie mogą być podzielone */\n' +
+            '  .eoz-generate-page-format-list-container {\n' +
+            '    page-break-inside: avoid !important;\n' +
+            '    break-inside: avoid !important;\n' +
+            '  }\n' +
+            '  /* Jeśli kontener nie zmieści się, użyj page-break-before */\n' +
+            '  .eoz-generate-page-format-list-container.eoz-needs-pagebreak {\n' +
             '    page-break-before: always !important;\n' +
             '    break-before: page !important;\n' +
             '  }\n' +
-            '  /* Jeśli tabela się zmieści, pozwól na naturalny flow */\n' +
-            '  .eoz-generate-page-format-list-heading:not(.eoz-needs-pagebreak) {\n' +
+            '  /* Jeśli kontener się zmieści, pozwól na naturalny flow */\n' +
+            '  .eoz-generate-page-format-list-container:not(.eoz-needs-pagebreak) {\n' +
             '    page-break-before: auto !important;\n' +
             '    break-before: auto !important;\n' +
             '  }\n' +
-            '  /* Unikaj łamania tabeli */\n' +
+            '  /* Unikaj łamania tabeli wewnątrz */\n' +
             '  .eoz-generate-page-format-list-table {\n' +
             '    page-break-inside: avoid !important;\n' +
             '    break-inside: avoid !important;\n' +
+            '  }\n' +
+            '  /* Unikaj łamania tytułu od tabeli */\n' +
+            '  .eoz-generate-page-format-list-heading {\n' +
+            '    page-break-after: avoid !important;\n' +
+            '    break-after: avoid !important;\n' +
             '  }\n' +
             '}\n';
         
         window.EOZ.injectStyles(pageBreakStyles, { id: 'eoz-generate-page-format-list-pagebreak-css' });
         
-        // Jeśli potrzebny page-break, dodaj klasę
+        // Jeśli potrzebny page-break, dodaj klasę do kontenera
         if (needsBreak) {
-            listaFormatHeading.classList.add('eoz-needs-pagebreak');
-            console.log('[EOZ Commission Generate Page Module] Formats list will start on new page (table too large)');
+            container.classList.add('eoz-needs-pagebreak');
+            console.log('[EOZ Commission Generate Page Module] Formats list will start on new page (container too large)');
         } else {
-            console.log('[EOZ Commission Generate Page Module] Formats list will print on first page (table fits)');
+            console.log('[EOZ Commission Generate Page Module] Formats list will print on first page (container fits)');
         }
         
         // Sprawdź ponownie po załadowaniu obrazów (które mogą zmienić wysokość)
         window.addEventListener('load', function() {
             var needsBreakAfterLoad = checkTableHeight();
-            if (needsBreakAfterLoad && !listaFormatHeading.classList.contains('eoz-needs-pagebreak')) {
-                listaFormatHeading.classList.add('eoz-needs-pagebreak');
+            if (needsBreakAfterLoad && !container.classList.contains('eoz-needs-pagebreak')) {
+                container.classList.add('eoz-needs-pagebreak');
                 console.log('[EOZ Commission Generate Page Module] Updated: Formats list needs new page after images loaded');
-            } else if (!needsBreakAfterLoad && listaFormatHeading.classList.contains('eoz-needs-pagebreak')) {
-                listaFormatHeading.classList.remove('eoz-needs-pagebreak');
+            } else if (!needsBreakAfterLoad && container.classList.contains('eoz-needs-pagebreak')) {
+                container.classList.remove('eoz-needs-pagebreak');
                 console.log('[EOZ Commission Generate Page Module] Updated: Formats list fits on first page after images loaded');
             }
         });
