@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.4';
+    var VERSION = '2.5.5';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1132,18 +1132,6 @@
     function applySearchAndFilter() {
         var rows = document.querySelectorAll('tbody tr.body-row');
         var visibleCount = 0;
-        
-        // If search/filter is active and we have multiple pages, use cross-page search
-        var hasActiveFilter = searchFilterState.searchText || 
-                             searchFilterState.statusFilter.length > 0 || 
-                             searchFilterState.clientFilter.length > 0 || 
-                             searchFilterState.machineFilter.length > 0;
-        
-        if (hasActiveFilter && allPagesDataCache.maxPage > 1) {
-            // Use cross-page search
-            applyCrossPageSearch();
-            return;
-        }
 
         rows.forEach(function(row) {
             // Skip process rows
@@ -1543,11 +1531,6 @@
         searchInput.placeholder = 'Szukaj: kod zlecenia, nazwa, klient...';
         searchInput.addEventListener('input', debounce(function(event) {
             searchFilterState.searchText = event.target.value;
-            if (!searchFilterState.searchText && !searchFilterState.statusFilter.length && 
-                !searchFilterState.clientFilter.length && !searchFilterState.machineFilter.length) {
-                // Clear search - restore original rows
-                restoreOriginalRows();
-            }
             applySearchAndFilter();
         }, 300));
 
@@ -1603,8 +1586,6 @@
                 }
             });
 
-            // Restore original rows if we were in cross-page search mode
-            restoreOriginalRows();
             applySearchAndFilter();
         });
 
@@ -1764,8 +1745,85 @@
         });
     }
 
+    // Load all pages and replace table content
+    function loadAllPagesAndUnifyView() {
+        var paginationInfo = getAllPaginationPages();
+        
+        // If only one page, skip
+        if (paginationInfo.maxPage <= 1) {
+            return Promise.resolve();
+        }
+        
+        console.log('[EOZ Commission List] Loading all', paginationInfo.maxPage, 'pages...');
+        
+        var baseUrl = window.location.href.replace(/\/page\/\d+/, '').replace(/\/$/, '');
+        if (!baseUrl || baseUrl.indexOf('/commission/show_list') === -1) {
+            baseUrl = window.location.origin + '/index.php/pl/commission/show_list';
+        }
+        
+        // Show loading indicator
+        var loadingDiv = document.createElement('div');
+        loadingDiv.id = 'eoz-loading-all-pages';
+        loadingDiv.style.cssText = 'position:fixed;top:20px;right:20px;background:#007bff;color:#fff;padding:12px 20px;border-radius:8px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-size:14px;';
+        loadingDiv.textContent = 'Ładowanie wszystkich stron...';
+        document.body.appendChild(loadingDiv);
+        
+        var promises = [];
+        for (var page = 1; page <= paginationInfo.maxPage; page++) {
+            promises.push(fetchPageData(page, baseUrl));
+        }
+        
+        return Promise.all(promises).then(function(results) {
+            var tbody = document.querySelector('table.dynamic-table tbody');
+            if (!tbody) {
+                if (loadingDiv.parentNode) loadingDiv.parentNode.removeChild(loadingDiv);
+                return;
+            }
+            
+            // Clear current tbody
+            tbody.innerHTML = '';
+            
+            // Add all rows from all pages
+            var totalRows = 0;
+            results.forEach(function(result) {
+                result.rows.forEach(function(row) {
+                    var clonedRow = row.cloneNode(true);
+                    tbody.appendChild(clonedRow);
+                    totalRows++;
+                });
+            });
+            
+            // Hide pagination
+            var pagination = document.querySelector('.pagination');
+            if (pagination) {
+                pagination.style.display = 'none';
+            }
+            
+            // Update loading indicator
+            loadingDiv.textContent = 'Załadowano ' + totalRows + ' zleceń z ' + paginationInfo.maxPage + ' stron';
+            loadingDiv.style.background = '#28a745';
+            
+            setTimeout(function() {
+                if (loadingDiv.parentNode) {
+                    loadingDiv.parentNode.removeChild(loadingDiv);
+                }
+            }, 2000);
+            
+            console.log('[EOZ Commission List] All pages loaded:', totalRows, 'rows');
+        }).catch(function(error) {
+            console.warn('[EOZ Commission List] Error loading all pages:', error);
+            if (loadingDiv.parentNode) {
+                loadingDiv.parentNode.removeChild(loadingDiv);
+            }
+        });
+    }
+
     function run() {
         window.EOZ.waitFor('table.dynamic-table tbody tr.body-row', { timeout: 10000 })
+            .then(function(){
+                // First, load all pages if pagination exists
+                return loadAllPagesAndUnifyView();
+            })
             .then(function(){
                 hideColumns();
                 formatDates();
