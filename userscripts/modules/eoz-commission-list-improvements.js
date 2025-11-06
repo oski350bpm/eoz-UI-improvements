@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.3';
+    var VERSION = '2.5.4';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -632,7 +632,7 @@
             }
 
             // Skip if already enhanced
-            if (statusCell.querySelector('.eoz-machine-badge')) {
+            if (statusCell.querySelector('.eoz-machine-badge-new')) {
                 return;
             }
 
@@ -833,6 +833,14 @@
     };
 
     var filterDropdowns = {};
+    
+    // Cache for all pages data (for cross-page search)
+    var allPagesDataCache = {
+        rows: [], // Array of {row: DOMElement, data: rowData, page: number}
+        loadedPages: new Set(),
+        isLoading: false,
+        maxPage: 1
+    };
 
     // Normalize text for search
     function normalizeSearchText(text) {
@@ -865,7 +873,7 @@
         cells.forEach(function(cell) {
             // Skip status cell (has complex structure) and action cells
             if (cell.classList.contains('body-options-cell')) return;
-            if (cell.querySelector('.eoz-machine-badge')) return;
+            if (cell.querySelector('.eoz-machine-badge-new')) return;
             
             var cellText = cell.textContent || '';
             var cellTextNormalized = normalizeSearchText(cellText);
@@ -919,46 +927,44 @@
     }
 
     // Extract row data for filtering
-    function extractRowDataForFilter(row) {
+    function extractRowDataForFilter(row, doc) {
+        // Use provided document or default to current document
+        doc = doc || document;
         var cells = row.querySelectorAll('td.body-cell');
-        var headers = document.querySelectorAll('th.heading-cell.column-names-cell');
+        var headers = doc.querySelectorAll('th.heading-cell.column-names-cell');
         var headerNames = [];
         headers.forEach(function(th) { headerNames.push((th.textContent || '').trim()); });
 
-        // Use findColumnIndex to get proper indices (handles partial matches)
-        var idxKod = findColumnIndex('Kod');
-        var idxNazwa = findColumnIndex('Nazwa zlecenia');
-        var idxStatus = findColumnIndex('Status');
-        var idxKlient = findColumnIndex('Kod klienta');
-        var idxMaterialy = findColumnIndex('Materiały');
+        // Find column indices by searching in headers
+        function findColIndex(headerText) {
+            for (var i = 0; i < headers.length; i++) {
+                var text = (headers[i].textContent || '').trim();
+                if (text.indexOf(headerText) !== -1) return i;
+            }
+            return -1;
+        }
+
+        var idxKod = findColIndex('Kod');
+        var idxNazwa = findColIndex('Nazwa zlecenia');
+        var idxStatus = findColIndex('Status');
+        var idxKlient = findColIndex('Kod klienta');
+        var idxMaterialy = findColIndex('Materiały');
 
         var kod = idxKod >= 0 && cells[idxKod] ? (cells[idxKod].textContent || '').trim() : '';
         var nazwa = idxNazwa >= 0 && cells[idxNazwa] ? (cells[idxNazwa].textContent || '').trim() : '';
         var materialy = idxMaterialy >= 0 && cells[idxMaterialy] ? (cells[idxMaterialy].textContent || '').trim() : '';
         
-        // For status - try to get original status first (before enhancement)
+        // For status - get text content (from parsed pages, status won't be enhanced yet)
         var status = '';
         if (idxStatus >= 0 && cells[idxStatus]) {
-            var statusCell = cells[idxStatus];
-            // Check if status was enhanced - get original
-            var originalStatus = statusCell.getAttribute('data-original-status');
-            if (originalStatus) {
-                status = originalStatus;
-            } else {
-                // Get current text, but remove badge if exists
-                var statusText = statusCell.textContent || '';
-                // If badge exists, status is first line before badge
-                var badge = statusCell.querySelector('.eoz-machine-badge');
-                if (badge) {
-                    status = statusText.split(badge.textContent)[0].trim();
-                } else {
-                    status = statusText.trim();
-                }
-            }
+            status = (cells[idxStatus].textContent || '').trim();
         }
         
         var klient = idxKlient >= 0 && cells[idxKlient] ? (cells[idxKlient].textContent || '').trim() : '';
         var machine = row.getAttribute('data-current-machine') || '';
+        
+        // Get commission ID for later enhancement
+        var commissionId = getCommissionIdFromRow(row);
 
         return {
             kod: kod,
@@ -967,14 +973,177 @@
             status: status,
             klient: klient,
             machine: machine,
-            fullText: (row.textContent || '').toLowerCase()
+            commissionId: commissionId,
+            fullText: (row.textContent || '').toLowerCase(),
+            rowHTML: row.outerHTML // Store HTML for reconstruction
         };
+    }
+
+    // Get all pagination pages
+    function getAllPaginationPages() {
+        var pagination = document.querySelector('.pagination');
+        if (!pagination) return { maxPage: 1, pages: [1] };
+        
+        var pages = new Set();
+        var allLinks = pagination.querySelectorAll('a, strong');
+        
+        allLinks.forEach(function(el) {
+            if (el.tagName === 'A') {
+                var match = el.href.match(/\/page\/(\d+)/);
+                if (match) pages.add(parseInt(match[1]));
+            } else if (el.tagName === 'STRONG') {
+                var text = el.textContent.trim();
+                var num = parseInt(text);
+                if (!isNaN(num)) pages.add(num);
+            }
+        });
+        
+        var pagesArray = Array.from(pages).sort(function(a, b) { return a - b; });
+        var maxPage = Math.max.apply(null, pagesArray.length > 0 ? pagesArray : [1]);
+        
+        return { maxPage: maxPage, pages: pagesArray };
+    }
+    
+    // Fetch data from a specific page
+    function fetchPageData(pageNumber, baseUrl) {
+        return new Promise(function(resolve, reject) {
+            var url = baseUrl + (pageNumber === 1 ? '' : '/page/' + pageNumber);
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(xhr.responseText, 'text/html');
+                        var rows = doc.querySelectorAll('tbody tr.body-row');
+                        resolve({ rows: rows, page: pageNumber, doc: doc });
+                    } catch (e) {
+                        console.warn('[EOZ Commission List] Error parsing page', pageNumber, e);
+                        resolve({ rows: [], page: pageNumber, doc: null });
+                    }
+                } else {
+                    resolve({ rows: [], page: pageNumber, doc: null });
+                }
+            };
+            xhr.onerror = function() {
+                resolve({ rows: [], page: pageNumber, doc: null });
+            };
+            xhr.ontimeout = function() {
+                resolve({ rows: [], page: pageNumber, doc: null });
+            };
+            xhr.timeout = 15000; // 15 second timeout
+            xhr.send();
+        });
+    }
+    
+    // Load all pages data for cross-page search
+    function loadAllPagesData(showProgress) {
+        if (allPagesDataCache.isLoading) {
+            return Promise.resolve();
+        }
+        
+        var paginationInfo = getAllPaginationPages();
+        allPagesDataCache.maxPage = paginationInfo.maxPage;
+        
+        // If only one page, no need to load others
+        if (paginationInfo.maxPage <= 1) {
+            allPagesDataCache.loadedPages.add(1);
+            return Promise.resolve();
+        }
+        
+        // Check if we already have all pages
+        var allLoaded = true;
+        for (var i = 1; i <= paginationInfo.maxPage; i++) {
+            if (!allPagesDataCache.loadedPages.has(i)) {
+                allLoaded = false;
+                break;
+            }
+        }
+        if (allLoaded) {
+            return Promise.resolve();
+        }
+        
+        allPagesDataCache.isLoading = true;
+        var baseUrl = window.location.href.replace(/\/page\/\d+/, '').replace(/\/$/, '');
+        if (!baseUrl || baseUrl.indexOf('/commission/show_list') === -1) {
+            baseUrl = window.location.origin + '/index.php/pl/commission/show_list';
+        }
+        
+        var currentPage = 1;
+        var match = window.location.href.match(/\/page\/(\d+)/);
+        if (match) currentPage = parseInt(match[1]);
+        
+        // Progress indicator
+        var progressDiv = null;
+        if (showProgress) {
+            progressDiv = document.createElement('div');
+            progressDiv.className = 'eoz-loading-progress';
+            progressDiv.style.cssText = 'position:fixed;top:20px;right:20px;background:#007bff;color:#fff;padding:12px 20px;border-radius:8px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-size:14px;';
+            progressDiv.textContent = 'Ładowanie danych z wszystkich stron...';
+            document.body.appendChild(progressDiv);
+        }
+        
+        var promises = [];
+        for (var page = 1; page <= paginationInfo.maxPage; page++) {
+            if (!allPagesDataCache.loadedPages.has(page)) {
+                promises.push(fetchPageData(page, baseUrl).then(function(result) {
+                    if (progressDiv) {
+                        var loaded = allPagesDataCache.loadedPages.size + 1;
+                        progressDiv.textContent = 'Ładowanie danych: ' + loaded + '/' + paginationInfo.maxPage;
+                    }
+                    
+                    // Convert NodeList to Array and store
+                    var rowsArray = Array.from(result.rows);
+                    rowsArray.forEach(function(row) {
+                        // Extract row data using the parsed document
+                        var rowData = extractRowDataForFilter(row, result.doc);
+                        allPagesDataCache.rows.push({
+                            rowHTML: rowData.rowHTML, // Store HTML for reconstruction
+                            data: rowData,
+                            page: result.page
+                        });
+                    });
+                    
+                    allPagesDataCache.loadedPages.add(result.page);
+                }));
+            }
+        }
+        
+        return Promise.all(promises).then(function() {
+            if (progressDiv) {
+                progressDiv.textContent = 'Dane załadowane!';
+                setTimeout(function() {
+                    if (progressDiv.parentNode) {
+                        progressDiv.parentNode.removeChild(progressDiv);
+                    }
+                }, 1000);
+            }
+            allPagesDataCache.isLoading = false;
+        }).catch(function(error) {
+            console.warn('[EOZ Commission List] Error loading pages:', error);
+            allPagesDataCache.isLoading = false;
+            if (progressDiv && progressDiv.parentNode) {
+                progressDiv.parentNode.removeChild(progressDiv);
+            }
+        });
     }
 
     // Apply search and filter
     function applySearchAndFilter() {
         var rows = document.querySelectorAll('tbody tr.body-row');
         var visibleCount = 0;
+        
+        // If search/filter is active and we have multiple pages, use cross-page search
+        var hasActiveFilter = searchFilterState.searchText || 
+                             searchFilterState.statusFilter.length > 0 || 
+                             searchFilterState.clientFilter.length > 0 || 
+                             searchFilterState.machineFilter.length > 0;
+        
+        if (hasActiveFilter && allPagesDataCache.maxPage > 1) {
+            // Use cross-page search
+            applyCrossPageSearch();
+            return;
+        }
 
         rows.forEach(function(row) {
             // Skip process rows
@@ -1072,6 +1241,157 @@
                 }
             }
         });
+    }
+    
+    // Apply cross-page search and filter
+    function applyCrossPageSearch() {
+        // First, ensure all pages are loaded
+        loadAllPagesData(true).then(function() {
+            var tbody = document.querySelector('table.dynamic-table tbody');
+            if (!tbody) return;
+            
+            // Store original rows (from current page) to restore later
+            var originalRows = Array.from(tbody.querySelectorAll('tr.body-row'));
+            if (!window.eozOriginalRows) {
+                window.eozOriginalRows = originalRows.map(function(row) {
+                    return row.cloneNode(true);
+                });
+            }
+            
+            // Filter cached rows based on search/filter criteria
+            var matchingRows = allPagesDataCache.rows.filter(function(cachedRow) {
+                var rowData = cachedRow.data;
+                var matches = true;
+                
+                // Apply search filter
+                if (searchFilterState.searchText) {
+                    var searchMatches =
+                        fuzzyMatch(searchFilterState.searchText, rowData.kod) ||
+                        fuzzyMatch(searchFilterState.searchText, rowData.nazwa) ||
+                        fuzzyMatch(searchFilterState.searchText, rowData.materialy) ||
+                        fuzzyMatch(searchFilterState.searchText, rowData.klient);
+                    if (!searchMatches) matches = false;
+                }
+                
+                // Apply status filter
+                if (matches && searchFilterState.statusFilter.length > 0) {
+                    var statusMatches = false;
+                    var statusLower = rowData.status.toLowerCase();
+                    for (var i = 0; i < searchFilterState.statusFilter.length; i++) {
+                        var filterStatus = searchFilterState.statusFilter[i].toLowerCase();
+                        if (statusLower.indexOf(filterStatus) !== -1) {
+                            statusMatches = true;
+                            break;
+                        }
+                    }
+                    if (!statusMatches) matches = false;
+                }
+                
+                // Apply client filter
+                if (matches && searchFilterState.clientFilter.length > 0) {
+                    var clientMatches = false;
+                    for (var j = 0; j < searchFilterState.clientFilter.length; j++) {
+                        if (normalizeSearchText(rowData.klient) === normalizeSearchText(searchFilterState.clientFilter[j])) {
+                            clientMatches = true;
+                            break;
+                        }
+                    }
+                    if (!clientMatches) matches = false;
+                }
+                
+                // Apply machine filter
+                if (matches && searchFilterState.machineFilter.length > 0) {
+                    var machineMatches = false;
+                    for (var k = 0; k < searchFilterState.machineFilter.length; k++) {
+                        var filterMachine = searchFilterState.machineFilter[k];
+                        if (filterMachine === 'Po kompletacji') {
+                            if (!rowData.machine || rowData.status && rowData.status.toLowerCase().indexOf('zakończone') !== -1) {
+                                machineMatches = true;
+                                break;
+                            }
+                        } else {
+                            var filterMachineNorm = normalizeMachineName(filterMachine);
+                            var rowMachineNorm = normalizeMachineName(rowData.machine);
+                            if (normalizeSearchText(filterMachineNorm) === normalizeSearchText(rowMachineNorm)) {
+                                machineMatches = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!machineMatches) matches = false;
+                }
+                
+                return matches;
+            });
+            
+            // Clear current tbody
+            tbody.innerHTML = '';
+            
+            // Add matching rows
+            matchingRows.forEach(function(cachedRow) {
+                // Create a temporary container to parse HTML
+                var tempDiv = document.createElement('div');
+                tempDiv.innerHTML = cachedRow.rowHTML;
+                var newRow = tempDiv.querySelector('tr.body-row');
+                if (newRow) {
+                    tbody.appendChild(newRow);
+                }
+            });
+            
+            // Re-apply enhancements after all rows are added
+            setTimeout(function() {
+                enhanceStatusColumn();
+                applyRowColoring();
+            }, 200);
+            
+            // Show result count
+            var resultCount = document.getElementById('eoz-search-result-count');
+            if (!resultCount) {
+                resultCount = document.createElement('div');
+                resultCount.id = 'eoz-search-result-count';
+                resultCount.style.cssText = 'padding:8px 16px;background:#e7f3ff;border:1px solid #b3d9ff;border-radius:4px;margin:8px 0;font-size:14px;color:#0066cc;';
+                var searchContainer = document.querySelector('.eoz-search-filter-container');
+                if (searchContainer) {
+                    searchContainer.insertBefore(resultCount, searchContainer.firstChild);
+                }
+            }
+            resultCount.textContent = 'Znaleziono ' + matchingRows.length + ' wynik' + (matchingRows.length === 1 ? '' : matchingRows.length < 5 ? 'i' : 'ów') + ' ze wszystkich stron';
+            
+            // Re-apply search highlighting
+            if (searchFilterState.searchText) {
+                setTimeout(function() {
+                    var allRows = tbody.querySelectorAll('tr.body-row');
+                    allRows.forEach(function(row) {
+                        highlightSearchText(row, searchFilterState.searchText);
+                    });
+                }, 200);
+            }
+        });
+    }
+    
+    // Restore original rows when search is cleared
+    function restoreOriginalRows() {
+        if (!window.eozOriginalRows) return;
+        
+        var tbody = document.querySelector('table.dynamic-table tbody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        window.eozOriginalRows.forEach(function(row) {
+            tbody.appendChild(row.cloneNode(true));
+        });
+        
+        // Re-apply enhancements
+        setTimeout(function() {
+            enhanceStatusColumn();
+            applyRowColoring();
+        }, 100);
+        
+        // Remove result count
+        var resultCount = document.getElementById('eoz-search-result-count');
+        if (resultCount && resultCount.parentNode) {
+            resultCount.parentNode.removeChild(resultCount);
+        }
     }
 
     // Create filter dropdown (similar to boards-magazine)
@@ -1223,6 +1543,11 @@
         searchInput.placeholder = 'Szukaj: kod zlecenia, nazwa, klient...';
         searchInput.addEventListener('input', debounce(function(event) {
             searchFilterState.searchText = event.target.value;
+            if (!searchFilterState.searchText && !searchFilterState.statusFilter.length && 
+                !searchFilterState.clientFilter.length && !searchFilterState.machineFilter.length) {
+                // Clear search - restore original rows
+                restoreOriginalRows();
+            }
             applySearchAndFilter();
         }, 300));
 
@@ -1278,6 +1603,8 @@
                 }
             });
 
+            // Restore original rows if we were in cross-page search mode
+            restoreOriginalRows();
             applySearchAndFilter();
         });
 
