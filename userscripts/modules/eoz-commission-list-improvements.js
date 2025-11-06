@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.5.5';
+    var VERSION = '2.5.6';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -861,30 +861,92 @@
         
         var cells = row.querySelectorAll('td.body-cell');
         var searchLower = normalizeSearchText(searchText);
+        var searchRegex = new RegExp('(' + escapeRegex(searchText) + ')', 'gi');
         
         cells.forEach(function(cell) {
             // Skip status cell (has complex structure) and action cells
             if (cell.classList.contains('body-options-cell')) return;
             if (cell.querySelector('.eoz-machine-badge-new')) return;
+            if (cell.querySelector('.eoz-dropdown-container')) return;
+            
+            // Check if cell has complex HTML structure - if so, skip highlighting to preserve formatting
+            var hasComplexStructure = cell.querySelector('a, button, span[class], div[class], i[class]');
+            if (hasComplexStructure) {
+                // For cells with complex structure, only highlight in text nodes
+                highlightTextNodes(cell, searchText, searchRegex);
+                return;
+            }
             
             var cellText = cell.textContent || '';
             var cellTextNormalized = normalizeSearchText(cellText);
             
             if (cellTextNormalized.indexOf(searchLower) !== -1) {
+                // Store original HTML before first modification
+                if (!cell.hasAttribute('data-original-html')) {
+                    cell.setAttribute('data-original-html', cell.innerHTML);
+                }
+                
                 // Find all matches and highlight them
-                var highlighted = cellText.replace(new RegExp('(' + escapeRegex(searchText) + ')', 'gi'), function(match) {
+                var highlighted = cellText.replace(searchRegex, function(match) {
                     return '<mark class="eoz-search-highlight">' + match + '</mark>';
                 });
                 
-                // Only update if we actually added highlights (avoid infinite loops)
+                // Only update if we actually added highlights
                 if (highlighted !== cellText && highlighted.indexOf('<mark') !== -1) {
-                    var originalHTML = cell.innerHTML;
                     cell.innerHTML = highlighted;
-                    // Store original to restore later
-                    if (!cell.hasAttribute('data-original-html')) {
-                        cell.setAttribute('data-original-html', originalHTML);
-                    }
                 }
+            }
+        });
+    }
+    
+    // Highlight text in text nodes only (preserves HTML structure)
+    function highlightTextNodes(element, searchText, searchRegex) {
+        var walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function(node) {
+                    // Skip if parent is already a mark
+                    if (node.parentNode && node.parentNode.tagName === 'MARK') {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    // Skip if text doesn't contain search
+                    var text = node.textContent || '';
+                    if (normalizeSearchText(text).indexOf(normalizeSearchText(searchText)) === -1) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+        
+        var textNodes = [];
+        var node;
+        while (node = walker.nextNode()) {
+            textNodes.push(node);
+        }
+        
+        textNodes.forEach(function(textNode) {
+            var parent = textNode.parentNode;
+            if (!parent) return;
+            
+            // Store original if not already stored
+            if (!parent.hasAttribute('data-original-html')) {
+                parent.setAttribute('data-original-html', parent.innerHTML);
+            }
+            
+            var text = textNode.textContent;
+            var highlighted = text.replace(searchRegex, function(match) {
+                return '<mark class="eoz-search-highlight">' + match + '</mark>';
+            });
+            
+            if (highlighted !== text) {
+                var tempDiv = document.createElement('div');
+                tempDiv.innerHTML = highlighted;
+                while (tempDiv.firstChild) {
+                    parent.insertBefore(tempDiv.firstChild, textNode);
+                }
+                parent.removeChild(textNode);
             }
         });
     }
