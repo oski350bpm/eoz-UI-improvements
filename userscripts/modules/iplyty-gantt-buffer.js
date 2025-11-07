@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.0';
+    var VERSION = '0.2.1';
 
     if (!window.EOZ) {
         console.warn('[EOZ Gantt Buffer Module] Core helpers not available');
@@ -75,6 +75,7 @@
 
         state.panel = panel;
         state.status = panel.querySelector('#eoz-gantt-buffer-status');
+        console.info('[EOZ Gantt Buffer v' + VERSION + '] panel zainicjowany');
         updateStatus('Gotowe. Przyciski Auto dodane do tabeli zleceń bufora.');
         return panel;
     }
@@ -129,6 +130,7 @@
             state.scheduling = true;
             Promise.resolve()
                 .then(function() {
+                    console.info('[EOZ Gantt Buffer v' + VERSION + '] Auto dla #' + orderId);
                     return GanttBuffer.scheduleOrder(orderId);
                 })
                 .then(function(result) {
@@ -368,6 +370,9 @@
 
     GanttBuffer.scheduleOrder = scheduleOrder;
 
-    window.EOZ.whenReady(init);
+        window.EOZ.whenReady(function() {
+            console.info('[EOZ Gantt Buffer v' + VERSION + '] init start');
+            init();
+        });
 })();
 
