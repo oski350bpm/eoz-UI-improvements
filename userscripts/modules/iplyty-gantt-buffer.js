@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.2';
+    var VERSION = '0.2.3';
 
     if (!window.EOZ) {
         console.warn('[EOZ Gantt Buffer Module] Core helpers not available');
@@ -62,6 +62,11 @@
     }
 
     function ensurePanel() {
+        if (state.panel && !document.contains(state.panel)) {
+            state.panel = null;
+            state.status = null;
+        }
+
         if (state.panel) return state.panel;
         var section = findBufferSection();
         if (!section) return null;
@@ -131,7 +136,6 @@
         updateStatus('Przygotowanie automatycznego planowania dla zlecenia #' + orderId + '...', null);
 
         if (typeof GanttBuffer.scheduleOrder === 'function') {
-            state.scheduling = true;
             Promise.resolve()
                 .then(function() {
                     console.info('[EOZ Gantt Buffer v' + VERSION + '] Auto dla #' + orderId);
@@ -328,10 +332,12 @@
             return Promise.reject(new Error('Brak funkcji systemowej order_add_from_buffor_action.')); 
         }
 
+        state.scheduling = true;
         var selectedDate;
         try {
             selectedDate = getSelectedDate();
         } catch (err) {
+            state.scheduling = false;
             return Promise.reject(err);
         }
 
@@ -361,7 +367,10 @@
                 });
             })
             .finally(function() {
-                restoreSkipMagazine(skipInfo);
+                return restoreSkipMagazine(skipInfo);
+            })
+            .finally(function() {
+                state.scheduling = false;
             });
     }
 
@@ -373,6 +382,7 @@
     }
 
     GanttBuffer.scheduleOrder = scheduleOrder;
+    GanttBuffer._debugState = state;
 
         window.EOZ.whenReady(function() {
             console.info('[EOZ Gantt Buffer v' + VERSION + '] init start');
