@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '0.2.1';
+    var VERSION = '0.2.2';
 
     if (!window.EOZ) {
         console.warn('[EOZ Gantt Buffer Module] Core helpers not available');
@@ -52,8 +52,12 @@
             return (h.textContent || '').trim().indexOf('Lista zleceń w buforze') !== -1;
         });
         if (!heading) return null;
-        var table = heading.nextElementSibling;
-        if (!table || table.tagName !== 'TABLE') return null;
+        var sibling = heading.nextElementSibling;
+        while (sibling && sibling.tagName !== 'TABLE') {
+            sibling = sibling.nextElementSibling;
+        }
+        if (!sibling || sibling.tagName !== 'TABLE') return null;
+        var table = sibling;
         return { heading: heading, table: table };
     }
 
