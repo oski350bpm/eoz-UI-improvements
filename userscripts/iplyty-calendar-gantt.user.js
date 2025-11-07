@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EOZ Gantt Buffer Overlay
 // @namespace    https://github.com/oski350bpm/eoz-UI-improvements
-// @version      1.0.1
+// @version      1.0.2
 // @description  Ułatwia planowanie zleceń z bufora na widoku Harmonogramu stanowisk (Gantt)
 // @match        https://iplyty.erozrys.pl/pl/new_machine/calendar_gantt*
 // @match        https://eoz.iplyty.erozrys.pl/pl/new_machine/calendar_gantt*
@@ -16,7 +16,7 @@
 (function() {
     'use strict';
 
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.2';
 
     if (!window.EOZ) {
         console.warn('[EOZ Gantt Buffer Overlay v' + VERSION + '] core not loaded');
