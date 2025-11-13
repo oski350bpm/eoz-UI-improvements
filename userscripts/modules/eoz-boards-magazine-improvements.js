@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.37';
+    var VERSION = '2.9.38';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1604,6 +1604,26 @@
         // Add order number attributes to cells
         addOrderNumberAttributes();
         
+        // Check for pending order scroll from sessionStorage (in case of redirect)
+        var pendingOrder = window.sessionStorage.getItem('eoz-pending-order-scroll');
+        if (pendingOrder) {
+            window.sessionStorage.removeItem('eoz-pending-order-scroll');
+            // Add hash to URL
+            var hash = 'order-' + pendingOrder.replace(/[^a-zA-Z0-9_-]/g, '-');
+            var newHash = '#' + hash;
+            if (window.location.hash !== newHash) {
+                try {
+                    history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
+                } catch (e) {
+                    window.location.hash = hash;
+                }
+            }
+            // Scroll to order number
+            setTimeout(function() {
+                scrollToOrderNumber(pendingOrder);
+            }, 500);
+        }
+        
         // Handle hash navigation on page load
         if (window.location.hash) {
             var hash = window.location.hash.substring(1); // Remove #
@@ -1797,14 +1817,8 @@
                 }
             });
             
-            // Check for pending order scroll on page load (in case of redirect)
-            var pendingOrder = window.sessionStorage.getItem('eoz-pending-order-scroll');
-            if (pendingOrder) {
-                window.sessionStorage.removeItem('eoz-pending-order-scroll');
-                setTimeout(function() {
-                    scrollToOrderNumber(pendingOrder);
-                }, 500);
-            }
+            // Note: Pending order scroll is now handled in apply() function
+            // to ensure it runs after page loads and attributes are added
         } catch (e) {
             console.error('[EOZ Boards Magazine Module] Error setting up Select2 order search:', e);
         }
