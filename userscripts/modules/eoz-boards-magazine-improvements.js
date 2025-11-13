@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.28';
+    var VERSION = '2.9.29';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -620,6 +620,12 @@
                 // Highlight the order number cell
                 orderCell.classList.add('eoz-order-highlight');
                 
+                // Update URL hash
+                var hash = 'order-' + orderNumber.replace(/[^a-zA-Z0-9_-]/g, '-');
+                if (window.location.hash !== '#' + hash) {
+                    window.location.hash = hash;
+                }
+                
                 // Remove highlight after 3 seconds
                 setTimeout(function() {
                     orderCell.classList.remove('eoz-order-highlight');
@@ -846,11 +852,7 @@
                 var orderNumberPattern = /^(\d+_\d+)$/;
                 if (orderNumberPattern.test(searchText)) {
                     event.preventDefault();
-                    if (scrollToOrderNumber(searchText)) {
-                        // Update URL hash
-                        var hash = 'order-' + searchText.replace(/[^a-zA-Z0-9_-]/g, '-');
-                        window.location.hash = hash;
-                    }
+                    scrollToOrderNumber(searchText); // scrollToOrderNumber already updates URL hash
                 }
             }
         });
