@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.36';
+    var VERSION = '2.9.37';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1672,6 +1672,35 @@
     
     function initSelect2OrderSearch(orderSelect) {
         try {
+            // Find the form that contains the select
+            var form = orderSelect.closest('form');
+            
+            // Intercept form submission to add hash to URL before redirect
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    var selectedValue = orderSelect.value;
+                    if (!selectedValue) return;
+                    
+                    // Check if selected value is an order number
+                    var orderNumberPattern = /^(\d+_\d+)$/;
+                    if (orderNumberPattern.test(selectedValue)) {
+                        // Modify form action to include hash
+                        var hash = 'order-' + selectedValue.replace(/[^a-zA-Z0-9_-]/g, '-');
+                        var currentAction = form.action || window.location.href.split('?')[0];
+                        
+                        // Add hash to form action URL
+                        if (currentAction.indexOf('#') === -1) {
+                            form.action = currentAction + '#' + hash;
+                        } else {
+                            form.action = currentAction.split('#')[0] + '#' + hash;
+                        }
+                        
+                        // Store order number for scroll after page loads
+                        window.sessionStorage.setItem('eoz-pending-order-scroll', selectedValue);
+                    }
+                }, true); // Use capture phase to catch it early
+            }
+            
             // Listen for Enter key when typing order number in search field
             // Add hash to URL immediately when Enter is pressed, before Select2 does anything
             jQuery(orderSelect).on('select2:open', function() {
@@ -1703,6 +1732,16 @@
                                     history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
                                 } catch (e) {
                                     window.location.hash = hash;
+                                }
+                                
+                                // If form exists, also update form action
+                                if (form) {
+                                    var currentAction = form.action || window.location.href.split('?')[0];
+                                    if (currentAction.indexOf('#') === -1) {
+                                        form.action = currentAction + '#' + hash;
+                                    } else {
+                                        form.action = currentAction.split('#')[0] + '#' + hash;
+                                    }
                                 }
                                 
                                 // Store order number for later scroll (after page loads/redirects)
