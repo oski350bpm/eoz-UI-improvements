@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.26';
+    var VERSION = '2.9.27';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -29,7 +29,6 @@
         '.datepicker table thead th, .datepicker table tbody td, .datepicker-dropdown table thead th, .datepicker-dropdown table tbody td{white-space:normal!important;word-break:normal!important;overflow-wrap:normal!important;padding:8px!important}\n' +
         'body:not([data-veneer]) #btn-zestawienie-materialow, body:not([data-veneer]) #btn-zestawienie-zlecen-historia{display:none!important}\n' +
         'body[data-veneer] #btn-zestawienie-zlecen-podsumowanie{display:none!important}\n' +
-        '.select2-container{width:100%!important}\n' +
         '.eoz-dropdown-toggle{display:none}\n' +
         '.eoz-dropdown-label{width:100%!important;height:48px!important;background:#007bff!important;color:#fff!important;border:none!important;border-radius:8px!important;font-size:14px!important;font-weight:bold!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;transition:background-color .2s!important;padding:10px!important;box-shadow:0 2px 4px rgba(0,0,0,.1)!important;user-select:none!important}\n' +
         '.eoz-dropdown-label:hover{background:#0056b3!important}\n' +

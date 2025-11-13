@@ -33,3 +33,6 @@ echo "💡 Aby uruchomić Chrome z CDP i konkretnym profilem:"
 echo "   ./start-chrome-cdp.sh 9222 \"Profile 1\""
 
 
+
+
+
