@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.31';
+    var VERSION = '2.9.32';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1646,6 +1646,68 @@
         
         // Watch for dynamically loaded comments tables
         watchForCommentsTable();
+        
+        // Add Select2 order_select search functionality
+        setupSelect2OrderSearch();
+    }
+    
+    function setupSelect2OrderSearch() {
+        // Find Select2 order_select element
+        var orderSelect = document.querySelector('select#order_select');
+        if (!orderSelect) return;
+        
+        // Wait for Select2 to be initialized (it might not be ready immediately)
+        var checkSelect2 = setInterval(function() {
+            if (typeof jQuery !== 'undefined' && jQuery(orderSelect).data('select2')) {
+                clearInterval(checkSelect2);
+                initSelect2OrderSearch(orderSelect);
+            }
+        }, 100);
+        
+        // Stop checking after 5 seconds
+        setTimeout(function() {
+            clearInterval(checkSelect2);
+        }, 5000);
+    }
+    
+    function initSelect2OrderSearch(orderSelect) {
+        try {
+            // Listen for Select2 open event
+            jQuery(orderSelect).on('select2:open', function() {
+                // Wait a bit for Select2 dropdown to render
+                setTimeout(function() {
+                    // Find the search input field inside Select2 dropdown
+                    var searchInput = document.querySelector('.select2-search__field');
+                    if (!searchInput) return;
+                    
+                    // Remove any existing listeners to avoid duplicates
+                    var newSearchInput = searchInput.cloneNode(true);
+                    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+                    searchInput = newSearchInput;
+                    
+                    // Listen for Enter key in Select2 search field
+                    searchInput.addEventListener('keydown', function(event) {
+                        if (event.key === 'Enter') {
+                            var searchText = event.target.value.trim();
+                            // Check if it's a full order number (format: number_number, e.g., 3870_1)
+                            var orderNumberPattern = /^(\d+_\d+)$/;
+                            if (orderNumberPattern.test(searchText)) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                
+                                // Close Select2 dropdown
+                                jQuery(orderSelect).trigger('select2:close');
+                                
+                                // Scroll to order number
+                                scrollToOrderNumber(searchText);
+                            }
+                        }
+                    });
+                }, 100);
+            });
+        } catch (e) {
+            console.error('[EOZ Boards Magazine Module] Error setting up Select2 order search:', e);
+        }
     }
 
     function debugTablesSnapshot(phase, meta){
