@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.29';
+    var VERSION = '2.9.30';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -644,6 +644,18 @@
         var rows = Array.from(tbody.querySelectorAll('tr'));
         var visibleCount = 0;
         
+        // Check if search text is a full order number BEFORE processing rows
+        // This should only be done once, not for each row
+        var orderNumberScrolled = false;
+        if (searchFilterState.searchText) {
+            var orderNumberPattern = /^(\d+_\d+)$/;
+            var searchText = searchFilterState.searchText.trim();
+            if (orderNumberPattern.test(searchText)) {
+                // This looks like a full order number - try to scroll to it
+                orderNumberScrolled = scrollToOrderNumber(searchText);
+            }
+        }
+        
         // Check if we're in veneers grouped view
         var isVeneersGrouped = document.body.hasAttribute('data-veneer') && 
                               rows.length > 0 && 
@@ -672,17 +684,6 @@
             
             // Apply search filter
             if (searchFilterState.searchText) {
-                // Check if search text is a full order number (format: number_number, e.g., 3870_1)
-                var orderNumberPattern = /^(\d+_\d+)$/;
-                var searchText = searchFilterState.searchText.trim();
-                if (orderNumberPattern.test(searchText)) {
-                    // This looks like a full order number - try to scroll to it
-                    if (scrollToOrderNumber(searchText)) {
-                        // Found and scrolled to the order - still apply normal filtering
-                        // but don't hide this row
-                    }
-                }
-                
                 var searchMatches = 
                     fuzzyMatch(searchFilterState.searchText, rowData.client) ||
                     fuzzyMatch(searchFilterState.searchText, rowData.orderName) ||
