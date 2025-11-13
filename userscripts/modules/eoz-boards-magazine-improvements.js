@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.32';
+    var VERSION = '2.9.33';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1672,6 +1672,9 @@
     
     function initSelect2OrderSearch(orderSelect) {
         try {
+            // Use a flag to prevent adding multiple listeners
+            var listenerAdded = false;
+            
             // Listen for Select2 open event
             jQuery(orderSelect).on('select2:open', function() {
                 // Wait a bit for Select2 dropdown to render
@@ -1680,12 +1683,16 @@
                     var searchInput = document.querySelector('.select2-search__field');
                     if (!searchInput) return;
                     
-                    // Remove any existing listeners to avoid duplicates
-                    var newSearchInput = searchInput.cloneNode(true);
-                    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-                    searchInput = newSearchInput;
+                    // Only add listener once per open (check if already has our data attribute)
+                    if (searchInput.hasAttribute('data-eoz-order-search-listener')) {
+                        return;
+                    }
+                    
+                    // Mark that we've added the listener
+                    searchInput.setAttribute('data-eoz-order-search-listener', 'true');
                     
                     // Listen for Enter key in Select2 search field
+                    // Use capture phase to catch it before Select2 handles it
                     searchInput.addEventListener('keydown', function(event) {
                         if (event.key === 'Enter') {
                             var searchText = event.target.value.trim();
@@ -1694,16 +1701,27 @@
                             if (orderNumberPattern.test(searchText)) {
                                 event.preventDefault();
                                 event.stopPropagation();
+                                event.stopImmediatePropagation();
                                 
                                 // Close Select2 dropdown
                                 jQuery(orderSelect).trigger('select2:close');
                                 
                                 // Scroll to order number
                                 scrollToOrderNumber(searchText);
+                                
+                                return false;
                             }
                         }
-                    });
+                    }, true); // Use capture phase
                 }, 100);
+            });
+            
+            // Remove the data attribute when Select2 closes, so listener can be re-added on next open
+            jQuery(orderSelect).on('select2:close', function() {
+                var searchInput = document.querySelector('.select2-search__field');
+                if (searchInput) {
+                    searchInput.removeAttribute('data-eoz-order-search-listener');
+                }
             });
         } catch (e) {
             console.error('[EOZ Boards Magazine Module] Error setting up Select2 order search:', e);
