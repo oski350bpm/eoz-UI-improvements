@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.27';
+    var VERSION = '2.9.28';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -126,6 +126,7 @@
         '.eoz-filter-dropdown-item label{margin:0!important;cursor:pointer!important;flex:1!important;font-size:14px!important;user-select:none!important}\n' +
         '.eoz-filter-dropdown-counter{background:#007bff!important;color:#fff!important;border-radius:12px!important;padding:2px 8px!important;font-size:11px!important;font-weight:600!important;margin-left:auto!important;min-width:20px!important;text-align:center!important}\n' +
         '.eoz-highlight{background-color:#fff3cd!important;padding:2px 4px!important;border-radius:3px!important;font-weight:600!important}\n' +
+        '.eoz-order-highlight{background-color:#ffeb3b!important;padding:4px 8px!important;border-radius:4px!important;font-weight:700!important;box-shadow:0 0 10px rgba(255,235,59,0.5)!important;transition:all 0.3s ease!important}\n' +
         '.eoz-filter-reset-btn{padding:10px 20px!important;font-size:14px!important;background:#6c757d!important;color:#fff!important;border:none!important;border-radius:6px!important;cursor:pointer!important;transition:background-color .2s!important;margin-top:auto!important;align-self:flex-end!important}\n' +
         '.eoz-filter-reset-btn:hover{background:#5a6268!important}\n';
 
@@ -565,6 +566,71 @@
         return result;
     }
 
+    function addOrderNumberAttributes() {
+        // Add data-order-number attributes to cells with order numbers
+        var tbody = document.querySelector('table tbody');
+        if (!tbody) return;
+        
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.forEach(function(row) {
+            var orderLink = row.querySelector('a[href*="/commission/show_details/"]');
+            if (orderLink) {
+                var orderNumber = orderLink.textContent.trim();
+                // Find the cell containing the order link
+                var orderCell = orderLink.closest('td');
+                if (orderCell && orderNumber) {
+                    // Add data-order-number attribute to the cell
+                    orderCell.setAttribute('data-order-number', orderNumber);
+                    // Also add id for hash navigation
+                    orderCell.id = 'order-' + orderNumber.replace(/[^a-zA-Z0-9_-]/g, '-');
+                }
+            }
+        });
+    }
+
+    function scrollToOrderNumber(orderNumber) {
+        // Remove any existing highlights
+        document.querySelectorAll('.eoz-order-highlight').forEach(function(el) {
+            el.classList.remove('eoz-order-highlight');
+        });
+        
+        // Find the row with matching order number
+        var orderCell = document.querySelector('td[data-order-number="' + orderNumber + '"]');
+        if (!orderCell) {
+            // Try to find by partial match (for cases where order number might have extra spaces)
+            var allOrderCells = document.querySelectorAll('td[data-order-number]');
+            for (var i = 0; i < allOrderCells.length; i++) {
+                var cellOrderNumber = allOrderCells[i].getAttribute('data-order-number');
+                if (cellOrderNumber && cellOrderNumber.replace(/\s+/g, '') === orderNumber.replace(/\s+/g, '')) {
+                    orderCell = allOrderCells[i];
+                    break;
+                }
+            }
+        }
+        
+        if (orderCell) {
+            var row = orderCell.closest('tr');
+            if (row) {
+                // Show the row (in case it was hidden by filters)
+                row.style.display = '';
+                
+                // Scroll to the row
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Highlight the order number cell
+                orderCell.classList.add('eoz-order-highlight');
+                
+                // Remove highlight after 3 seconds
+                setTimeout(function() {
+                    orderCell.classList.remove('eoz-order-highlight');
+                }, 3000);
+                
+                return true;
+            }
+        }
+        return false;
+    }
+
     function applySearchAndFilter() {
         var tbody = document.querySelector('table tbody');
         if (!tbody) return;
@@ -600,6 +666,17 @@
             
             // Apply search filter
             if (searchFilterState.searchText) {
+                // Check if search text is a full order number (format: number_number, e.g., 3870_1)
+                var orderNumberPattern = /^(\d+_\d+)$/;
+                var searchText = searchFilterState.searchText.trim();
+                if (orderNumberPattern.test(searchText)) {
+                    // This looks like a full order number - try to scroll to it
+                    if (scrollToOrderNumber(searchText)) {
+                        // Found and scrolled to the order - still apply normal filtering
+                        // but don't hide this row
+                    }
+                }
+                
                 var searchMatches = 
                     fuzzyMatch(searchFilterState.searchText, rowData.client) ||
                     fuzzyMatch(searchFilterState.searchText, rowData.orderName) ||
@@ -761,6 +838,22 @@
             searchFilterState.searchText = event.target.value;
             applySearchAndFilter();
         }, 300));
+        
+        // Handle Enter key for order number navigation
+        searchInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                var searchText = event.target.value.trim();
+                var orderNumberPattern = /^(\d+_\d+)$/;
+                if (orderNumberPattern.test(searchText)) {
+                    event.preventDefault();
+                    if (scrollToOrderNumber(searchText)) {
+                        // Update URL hash
+                        var hash = 'order-' + searchText.replace(/[^a-zA-Z0-9_-]/g, '-');
+                        window.location.hash = hash;
+                    }
+                }
+            }
+        });
         
         // Filter row
         var filterRow = document.createElement('div');
@@ -1498,6 +1591,32 @@
 
         console.log('[EOZ Boards Magazine Module v' + VERSION + '] Applied');
         
+        // Add order number attributes to cells
+        addOrderNumberAttributes();
+        
+        // Handle hash navigation on page load
+        if (window.location.hash) {
+            var hash = window.location.hash.substring(1); // Remove #
+            if (hash.indexOf('order-') === 0) {
+                // Convert hash back to order number format (order-3870-1 -> 3870_1)
+                var orderNumber = hash.replace('order-', '').replace(/-/g, '_');
+                setTimeout(function() {
+                    scrollToOrderNumber(orderNumber);
+                }, 500);
+            }
+        }
+        
+        // Listen for hash changes
+        window.addEventListener('hashchange', function() {
+            if (window.location.hash) {
+                var hash = window.location.hash.substring(1);
+                if (hash.indexOf('order-') === 0) {
+                    var orderNumber = hash.replace('order-', '').replace(/-/g, '_');
+                    scrollToOrderNumber(orderNumber);
+                }
+            }
+        });
+        
         // Add search and filter UI
         try {
             var searchFilterUI = createSearchAndFilterUI();
@@ -1507,6 +1626,10 @@
                     table.parentNode.insertBefore(searchFilterUI, table);
                 }
             }
+            // Re-add order number attributes after UI is created (in case table was modified)
+            setTimeout(function() {
+                addOrderNumberAttributes();
+            }, 100);
         } catch (e) {
             console.error('[EOZ Boards Magazine Module] Error creating search/filter UI:', e);
         }
