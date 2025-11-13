@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.30';
+    var VERSION = '2.9.31';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -620,10 +620,17 @@
                 // Highlight the order number cell
                 orderCell.classList.add('eoz-order-highlight');
                 
-                // Update URL hash
+                // Update URL hash - use replaceState for better compatibility
                 var hash = 'order-' + orderNumber.replace(/[^a-zA-Z0-9_-]/g, '-');
-                if (window.location.hash !== '#' + hash) {
-                    window.location.hash = hash;
+                var newHash = '#' + hash;
+                if (window.location.hash !== newHash) {
+                    // Try using history API first (more reliable)
+                    try {
+                        history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
+                    } catch (e) {
+                        // Fallback to direct hash assignment
+                        window.location.hash = hash;
+                    }
                 }
                 
                 // Remove highlight after 3 seconds
