@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.31';
+    var VERSION = '2.9.32';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1646,6 +1646,75 @@
         
         // Watch for dynamically loaded comments tables
         watchForCommentsTable();
+        
+        // Setup Select2 order search hash functionality
+        setupSelect2OrderHash();
+    }
+    
+    function setupSelect2OrderHash() {
+        // Find Select2 order_select element
+        var orderSelect = document.querySelector('select#order_select');
+        if (!orderSelect) return;
+        
+        // Wait for Select2 to be initialized (it might not be ready immediately)
+        var checkSelect2 = setInterval(function() {
+            if (typeof jQuery !== 'undefined' && jQuery(orderSelect).data('select2')) {
+                clearInterval(checkSelect2);
+                initSelect2OrderHash(orderSelect);
+            }
+        }, 100);
+        
+        // Stop checking after 5 seconds
+        setTimeout(function() {
+            clearInterval(checkSelect2);
+        }, 5000);
+    }
+    
+    function initSelect2OrderHash(orderSelect) {
+        try {
+            // Listen for when user selects an option in Select2
+            jQuery(orderSelect).on('select2:select', function(e) {
+                var selectedData = e.params.data;
+                if (!selectedData) return;
+                
+                var selectedText = selectedData.text || '';
+                var selectedValue = selectedData.id || '';
+                
+                // Check if selected text or value is a full order number (format: XXXX_X)
+                var orderNumberPattern = /^(\d+_\d+)$/;
+                var orderNumber = null;
+                
+                if (orderNumberPattern.test(selectedText.trim())) {
+                    orderNumber = selectedText.trim();
+                } else if (orderNumberPattern.test(selectedValue)) {
+                    orderNumber = selectedValue;
+                }
+                
+                // If it's an order number, add hash to URL and scroll to it
+                if (orderNumber) {
+                    // Wait a bit for the page to potentially redirect/update
+                    setTimeout(function() {
+                        // Update URL hash
+                        var hash = 'order-' + orderNumber.replace(/[^a-zA-Z0-9_-]/g, '-');
+                        var newHash = '#' + hash;
+                        if (window.location.hash !== newHash) {
+                            try {
+                                history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
+                            } catch (e) {
+                                window.location.hash = hash;
+                            }
+                        }
+                        
+                        // Scroll to order number (after page loads/updates)
+                        setTimeout(function() {
+                            scrollToOrderNumber(orderNumber);
+                        }, 300);
+                    }, 100);
+                }
+            });
+        } catch (e) {
+            console.error('[EOZ Boards Magazine Module] Error setting up Select2 order hash:', e);
+        }
     }
 
     function debugTablesSnapshot(phase, meta){
