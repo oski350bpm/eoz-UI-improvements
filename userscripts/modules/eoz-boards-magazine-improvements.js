@@ -4,7 +4,7 @@
 (function() {
     'use strict';
 
-    var VERSION = '2.9.38';
+    var VERSION = '2.9.31';
     
     // Expose version to global EOZ object
     if (!window.EOZ) window.EOZ = {};
@@ -1604,26 +1604,6 @@
         // Add order number attributes to cells
         addOrderNumberAttributes();
         
-        // Check for pending order scroll from sessionStorage (in case of redirect)
-        var pendingOrder = window.sessionStorage.getItem('eoz-pending-order-scroll');
-        if (pendingOrder) {
-            window.sessionStorage.removeItem('eoz-pending-order-scroll');
-            // Add hash to URL
-            var hash = 'order-' + pendingOrder.replace(/[^a-zA-Z0-9_-]/g, '-');
-            var newHash = '#' + hash;
-            if (window.location.hash !== newHash) {
-                try {
-                    history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
-                } catch (e) {
-                    window.location.hash = hash;
-                }
-            }
-            // Scroll to order number
-            setTimeout(function() {
-                scrollToOrderNumber(pendingOrder);
-            }, 500);
-        }
-        
         // Handle hash navigation on page load
         if (window.location.hash) {
             var hash = window.location.hash.substring(1); // Remove #
@@ -1666,162 +1646,6 @@
         
         // Watch for dynamically loaded comments tables
         watchForCommentsTable();
-        
-        // Add Select2 order_select search functionality
-        setupSelect2OrderSearch();
-    }
-    
-    function setupSelect2OrderSearch() {
-        // Find Select2 order_select element
-        var orderSelect = document.querySelector('select#order_select');
-        if (!orderSelect) return;
-        
-        // Wait for Select2 to be initialized (it might not be ready immediately)
-        var checkSelect2 = setInterval(function() {
-            if (typeof jQuery !== 'undefined' && jQuery(orderSelect).data('select2')) {
-                clearInterval(checkSelect2);
-                initSelect2OrderSearch(orderSelect);
-            }
-        }, 100);
-        
-        // Stop checking after 5 seconds
-        setTimeout(function() {
-            clearInterval(checkSelect2);
-        }, 5000);
-    }
-    
-    function initSelect2OrderSearch(orderSelect) {
-        try {
-            // Find the form that contains the select
-            var form = orderSelect.closest('form');
-            
-            // Intercept form submission to add hash to URL before redirect
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    var selectedValue = orderSelect.value;
-                    if (!selectedValue) return;
-                    
-                    // Check if selected value is an order number
-                    var orderNumberPattern = /^(\d+_\d+)$/;
-                    if (orderNumberPattern.test(selectedValue)) {
-                        // Modify form action to include hash
-                        var hash = 'order-' + selectedValue.replace(/[^a-zA-Z0-9_-]/g, '-');
-                        var currentAction = form.action || window.location.href.split('?')[0];
-                        
-                        // Add hash to form action URL
-                        if (currentAction.indexOf('#') === -1) {
-                            form.action = currentAction + '#' + hash;
-                        } else {
-                            form.action = currentAction.split('#')[0] + '#' + hash;
-                        }
-                        
-                        // Store order number for scroll after page loads
-                        window.sessionStorage.setItem('eoz-pending-order-scroll', selectedValue);
-                    }
-                }, true); // Use capture phase to catch it early
-            }
-            
-            // Listen for Enter key when typing order number in search field
-            // Add hash to URL immediately when Enter is pressed, before Select2 does anything
-            jQuery(orderSelect).on('select2:open', function() {
-                setTimeout(function() {
-                    var searchInput = document.querySelector('.select2-search__field');
-                    if (!searchInput) return;
-                    
-                    // Only add listener once per open
-                    if (searchInput.hasAttribute('data-eoz-order-search-listener')) {
-                        return;
-                    }
-                    
-                    searchInput.setAttribute('data-eoz-order-search-listener', 'true');
-                    
-                    // Listen for Enter key
-                    searchInput.addEventListener('keydown', function(event) {
-                        if (event.key === 'Enter') {
-                            var searchText = event.target.value.trim();
-                            var orderNumberPattern = /^(\d+_\d+)$/;
-                            
-                            // If it's an order number, add hash to URL immediately
-                            if (orderNumberPattern.test(searchText)) {
-                                // Add hash to URL before Select2 does anything
-                                var hash = 'order-' + searchText.replace(/[^a-zA-Z0-9_-]/g, '-');
-                                var newHash = '#' + hash;
-                                
-                                // Update URL hash immediately
-                                try {
-                                    history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
-                                } catch (e) {
-                                    window.location.hash = hash;
-                                }
-                                
-                                // If form exists, also update form action
-                                if (form) {
-                                    var currentAction = form.action || window.location.href.split('?')[0];
-                                    if (currentAction.indexOf('#') === -1) {
-                                        form.action = currentAction + '#' + hash;
-                                    } else {
-                                        form.action = currentAction.split('#')[0] + '#' + hash;
-                                    }
-                                }
-                                
-                                // Store order number for later scroll (after page loads/redirects)
-                                window.sessionStorage.setItem('eoz-pending-order-scroll', searchText);
-                            }
-                        }
-                    });
-                }, 100);
-            });
-            
-            // Also listen for when user selects an option in Select2 (fallback)
-            jQuery(orderSelect).on('select2:select', function(e) {
-                var selectedData = e.params.data;
-                if (!selectedData) return;
-                
-                var selectedText = selectedData.text || '';
-                var selectedValue = selectedData.id || '';
-                
-                // Check if selected text or value is a full order number
-                var orderNumberPattern = /^(\d+_\d+)$/;
-                var orderNumber = null;
-                
-                if (orderNumberPattern.test(selectedText.trim())) {
-                    orderNumber = selectedText.trim();
-                } else if (orderNumberPattern.test(selectedValue)) {
-                    orderNumber = selectedValue;
-                }
-                
-                // If it's an order number, add hash to URL
-                if (orderNumber) {
-                    var hash = 'order-' + orderNumber.replace(/[^a-zA-Z0-9_-]/g, '-');
-                    var newHash = '#' + hash;
-                    if (window.location.hash !== newHash) {
-                        try {
-                            history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
-                        } catch (e) {
-                            window.location.hash = hash;
-                        }
-                    }
-                    
-                    // Scroll to order number after a delay (in case of redirect)
-                    setTimeout(function() {
-                        scrollToOrderNumber(orderNumber);
-                    }, 200);
-                }
-            });
-            
-            // Clean up when Select2 closes
-            jQuery(orderSelect).on('select2:close', function() {
-                var searchInput = document.querySelector('.select2-search__field');
-                if (searchInput) {
-                    searchInput.removeAttribute('data-eoz-order-search-listener');
-                }
-            });
-            
-            // Note: Pending order scroll is now handled in apply() function
-            // to ensure it runs after page loads and attributes are added
-        } catch (e) {
-            console.error('[EOZ Boards Magazine Module] Error setting up Select2 order search:', e);
-        }
     }
 
     function debugTablesSnapshot(phase, meta){
