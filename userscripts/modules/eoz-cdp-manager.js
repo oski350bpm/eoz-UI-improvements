@@ -186,22 +186,48 @@
                 return;
             }
 
-            var ws = new WebSocket(url);
-            var timeout = setTimeout(function() {
-                ws.close();
-                reject(new Error('Connection timeout'));
-            }, 3000);
+            console.log('[EOZ CDP Manager] Testing WebSocket connection to:', url);
+            
+            try {
+                var ws = new WebSocket(url);
+                var timeout = setTimeout(function() {
+                    if (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN) {
+                        ws.close();
+                    }
+                    reject(new Error('Connection timeout after 5 seconds'));
+                }, 5000);
 
-            ws.onopen = function() {
-                clearTimeout(timeout);
-                ws.close();
-                resolve(true);
-            };
+                ws.onopen = function() {
+                    console.log('[EOZ CDP Manager] WebSocket connection opened successfully');
+                    clearTimeout(timeout);
+                    ws.close();
+                    resolve(true);
+                };
 
-            ws.onerror = function(err) {
-                clearTimeout(timeout);
-                reject(new Error('Connection failed: ' + (err.message || 'Unknown error')));
-            };
+                ws.onerror = function(event) {
+                    console.error('[EOZ CDP Manager] WebSocket error:', event);
+                    clearTimeout(timeout);
+                    var errorMsg = 'Connection failed';
+                    if (event.message) {
+                        errorMsg += ': ' + event.message;
+                    } else if (event.type === 'error') {
+                        errorMsg += ': WebSocket error (check if Chrome is running with --remote-allow-origins=*)';
+                    }
+                    reject(new Error(errorMsg));
+                };
+
+                ws.onclose = function(event) {
+                    clearTimeout(timeout);
+                    if (event.code !== 1000 && event.code !== 1001) {
+                        console.warn('[EOZ CDP Manager] WebSocket closed with code:', event.code, 'reason:', event.reason);
+                        if (event.code === 1006) {
+                            reject(new Error('Connection closed abnormally. Check Chrome flags: --remote-allow-origins=*'));
+                        }
+                    }
+                };
+            } catch (err) {
+                reject(new Error('Failed to create WebSocket: ' + (err.message || 'Unknown error')));
+            }
         });
     }
 

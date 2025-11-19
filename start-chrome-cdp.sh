@@ -52,6 +52,7 @@ fi
 # Uruchom Chrome z flagą remote-debugging-port i dedykowanym katalogiem danych
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
     --remote-debugging-port=$PORT \
+    --remote-allow-origins=* \
     --user-data-dir="$CDP_DATA_DIR" \
     --profile-directory="$PROFILE_NAME" &
 
